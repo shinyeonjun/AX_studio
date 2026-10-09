@@ -2911,7 +2911,12 @@ describe('ReportPlanner', () => {
     };
     expect(repairReportScalarBindings(layout, scalarPair).scalarBindings).toEqual(layout.scalarBindings.slice(0, 2));
     const missingKnown = { ...layout, scalarBindings: layout.scalarBindings.filter((binding) => binding.slotId !== 'known-b') };
-    expect(repairReportScalarBindings(missingKnown, scalarPair)).toEqual(missingKnown);
+    // One mistyped id and one unbound real slot: the binding moves there, for the replay to confirm.
+    expect(repairReportScalarBindings(missingKnown, scalarPair).scalarBindings.map((binding) => binding.slotId))
+      .toEqual(['known-a', 'known-b']);
+    // Two unbound slots leave more than one place to go: the layout is left for the replay to report.
+    const twoMissing = { ...layout, scalarBindings: [layout.scalarBindings[2]!] };
+    expect(repairReportScalarBindings(twoMissing, scalarPair)).toEqual(twoMissing);
   });
 
   it('splits a computed example sentence across adjacent slots when boundaries align with tokens', () => {

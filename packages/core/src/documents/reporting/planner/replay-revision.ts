@@ -19,6 +19,7 @@ import {
   type ReplayRepairInput,
   type ReplayRepairResult,
 } from './replay-repair.js';
+import { repairReportScalarBindings } from './layout-bindings.js';
 
 /** Preserve the established planner import path while replay logic lives in its cohesive module. */
 export function repairExampleReplayInference(input: ReplayRepairInput): ReplayRepairResult {
@@ -87,8 +88,17 @@ export function repairExampleReplayAndPresentation(input: ReplayRepairInput): Re
     repairReportFieldAliases(plan, input.sources), input.sources,
   ));
   plan = repairReportMetadataTextReferences(plan, input.metadata);
-  let layout = input.layout;
-  plan = inferReportFormats(plan, layout, input.pair);
+  // A mistyped slot id with one real slot left over is put back on that slot before anything runs.
+  let layout = repairReportScalarBindings(input.layout, input.pair);
+  // A format read from the example is a guess about the value; when the data says otherwise (a
+  // name such as "생산1팀" is text), the plan keeps the format it had.
+  const exampleFormats = inferReportFormats(plan, layout, input.pair);
+  try {
+    executeReportPlan(exampleFormats, input.sources, input.metadata);
+    plan = exampleFormats;
+  } catch {
+    // Keep the plan's own formats; the replay below reports what still differs.
+  }
   const staticBindings = repairStaticTextBindingConflicts(plan, layout, input.pair);
   plan = staticBindings.plan;
   layout = staticBindings.layout;

@@ -23,3 +23,11 @@ describe('a number written with its unit in the completed example', () => {
     expect(formatFromExampleText('47.7%')).toEqual({ style: 'percent', decimals: 1 });
   });
 });
+
+describe('a name with a digit in it', () => {
+  it('is not a number with a unit', () => {
+    expect(formatFromExampleText('생산1팀')).toBeUndefined();
+    expect(formatFromExampleText('E101')).toBeUndefined();
+    expect(formatFromExampleText('₩3,000')).toMatchObject({ style: 'currency' });
+  });
+});

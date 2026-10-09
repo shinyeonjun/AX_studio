@@ -38,7 +38,10 @@ export function formatFromExampleText(value: string): ReportFormat | undefined {
   // A duration ("28.5분", "3시간") is an amount, and a decimal is never a calendar point.
   const period = !(unit?.[2] ?? '').includes('.') && (/^\s*(?:년|월|일|주|분기|반기|차|기)/u.test(unit?.[3] ?? '')
     || /(?:^|\s)(?:Q|H|FY|W)\s*$/iu.test(unit?.[1] ?? ''));
-  if (unit && !period && !/\d/u.test(unit[1]! + unit[3]!)) {
+  // A letter right against the digits makes one word with them: "생산1팀", "E101" are names, while
+  // "약 1,200명" and "₩3,000" set the number apart.
+  const word = /\p{L}$/u.test(unit?.[1] ?? '');
+  if (unit && !period && !word && !/\d/u.test(unit[1]! + unit[3]!)) {
     const numeric = unit[2]!;
     return {
       style: numeric.includes('.') ? 'decimal' : 'integer',

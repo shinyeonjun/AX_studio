@@ -20,6 +20,7 @@ import {
 import { applyTableRepairVariants } from './replay-repair/table.js';
 import { applyDateNotationVariants } from './replay-repair/date-notation.js';
 import { applyColumnOrderVariants } from './replay-repair/column-order.js';
+import { applyTextNumberFormatVariants } from './replay-repair/text-numbers.js';
 import {
   applyAggregateFilterVariants,
   applyAggregateRepairVariants,
@@ -116,6 +117,7 @@ export function repairExampleReplayInference(input: ReplayRepairInput): ReplayRe
     applyConcatRepairVariants,
     applyMissingScalarMetricVariants,
     applyDateNotationVariants,
+    applyTextNumberFormatVariants,
   ];
   for (let pass = 0; pass < 8 && currentScore > 0; pass += 1) {
     let improved = false;
