@@ -29,9 +29,9 @@ export async function inferReportSourceRequirements(
   });
 
   const available = new Set(input.connectedConnectors);
-  const connectorOptions = (['http', 'rdb'] as const).filter(connector => available.has(connector));
+  const connectorOptions = (['http', 'rdb', 'file'] as const).filter(connector => available.has(connector));
   if (connectorOptions.length === 0) {
-    throw new ReportSourceClarificationRequired('보고서에 사용할 HTTP API 또는 데이터베이스 연결을 먼저 추가해 주세요.');
+    throw new ReportSourceClarificationRequired('보고서에 쓸 데이터 연결이 없습니다. 설정에서 API, 데이터베이스, 또는 엑셀·CSV 파일이 있는 폴더를 연결해 주세요.');
   }
   const questions: Record<string, DecisionQuestion> = Object.fromEntries(connectorOptions.map(connector => [
     `${connector}_required`, {
@@ -101,7 +101,7 @@ export async function inferReportSourceRequirements(
     if (answer?.type !== 'choice' || !['required', 'not_required', 'unclear'].includes(answer.choice)) {
       throw Object.assign(new Error('report_source_jev_answer_invalid'), { code: 'report_source_jev_answer_invalid' });
     }
-    const label = connector === 'http' ? 'HTTP API' : '데이터베이스';
+    const label = connector === 'http' ? 'HTTP API' : connector === 'rdb' ? '데이터베이스' : '폴더의 엑셀·CSV 파일';
     if (answer.choice === 'required') {
       requirements.push({
         id: `source-${connector}`,
@@ -114,7 +114,7 @@ export async function inferReportSourceRequirements(
     }
   }
   if (requirements.length === 0) {
-    throw new ReportSourceClarificationRequired('보고서에 사용할 연결 데이터가 분명하지 않습니다. 필요한 API 또는 데이터베이스 연결을 지정해 주세요.');
+    throw new ReportSourceClarificationRequired('보고서에 사용할 연결 데이터가 분명하지 않습니다. 어떤 API, 데이터베이스, 또는 폴더의 파일을 쓸지 알려 주세요.');
   }
   return ReportSourceRequirementsSchema.parse({ schemaVersion: 1, requirements }).requirements;
 }

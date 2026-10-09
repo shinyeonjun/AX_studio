@@ -2,7 +2,8 @@ import { z } from 'zod';
 import type { InvestigationRunner } from '../../../intelligence/agent/investigation-runner.js';
 import type { InvestigateAgentContext } from '../../../intelligence/agent/types.js';
 import type { ModelImageInput } from '../../../intelligence/agent/model/provider.js';
-import { normalizeReportHttpPath, ReportHttpPathSchema, ReportPeriodSchema, ReportSourceCapturePlanSchema } from '../source/schema.js';
+import { normalizeReportHttpPath, ReportFilePathSchema, ReportHttpPathSchema, ReportPeriodSchema, ReportSourceCapturePlanSchema,
+  reportFileSources } from '../source/schema.js';
 import { assertReportSourceCoverage, ReportSourceReplanRequired, type ReportCaptureInference, type ReportSourceNeed } from './schema.js';
 
 // Source discovery may require several bounded catalog/schema inspections before
@@ -12,13 +13,15 @@ import { assertReportSourceCoverage, ReportSourceReplanRequired, type ReportCapt
 export const REPORT_SOURCE_DISCOVERY_TIMEOUT_MS = 300_000;
 
 const RequestSchema = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('catalog'), connector: z.enum(['http', 'rdb']).optional(),
+  z.object({ kind: z.literal('catalog'), connector: z.enum(['http', 'rdb', 'file']).optional(),
     query: z.string().trim().max(200).optional(), connectionId: z.string().min(1).max(160).optional(),
     offset: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional(), limit: z.number().int().min(1).max(20).optional() }).strict(),
   z.object({ kind: z.literal('http_operation'), connectionId: z.string().min(1).max(160), path: ReportHttpPathSchema }).strict(),
   z.object({ kind: z.literal('rdb_table'), table: z.string().min(1).max(160),
     offset: z.number().int().min(0).max(1_000_000).optional(), limit: z.number().int().min(1).max(200).optional() }).strict(),
   z.object({ kind: z.literal('http_connection'), connectionId: z.string().min(1).max(160), path: ReportHttpPathSchema }).strict(),
+  z.object({ kind: z.literal('file_sheet'), folderId: z.string().min(1).max(160), path: ReportFilePathSchema,
+    sheet: z.string().trim().min(1).max(160).optional() }).strict(),
 ]);
 export type ReportSourceInspection = z.infer<typeof RequestSchema>;
 
@@ -32,11 +35,14 @@ export class ReportSourceClarificationRequired extends Error {
 // encoded as a JSON string by the Codex adapter, which makes it too easy for a
 // model to put the explanation in `reason` while leaving the request absent.
 const RequestWireSchema = z.object({
-  kind: z.enum(['catalog', 'http_operation', 'rdb_table', 'http_connection']),
+  kind: z.enum(['catalog', 'http_operation', 'rdb_table', 'http_connection', 'file_sheet']),
   table: z.string().min(1).max(160).optional(),
   connectionId: z.string().min(1).max(160).optional(),
-  path: ReportHttpPathSchema.optional(),
-  connector: z.enum(['http', 'rdb']).optional().describe('Only for kind=catalog. For other kinds omit this field (null on nullable wire schemas).'),
+  folderId: z.string().min(1).max(160).optional(),
+  // An HTTP path or a file path inside a folder; the kind's own schema checks which.
+  path: z.string().trim().min(1).max(2_048).optional(),
+  sheet: z.string().trim().min(1).max(160).optional(),
+  connector: z.enum(['http', 'rdb', 'file']).optional().describe('Only for kind=catalog. For other kinds omit this field (null on nullable wire schemas).'),
   query: z.string().trim().max(200).optional(),
   offset: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional(),
   limit: z.number().int().min(1).max(200).optional(),
@@ -50,7 +56,8 @@ const PlannedSchema = z.object({
     requirementId: z.string().min(1).max(80),
     aliases: z.array(z.string().min(1).max(200)).min(1).max(32),
   }).strict()).max(12),
-}).strict().refine(value => value.capturePlan.http.length + value.capturePlan.rdb.length > 0,
+}).strict().refine(value => value.capturePlan.http.length + value.capturePlan.rdb.length
+  + reportFileSources(value.capturePlan).length > 0,
   'A planned response must select at least one source');
 
 // This schema is deliberately structural. The host restores the discriminated
@@ -132,6 +139,9 @@ function inspectionKey(request: ReportSourceInspection): string {
   if (request.kind === 'rdb_table') {
     return JSON.stringify({ kind: request.kind, table: request.table, offset: request.offset ?? 0,
       limit: request.limit ?? 20 });
+  }
+  if (request.kind === 'file_sheet') {
+    return JSON.stringify({ kind: request.kind, folderId: request.folderId, path: request.path, sheet: request.sheet });
   }
   if (request.kind === 'http_operation') {
     const path = normalizeReportHttpPath(request.path);
@@ -302,7 +312,8 @@ export async function discoverReportSources(input: {
       } catch (error) {
         for (const item of evidence) seen.add(inspectionKey(item.request));
         const code = error instanceof Error ? error.message.split(':', 1)[0] : undefined;
-        const correctable = code && ['report_rdb_table_unknown', 'report_http_connection_unknown',
+        const correctable = code && ['report_rdb_table_unknown', 'report_file_unknown', 'report_file_period_name_unknown',
+          'report_http_connection_unknown',
           'report_http_connection_required', 'report_source_binding_unknown',
           'report_source_candidates_added', 'report_source_candidate_not_selected'].includes(code);
         if (!(error instanceof ReportSourceReplanRequired) && !correctable) throw error;

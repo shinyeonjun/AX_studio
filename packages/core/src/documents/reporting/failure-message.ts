@@ -58,6 +58,16 @@ export function reportFailureMessage(log: ExecutionLogEntry[], code: string): st
     lines.push('원본 데이터를 끝까지 읽지 못했습니다. 연결된 서비스나 데이터베이스의 자료가 도중에 바뀌지 않았는지 확인한 뒤 다시 요청해 주세요. 불완전한 데이터로 보고서를 생성하지 않았습니다.');
   }
   else if (code === 'report_table_capacity_exceeded') lines.push('결과 행이 양식의 표 용량을 초과했습니다. 행을 잘라내지 않았습니다. 더 큰 양식이나 명시적인 집계 기준이 필요합니다.');
+  else if (code === 'report_file_period_missing') {
+    const failed = [...log].reverse().find((item) => item.level === 'error' && item.message.startsWith('report_file_period_missing:'));
+    const fileName = failed?.message.split(':').slice(2).join(':').trim();
+    lines.push(`${fileName ? `이번 기간 파일(${fileName.slice(0, 200)})` : '이번 기간 파일'}이 연결된 폴더에 없어 보고서를 만들지 않았습니다. 파일을 폴더에 넣은 뒤 다시 요청해 주세요.`);
+  }
+  else if (code === 'report_file_period_name_unknown') lines.push('파일 이름에 기간(예: 2026-09)이 없어 이번 기간 파일을 고를 수 없습니다. 기간이 들어간 이름으로 저장하거나, 모든 기간이 한 파일에 있는지 알려 주세요.');
+  else if (code === 'report_file_unknown' || code === 'report_file_reader_unavailable') lines.push('고른 파일을 연결된 폴더에서 찾을 수 없습니다. 설정에서 폴더 연결을 확인해 주세요.');
+  else if (code === 'report_file_response_incomplete' || code === 'report_file_response_invalid' || code === 'report_file_request_failed') {
+    lines.push('파일을 끝까지 읽지 못했습니다. 파일이 다른 프로그램에서 열려 있거나 손상되지 않았는지 확인해 주세요. 불완전한 데이터로 보고서를 생성하지 않았습니다.');
+  }
   else if (code === 'report_template_source_required') lines.push('완성 보고서만으로 빈 양식을 만들 수 없는 환경입니다. 빈 양식 PDF를 함께 올려 주세요.');
   else if (code === 'report_example_has_no_text') lines.push('올린 보고서에서 글자를 읽을 수 없습니다. 스캔한 이미지 PDF는 아직 지원하지 않습니다. 글자를 고를 수 있는 PDF로 올려 주세요.');
   else if (code === 'report_example_too_much_text') lines.push('보고서의 글이 너무 많아 처리하지 못했습니다. 페이지를 나눠 올려 주세요.');
