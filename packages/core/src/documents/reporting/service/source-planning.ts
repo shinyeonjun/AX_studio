@@ -11,8 +11,10 @@ import {
 import {
   validateCapturePlan,
   validateRefinedCapturePlan,
+  type ReportFileSummary,
   type ReportHttpConnectionSummary,
 } from '../planner/planner.js';
+import { TableArtifactSchema } from '../../../contracts/artifacts/table.js';
 import { inspectReportCatalog } from '../planner/catalog.js';
 import { captureReportSources } from '../source/capture.js';
 import { probeReportHttpSources, probeReportHttpSourcesWithRecovery } from '../source/probe.js';
@@ -43,6 +45,8 @@ interface ReportSourcePlanningOptions {
   rdbTables: string[];
   unavailableSources: ReportUnavailableSource[];
   httpConnections: ReportHttpConnectionSummary[];
+  /** CSV/xlsx files in connected folders that a report may read. */
+  files?: ReportFileSummary[];
   reportEvidencePathnames: Set<string>;
   assertHttpSourcePath: (request: { connectionId?: unknown; path?: unknown }) => void;
   connectedConnectors: string[];
@@ -62,6 +66,7 @@ export async function planReportSources(options: ReportSourcePlanningOptions) {
     httpConnections, reportEvidencePathnames, assertHttpSourcePath, connectedConnectors, gateway,
     initialRequirements,
   } = options;
+  const files = options.files ?? [];
   let requirements = initialRequirements;
   let previousCapture: ReportCaptureInference | undefined;
   let capturedSelection: string | undefined;
@@ -76,11 +81,12 @@ export async function planReportSources(options: ReportSourcePlanningOptions) {
         throw new Error('report_rdb_schema_failed');
       }
       ctx.log({ at: new Date().toISOString(), level: 'info', code: 'report_source_plan_started', message: '보고서에 필요한 데이터 조회 방법을 구성하고 있습니다.' });
-      const proposed = await sourceStage('source_plan', { version: 6, pair, httpConnections, rdbTables, requirements, previousCapture, unavailableSources }, () => sourcePlanner.inferCapturePlan({
+      const proposed = await sourceStage('source_plan', { version: 6, pair, httpConnections, rdbTables, files, requirements, previousCapture, unavailableSources }, () => sourcePlanner.inferCapturePlan({
         goal,
         pair,
         httpConnections,
         rdbTables,
+        files,
         unavailableSources,
         inspectSource: async (request, abortSignal) => {
           const inspectionSignal = abortSignal && ctx.abortSignal
@@ -91,7 +97,7 @@ export async function planReportSources(options: ReportSourcePlanningOptions) {
           };
           checkAborted();
           if (request.kind === 'catalog' || request.kind === 'http_operation') {
-            return inspectReportCatalog(httpConnections, rdbTables, request);
+            return inspectReportCatalog(httpConnections, rdbTables, request, files);
           }
           const inspectStage = <T>(run: () => Promise<T>) => sourceStage(`source-inspection-${reportDigest(request)}`, request, async () => {
             checkAborted();
@@ -108,6 +114,22 @@ export async function planReportSources(options: ReportSourcePlanningOptions) {
                 table: request.table, offset: request.offset ?? 0, limit: request.limit ?? 20,
               }, inspectionContext);
               return result.ok ? result.data : { available: false, reason: 'table_metadata_unavailable' };
+            });
+          }
+          if (request.kind === 'file_sheet') {
+            if (!gateway.executeFile || !files.some(file => file.folderId === request.folderId && file.path === request.path)) {
+              throw new Error('report_source_inspection_denied');
+            }
+            const readFile = gateway.executeFile;
+            // Like a DB table's description: its columns and how many rows, never the values.
+            return inspectStage(async () => {
+              const result = await readFile({ folderId: request.folderId, path: request.path, ...(request.sheet ? { sheet: request.sheet } : {}) });
+              const table = result.ok ? TableArtifactSchema.safeParse(result.data) : undefined;
+              return table?.success
+                ? { folderId: request.folderId, path: request.path, ...(request.sheet ? { sheet: request.sheet } : {}),
+                  columns: table.data.columns.map(column => ({ name: column.name, type: column.type })),
+                  rowCount: table.data.rows.length }
+                : { available: false, reason: result.ok ? 'sheet_unreadable' : result.errorCode ?? 'sheet_unreadable' };
             });
           }
           const connection = httpConnections.find(item => item.id === request.connectionId);
@@ -144,7 +166,7 @@ export async function planReportSources(options: ReportSourcePlanningOptions) {
         log: ctx.log,
       }));
       if (unavailableSources.length && proposed.capturePlan.rdb.length) throw new Error('report_rdb_schema_failed');
-      const provisionalCapture = validateCapturePlan(proposed, httpConnections, rdbTables);
+      const provisionalCapture = validateCapturePlan(proposed, httpConnections, rdbTables, files);
       provisionalCapture.capturePlan.http.forEach(assertHttpSourcePath);
       if (capturedSelection === reportDigest(provisionalCapture.capturePlan)) throw new Error('report_source_replan_no_progress');
       if (previousCapture) {
@@ -152,9 +174,9 @@ export async function planReportSources(options: ReportSourcePlanningOptions) {
           || reportDigest(provisionalCapture.targetPeriod) !== reportDigest(previousCapture.targetPeriod)) {
           throw new Error('report_source_replan_period_changed');
         }
-        for (const kind of ['http', 'rdb'] as const) {
-          for (const source of previousCapture.capturePlan[kind]) {
-            const candidates = provisionalCapture.capturePlan[kind].filter(candidate => candidate.alias === source.alias);
+        for (const kind of ['http', 'rdb', 'file'] as const) {
+          for (const source of previousCapture.capturePlan[kind] ?? []) {
+            const candidates = (provisionalCapture.capturePlan[kind] ?? []).filter(candidate => candidate.alias === source.alias);
             // A replan may recover from a source that was authorized but
             // structurally insufficient. Keep the logical alias stable
             // while allowing an HTTP connection/path to be replaced by
@@ -205,13 +227,14 @@ export async function planReportSources(options: ReportSourcePlanningOptions) {
           staticQueryCorrections: probeResult.corrections,
           httpConnections,
           rdbTables,
+          files,
           connectedConnectors,
           signal: ctx.abortSignal,
           log: ctx.log,
         }));
       }
       // Shape refinement must not silently erase the validated requirement bindings.
-      capture = { ...validateRefinedCapturePlan(refinementProvisional, capture, httpConnections, rdbTables),
+      capture = { ...validateRefinedCapturePlan(refinementProvisional, capture, httpConnections, rdbTables, files),
         requirementBindings: provisionalCapture.requirementBindings };
       capture.capturePlan.http.forEach(assertHttpSourcePath);
       assertReportSourceCoverage(capture, requirements);
@@ -219,7 +242,8 @@ export async function planReportSources(options: ReportSourcePlanningOptions) {
 
       ctx.log({ at: new Date().toISOString(), level: 'info', code: 'report_example_capture_started', message: '완성 예시 기간의 연결 데이터를 검증하고 있습니다.' });
       setPhase('example_capture');
-      const exampleSources = await sourceStage('example_capture', capture, () => captureReportSources(capture.capturePlan, capture.examplePeriod, gateway));
+      const exampleSources = await sourceStage('example_capture', capture, () => captureReportSources(
+        capture.capturePlan, capture.examplePeriod, gateway, {}, capture.examplePeriod));
       capturedSelection = reportDigest(capture.capturePlan);
       setPhase('business_plan');
       ctx.log({ at: new Date().toISOString(), level: 'info', code: 'report_business_plan_started', message: '예시 보고서의 계산 기준과 양식 배치를 구성하고 있습니다.' });

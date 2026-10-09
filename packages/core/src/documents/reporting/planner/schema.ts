@@ -1,11 +1,11 @@
 import { z } from 'zod';
 import { ReportLayoutPlanSchema, type ReportLayoutPlan } from '../layout/schema.js';
 import { ReportPlanSchema, type ReportPlan } from '../plan/schema.js';
-import { ReportPeriodSchema, ReportSourceCapturePlanSchema, type ReportPeriod, type ReportSourceCapturePlan } from '../source/schema.js';
+import { ReportPeriodSchema, ReportSourceCapturePlanSchema, reportFileSources, type ReportPeriod, type ReportSourceCapturePlan } from '../source/schema.js';
 
 export const ReportSourceNeedSchema = z.object({
   id: z.string().min(1).max(80),
-  connector: z.enum(['http', 'rdb']),
+  connector: z.enum(['http', 'rdb', 'file']),
   description: z.string().min(1).max(500),
   reason: z.string().min(1).max(500),
 }).strict();
@@ -59,7 +59,8 @@ export function assertReportSourceCoverage(capture: ReportCaptureInference, requ
   const bindings = capture.requirementBindings ?? [];
   const missing = requirements.filter(need => {
     const matching = bindings.filter(binding => binding.requirementId === need.id);
-    const aliases = new Set(capture.capturePlan[need.connector].map(source => source.alias));
+    const sources = need.connector === 'file' ? reportFileSources(capture.capturePlan) : capture.capturePlan[need.connector];
+    const aliases = new Set(sources.map(source => source.alias));
     return matching.length !== 1 || matching[0]!.aliases.length === 0
       || matching[0]!.aliases.some(alias => !aliases.has(alias));
   });

@@ -3,10 +3,13 @@ import { HttpResponseArtifactSchema, isCompleteHttpPage } from '../../../contrac
 import { TableArtifactSchema } from '../../../contracts/artifacts/table.js';
 import { assertSafeRdbScalars } from '../../../connectors/rdb/client/scalars.js';
 import type { ReportSourceCoverage } from '../plan/schema.js';
+import { periodFilePath } from './period-file.js';
 import {
   ReportPeriodSchema,
   ReportSourceCapturePlanSchema,
+  reportFileSources,
   type CapturedReportSources,
+  type ReportFileSourceSpec,
   type ReportHttpSourceSpec,
   type ReportPeriod,
   type ReportSourceCapturePlan,
@@ -42,7 +45,7 @@ function fingerprint(rows: Array<Record<string, unknown>>): string {
 }
 
 function assertUniqueAliases(plan: ReportSourceCapturePlan): void {
-  const aliases = [...plan.http.map((source) => source.alias), ...plan.rdb.map((source) => source.alias)];
+  const aliases = [...plan.http, ...plan.rdb, ...reportFileSources(plan)].map((source) => source.alias);
   const seen = new Set<string>();
   for (const alias of aliases) {
     if (seen.has(alias)) throw new Error(`report_source_alias_duplicate:${alias}`);
@@ -235,6 +238,31 @@ async function captureRdbSource(
   }
 }
 
+async function captureFileSource(
+  spec: ReportFileSourceSpec,
+  path: string,
+  gateway: ReportSourceGateway,
+  consume: (rows: Array<Record<string, unknown>>) => void,
+): Promise<Array<Record<string, unknown>>> {
+  if (!gateway.executeFile) throw new Error(`report_file_reader_unavailable:${spec.alias}`);
+  const result = await gateway.executeFile({ folderId: spec.folderId, path, ...(spec.sheet ? { sheet: spec.sheet } : {}) });
+  if (!result.ok) {
+    // This period's file not being there yet is the common case; say which file was looked for.
+    if (result.errorCode === 'file_not_found' || result.errorCode === 'file_not_accessible' || result.error === 'file_not_accessible') {
+      throw new Error(`report_file_period_missing:${spec.alias}:${path.split(/[\\/]/u).at(-1)}`);
+    }
+    throw new Error(`report_file_request_failed:${spec.alias}:${result.errorCode ?? 'unknown'}`);
+  }
+  const table = TableArtifactSchema.safeParse(result.data);
+  if (!table.success) throw new Error(`report_file_response_invalid:${spec.alias}`);
+  if (table.data.truncated || (table.data.completeness && table.data.completeness.status !== 'complete')) {
+    throw new Error(`report_file_response_incomplete:${spec.alias}`);
+  }
+  const rows = table.data.rows.map((row) => ({ ...(row.rawValues ?? row.values) }));
+  consume(rows);
+  return rows;
+}
+
 export interface ReportCaptureLimits {
   maxRows?: number;
   maxBytes?: number;
@@ -245,6 +273,8 @@ export async function captureReportSources(
   periodInput: ReportPeriod,
   gateway: ReportSourceGateway,
   limits: ReportCaptureLimits = {},
+  /** The period the plan's file paths name; a one-file-per-period source reads `periodInput`'s file. */
+  examplePeriod?: ReportPeriod,
 ): Promise<CapturedReportSources> {
   const plan = ReportSourceCapturePlanSchema.parse(input);
   const period = ReportPeriodSchema.parse(periodInput);
@@ -276,6 +306,14 @@ export async function captureReportSources(
     const { rows, coverage } = await captureRdbSource(spec, gateway, consume);
     captured[spec.alias] = { id: spec.alias, rows, complete: true, coverage, fingerprint: fingerprint(rows),
       provenance: { source: spec.table, startedAt, completedAt: new Date().toISOString(),
+        requestedPeriod: period, consistency: 'unverified' } };
+  }
+  for (const spec of reportFileSources(plan)) {
+    const startedAt = new Date().toISOString();
+    const path = spec.perPeriod && examplePeriod ? periodFilePath(spec.path, examplePeriod, period) : spec.path;
+    const rows = await captureFileSource(spec, path, gateway, consume);
+    captured[spec.alias] = { id: spec.alias, rows, complete: true, fingerprint: fingerprint(rows),
+      provenance: { source: path, startedAt, completedAt: new Date().toISOString(),
         requestedPeriod: period, consistency: 'unverified' } };
   }
   return captured;

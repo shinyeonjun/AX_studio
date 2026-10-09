@@ -4,11 +4,11 @@ import type { PdfReportPairAnalysis } from '../../read/types/pdf.js';
 import { DECISION_CONTEXT_UNTRUSTED_DATA_POLICY, boundDecisionString } from '../../../intelligence/decision/context.js';
 import { normalizeReportHttpPath } from '../source/schema.js';
 import type { ReportSourceNeed } from './schema.js';
-import type { ReportHttpConnectionSummary } from './catalog.js';
+import type { ReportFileSummary, ReportHttpConnectionSummary } from './catalog.js';
 import { inspectReportCatalog } from './catalog.js';
 import type { ReportSourceInspection } from './source-discovery.js';
 
-type CandidateInspection = Extract<ReportSourceInspection, { kind: 'http_operation' | 'rdb_table' }>;
+type CandidateInspection = Extract<ReportSourceInspection, { kind: 'http_operation' | 'rdb_table' | 'file_sheet' }>;
 type CandidateRequest = CandidateInspection | Extract<ReportSourceInspection, { kind: 'http_connection' }>;
 export type ReportSourceCandidateRequest = CandidateRequest;
 
@@ -23,10 +23,13 @@ export interface ReportSourceEvidence {
 }
 
 const RDB_METADATA_CONCURRENCY = 4;
+/** Files offered to Jev at once, newest first; the catalog still lists every one. */
+const MAX_FILE_CANDIDATES = 60;
 const REPORT_PATH_ORIGIN = 'http://report-probe.invalid';
 
 export function reportSourceCandidateKey(request: CandidateRequest): string {
   if (request.kind === 'rdb_table') return JSON.stringify(['rdb', request.table]);
+  if (request.kind === 'file_sheet') return JSON.stringify(['file', request.folderId, request.path, request.sheet ?? null]);
   const path = normalizeReportHttpPath(request.path);
   return JSON.stringify(['http', request.connectionId, new URL(path, REPORT_PATH_ORIGIN).pathname]);
 }
@@ -35,12 +38,21 @@ function throwIfAborted(signal?: AbortSignal): void {
   if (signal?.aborted) throw Object.assign(new Error('agent_aborted'), { code: 'agent_aborted' });
 }
 
+function fileCandidate(file: ReportFileSummary, sheet?: string): Candidate {
+  return {
+    inspection: { kind: 'file_sheet', folderId: file.folderId, path: file.path, ...(sheet ? { sheet } : {}) },
+    metadata: { connector: 'file', folder: boundDecisionString(file.folderLabel, 300), path: boundDecisionString(file.path, 500),
+      ...(file.modifiedAt ? { modifiedAt: file.modifiedAt } : {}) },
+  };
+}
+
 function reportSourceCandidates(
   requirements: ReportSourceNeed[],
   httpConnections: ReportHttpConnectionSummary[],
   rdbTables: string[],
   canInspectRdb: boolean,
   requested?: readonly CandidateRequest[],
+  files: ReportFileSummary[] = [],
 ): Candidate[] {
   const required = new Set(requirements.map(need => need.connector));
   const candidates: Candidate[] = [];
@@ -77,6 +89,11 @@ function reportSourceCandidates(
       candidates.push({ inspection: { kind: 'rdb_table', table }, metadata: { connector: 'rdb', table } });
     }
   }
+  if (canInspectRdb && required.has('file')) {
+    const newest = [...files].sort((left, right) => (right.modifiedAt ?? '').localeCompare(left.modifiedAt ?? ''))
+      .slice(0, MAX_FILE_CANDIDATES);
+    for (const file of newest) candidates.push(fileCandidate(file));
+  }
   if (!requested) return candidates;
   const byKey = new Map(candidates.map(candidate => [reportSourceCandidateKey(candidate.inspection), candidate]));
   const entries = requested.map(request => {
@@ -88,6 +105,11 @@ function reportSourceCandidates(
     if (request.kind === 'rdb_table') {
       if (!canInspectRdb || !rdbTables.includes(request.table)) return [key, undefined] as const;
       return [key, { inspection: request, metadata: { connector: 'rdb', table: request.table } } as Candidate] as const;
+    }
+    if (request.kind === 'file_sheet') {
+      const file = files.find(item => item.folderId === request.folderId && item.path === request.path);
+      if (!canInspectRdb || !file) return [key, undefined] as const;
+      return [key, fileCandidate(file, request.sheet)] as const;
     }
     const connection = httpConnections.find(item => item.id === request.connectionId);
     if (!connection) return [key, undefined] as const;
@@ -113,9 +135,10 @@ async function inspectSelectedRdb(
   inspect: (request: ReportSourceInspection, signal?: AbortSignal) => Promise<unknown>,
   signal?: AbortSignal,
 ): Promise<Map<string, unknown>> {
+  // DB tables and files are read on the host; HTTP operations are answered from the catalog.
   const tables = selected.filter((candidate): candidate is Candidate & {
-    inspection: Extract<CandidateInspection, { kind: 'rdb_table' }>;
-  } => candidate.inspection.kind === 'rdb_table');
+    inspection: Extract<CandidateInspection, { kind: 'rdb_table' | 'file_sheet' }>;
+  } => candidate.inspection.kind === 'rdb_table' || candidate.inspection.kind === 'file_sheet');
   const results = new Map<string, unknown>();
   const errors: Array<{ error: unknown } | undefined> = [];
   let next = 0;
@@ -125,10 +148,9 @@ async function inspectSelectedRdb(
       const index = next++;
       const candidate = tables[index]!;
       try {
-        results.set(JSON.stringify(candidate.inspection), await inspect({
-          ...candidate.inspection,
-          limit: candidate.inspection.kind === 'rdb_table' ? candidate.inspection.limit ?? 20 : undefined,
-        }, signal));
+        results.set(JSON.stringify(candidate.inspection), await inspect(candidate.inspection.kind === 'rdb_table'
+          ? { ...candidate.inspection, limit: candidate.inspection.limit ?? 20 }
+          : candidate.inspection, signal));
       } catch (error) {
         errors[index] = { error };
       }
@@ -156,13 +178,14 @@ export async function selectAndInspectReportSources(input: {
   requirements: ReportSourceNeed[];
   httpConnections: ReportHttpConnectionSummary[];
   rdbTables: string[];
+  files?: ReportFileSummary[];
   candidateRequests?: readonly CandidateRequest[];
   inspectSource?: (request: ReportSourceInspection, signal?: AbortSignal) => Promise<unknown>;
   signal?: AbortSignal;
   log?: (entry: ExecutionLogEntry) => void;
 }): Promise<ReportSourceEvidence[]> {
   const candidates = reportSourceCandidates(input.requirements, input.httpConnections, input.rdbTables,
-    Boolean(input.inspectSource), input.candidateRequests);
+    Boolean(input.inspectSource), input.candidateRequests, input.files);
   if (!candidates.length) return [];
 
   const questions: Record<string, DecisionQuestion> = Object.fromEntries(candidates.map((candidate, index) => [

@@ -34,15 +34,33 @@ interface ReportRdbSourceSpec {
   table: string;
 }
 
+/** A CSV/xlsx sheet in a connected folder. */
+export interface ReportFileSourceSpec {
+  alias: string;
+  folderId: string;
+  /** The example period's file, relative to the folder. */
+  path: string;
+  sheet?: string;
+  /**
+   * One file per period, named for it (매출_2026-08.xlsx, 매출_2026-09.xlsx): another period reads
+   * the file named for that period. Otherwise every period reads this one file and filters rows.
+   */
+  perPeriod?: boolean;
+}
+
 export interface ReportSourceCapturePlan {
   schemaVersion: 1;
   http: ReportHttpSourceSpec[];
   rdb: ReportRdbSourceSpec[];
+  /** Absent in plans made before files could be sources. */
+  file?: ReportFileSourceSpec[];
 }
 
 export interface ReportSourceGateway {
   executeHttp(params: Record<string, unknown>): Promise<ConnectorResult>;
   executeRdb(params: Record<string, unknown>): Promise<ConnectorResult>;
+  /** Reads one sheet of a connected folder's file; required only when the plan has file sources. */
+  executeFile?(params: { folderId: string; path: string; sheet?: string }): Promise<ConnectorResult>;
 }
 
 export type CapturedReportSources = Record<string, ReportSourceSnapshot>;
@@ -128,8 +146,28 @@ const ReportRdbSourceSchema: z.ZodType<ReportRdbSourceSpec> = z.object({
   table: IdentifierSchema,
 });
 
+/** A path inside a connected folder: relative, no climbing out, no drive or UNC prefix. */
+export const ReportFilePathSchema = z.string().trim().min(1).max(1_024).refine((value) => {
+  const parts = value.split(/[\\/]+/u);
+  return !/^(?:[a-z]:|[\\/])/iu.test(value) && !parts.includes('..') && /\.(?:csv|xlsx|xls)$/iu.test(value);
+}, 'report_file_path_invalid');
+
+const ReportFileSourceSchema: z.ZodType<ReportFileSourceSpec> = z.object({
+  alias: IdentifierSchema,
+  folderId: IdentifierSchema,
+  path: ReportFilePathSchema,
+  sheet: z.string().trim().min(1).max(160).optional(),
+  perPeriod: z.boolean().optional(),
+});
+
 export const ReportSourceCapturePlanSchema: z.ZodType<ReportSourceCapturePlan> = z.object({
   schemaVersion: z.literal(1),
   http: z.array(ReportHttpSourceSchema).max(20),
   rdb: z.array(ReportRdbSourceSchema).max(20),
+  file: z.array(ReportFileSourceSchema).max(20).optional(),
 });
+
+/** Every file source of a plan; older plans have none. */
+export function reportFileSources(plan: Pick<ReportSourceCapturePlan, 'file'>): ReportFileSourceSpec[] {
+  return plan.file ?? [];
+}

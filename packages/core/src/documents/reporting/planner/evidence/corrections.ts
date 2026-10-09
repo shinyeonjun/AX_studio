@@ -34,7 +34,7 @@ export function planValidationIssues(error: unknown): StructuralIssue[] {
 
 export function structuralCorrectionGuidance(issues: StructuralIssue[]): string {
   if (issues.some((issue) => issue.code === 'report_plan_source_not_captured')) {
-    return '\nPlan correction: use only source aliases declared by capturePlan.http or capturePlan.rdb. Remove invented aliases and keep every field path, join source, dataset baseSource and dataset join source within that captured alias set.';
+    return '\nPlan correction: use only source aliases declared by capturePlan.http, capturePlan.rdb or capturePlan.file. Remove invented aliases and keep every field path, join source, dataset baseSource and dataset join source within that captured alias set.';
   }
   if (issues.some((issue) => issue.code === 'report_plan_output_not_source_derived')) {
     return '\nPlan correction: every generated scalar, group key, aggregate column and derived column must depend on a captured source field, a runtime aggregate, or allowed period metadata. A literal table cell such as a fixed status/classification is not reusable; derive it with a case predicate over runtime columns (or omit it when the example does not prove a rule). Do not encode example numbers, dates, identifiers or labels as output values.';
