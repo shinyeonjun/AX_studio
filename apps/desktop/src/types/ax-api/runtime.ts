@@ -44,6 +44,9 @@ export interface AxRuntimeApi {
   onUpdateStatus?: (listener: (status: UpdateStatus) => void) => () => void;
   /** Starting the app (in the tray) when the person signs in, so recurring work runs after a restart. */
   getStartAtLogin?: () => Promise<StartAtLogin>;
+  /** Keep work content (mail, documents, read results) of automated work off cloud services. */
+  getKeepContentLocal?: () => Promise<boolean>;
+  setKeepContentLocal?: (enabled: boolean) => Promise<boolean>;
   setStartAtLogin?: (enabled: boolean) => Promise<StartAtLogin>;
   importArtifact: () => Promise<
     | {

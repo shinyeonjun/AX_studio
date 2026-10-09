@@ -105,3 +105,4 @@ export { shutdownCommandProcesses } from './intelligence/agent/model/cli-process
 export { aiProviderErrorMessage, connectorErrorMessage, executionErrorReason, slackErrorMessage } from './contracts/error-messages.js';
 export { sourceChoiceFromReply } from './intelligence/agent/commands/chat/routing/read-source-chooser.js';
 export type { SourceChoice } from './contracts/source-choices.js';
+export { KEEP_CONTENT_LOCAL_SETTING } from './runtime/investigation/evidence.js';
