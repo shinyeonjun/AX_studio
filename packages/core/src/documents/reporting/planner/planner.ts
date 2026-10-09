@@ -409,12 +409,16 @@ export class ReportPlanner {
           executeReportPlan(plan, input.exampleSources, exampleMetadata);
         } catch (error) {
           if (!(error instanceof Error) || !error.message.startsWith('report_')) throw error;
-          const code = error.message.split(':', 1)[0]!.slice(0, 120);
-          throw new Error(`report_plan_execution_invalid:${code}`);
+          const [code, detail] = error.message.split(':', 2);
+          // A text naming something the plan does not have says which name, so it can be fixed.
+          const reference = code === 'report_text_reference_missing' && detail && /^[a-z][a-z0-9_-]*(?:\.[a-z0-9_-]+)*$/iu.test(detail)
+            ? `.${detail}` : '';
+          throw new Error(`report_plan_execution_invalid:${code!.slice(0, 120)}${reference.slice(0, 200)}`);
         }
       },
       readPage: (document, pageIndex) => {
         const paths = document === 'template' ? input.pair.templateImages : input.pair.exampleImages;
+        if (paths.length === 0) return undefined;
         const path = paths[pageIndex];
         if (!path) throw new Error('report_evidence_page_invalid');
         return { data: this.readImage(path), mimeType: 'image/png', pageIndex,

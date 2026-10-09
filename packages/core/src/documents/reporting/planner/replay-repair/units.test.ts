@@ -7,6 +7,8 @@ describe('a number written with its unit in the completed example', () => {
     expect(formatFromExampleText('8곳')).toEqual({ style: 'integer', suffix: '곳' });
     expect(formatFromExampleText('약 1,200명')).toEqual({ style: 'integer', prefix: '약 ', suffix: '명' });
     expect(formatFromExampleText('3.5배')).toEqual({ style: 'decimal', decimals: 1, suffix: '배' });
+    expect(formatFromExampleText('28.5분')).toEqual({ style: 'decimal', decimals: 1, suffix: '분' });
+    expect(formatFromExampleText('4.25점')).toEqual({ style: 'decimal', decimals: 2, suffix: '점' });
   });
 
   it('does not read a period as a count', () => {

@@ -34,6 +34,13 @@ export function planValidationIssues(error: unknown): StructuralIssue[] {
 }
 
 export function structuralCorrectionGuidance(issues: StructuralIssue[]): string {
+  const missingReference = issues.find((issue) => issue.code === 'report_plan_execution_invalid'
+    && issue.path[0] === 'report_text_reference_missing');
+  if (missingReference) {
+    const name = missingReference.path.slice(1).join('.');
+    return `
+Plan correction: a computed text names {{${name || '...'}}}, which this plan does not produce. Use only scalar ids, table ids and column ids the plan declares; a row token needs a table that has that many rows in every period (prefer row1, the top row); a metadata key must be one the host lists.`;
+  }
   if (issues.some((issue) => issue.code === 'report_plan_source_not_captured')) {
     return '\nPlan correction: use only source aliases declared by capturePlan.http, capturePlan.rdb or capturePlan.file. Remove invented aliases and keep every field path, join source, dataset baseSource and dataset join source within that captured alias set.';
   }

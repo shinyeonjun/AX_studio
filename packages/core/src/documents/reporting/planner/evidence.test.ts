@@ -618,7 +618,10 @@ describe('ReportEvidence', () => {
 
   it('rejects repeated evidence requests and invalid page numbers', async () => {
     const same = request({ kind: 'profile', source: 'ledger', columns: ['amount'] });
-    await expect(inferWithEvidence(setup([same, same]).input)).rejects.toThrow('report_evidence_no_progress');
+    // One repeat is answered with the evidence already in hand; asking again after that stops.
+    const repeated = setup([same, same, same]);
+    await expect(inferWithEvidence(repeated.input)).rejects.toThrow('report_evidence_no_progress');
+    expect(repeated.seen[2]!.context.skillGoal).toContain('already in the history above');
     const invalid = setup([request({ kind: 'page', document: 'template', pageIndex: 2 })]);
     await expect(inferWithEvidence(invalid.input)).rejects.toThrow('report_evidence_page_invalid');
     expect(invalid.readPage).not.toHaveBeenCalled();

@@ -32,8 +32,8 @@ function reconcileExampleFormat(expected: string, current?: ReportFormat): Repor
         ...(inferred.suffix !== undefined ? { suffix: inferred.suffix } : {}) }
       : current;
   }
-  // A number with words around it may still be a label the model deliberately keeps as text.
-  if (exampleAffix && (current.style === 'text' || current.style === 'date')) return current;
+  // A date stays a date; a period word is never read as a unit, so "9월" or "Q3" do not get here.
+  if (exampleAffix && current.style === 'date') return current;
   // Preserve deliberate affixes, but take the numeric family and precision
   // from the example so the renderer emits the same kind of value.
   return {

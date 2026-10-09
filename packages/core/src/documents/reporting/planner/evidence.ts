@@ -32,6 +32,7 @@ const MAX_PLAN_CORRECTION_ATTEMPTS = 3;
 const MAX_UNSUPPORTED_RECHECKS = 1;
 const MAX_SOURCE_REQUEST_RECHECKS = 1;
 const MAX_CONSERVATIVE_ABSTENTION_RECHECKS = 1;
+const MAX_REPEATED_EVIDENCE_RECHECKS = 1;
 // Reserve bounded correction turns after the evidence budget. A plan can be
 // structurally valid yet semantically unsafe, so the host must be able to
 // return the diagnostic path and receive a corrected plan instead of turning
@@ -43,6 +44,7 @@ const MAX_MODEL_TURNS = MAX_EVIDENCE_REQUESTS
   + MAX_SOURCE_REQUEST_RECHECKS
   + MAX_CONSERVATIVE_ABSTENTION_RECHECKS
   + MAX_UNSUPPORTED_RECHECKS
+  + MAX_REPEATED_EVIDENCE_RECHECKS
   + 1;
 // Complex report pairs can require a profile, a sample, a correction, and a
 // final plan across several bounded model turns. Keep one aggregate deadline
@@ -91,7 +93,8 @@ export async function inferWithEvidence(input: {
   phase: string;
   sources: Record<string, ReportSourceSnapshot>;
   pageCount: number;
-  readPage: (document: 'template' | 'example', index: number) => ModelImageInput;
+  /** Undefined when the document has no page images (a Word report). */
+  readPage: (document: 'template' | 'example', index: number) => ModelImageInput | undefined;
   maxChars: number;
   validatePlan?: (plan: ReportPlan) => void;
 }) {
@@ -115,6 +118,7 @@ export async function inferWithEvidence(input: {
   let correctionAttempts = 0;
   let planCorrectionAttempts = 0;
   let unsupportedCorrectionAttempts = 0;
+  let repeatedEvidenceRechecks = 0;
   let sourceRequestCorrectionAttempts = 0;
   let conservativeAbstentionRechecks = 0;
   let agentTimeoutRetries = 0;
@@ -142,6 +146,9 @@ export async function inferWithEvidence(input: {
             ? '\nReplay revision profiles may include host-computed numeric totals and conditional totals by low-cardinality categorical values. Use them to test status filters and ratio denominators over the same row subset.'
             : '')
           + structuralCorrectionGuidance(validationIssues)
+          + (repeatedEvidenceRechecks > 0
+            ? '\nThe evidence last requested is already in the history above. Do not request it again: return a reportPlan from the supplied evidence, or a request for a different, still missing fact.'
+            : '')
           + (unsupportedCorrectionAttempts > 0
             ? '\nA previous unsupported_operation was not accepted as final. Re-check whether the requested rule is representable by the listed declarative primitives; return a plan or a narrower evidence request when it is.'
             : '')
@@ -273,7 +280,14 @@ export async function inferWithEvidence(input: {
         const key = evidenceRequestKey(request);
         if (!seen.has(key)) batch.set(key, request);
       }
-      if (batch.size === 0) fail('report_evidence_no_progress');
+      if (batch.size === 0) {
+        // Asking again for evidence already in hand: say so once and ask for the plan from it.
+        if (repeatedEvidenceRechecks >= MAX_REPEATED_EVIDENCE_RECHECKS) fail('report_evidence_no_progress');
+        repeatedEvidenceRechecks += 1;
+        validationIssues = [{ code: 'report_evidence_already_supplied', path: [] }];
+        history.push({ repeatedRequest: requestedEvidence.slice(0, 4), recheckRequested: true });
+        continue;
+      }
       if (evidenceRequestCount + batch.size > maxEvidenceRequests) fail('report_evidence_round_limit');
       const batchHasRows = [...batch.values()].some((request) => request.kind === 'rows');
       for (const [key, request] of batch) {
@@ -282,6 +296,11 @@ export async function inferWithEvidence(input: {
         if (request.kind === 'page') {
           if (request.pageIndex >= input.pageCount) fail('report_evidence_page_invalid');
           const image = input.readPage(request.document, request.pageIndex);
+          if (!image) {
+            // No page to look at: the structure in reportGeometry is the whole document.
+            history.push({ request, result: { available: false, reason: 'page_image_unavailable_use_report_geometry' } });
+            continue;
+          }
           imageBytes += image.data.byteLength;
           if (imageBytes > MAX_IMAGE_BYTES) fail('report_evidence_image_limit');
           images.push(image);
