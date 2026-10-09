@@ -563,7 +563,8 @@ describe('ReportGenerationService', () => {
       checkpoints,
       workspaceSources: {
         resolveStoredFile: (_sessionId, sourceId) => ({
-          source: { id: sourceId, fileName: sourceId === 'template-source' ? 'template.pdf' : 'example.pdf' },
+          // The new report is named after the example file, its period moved on.
+          source: { id: sourceId, fileName: sourceId === 'template-source' ? 'template.pdf' : '2026-08-report.pdf' },
           artifact: { storedPath: sourceId === 'template-source' ? templatePath : examplePath },
         }),
       },

@@ -110,7 +110,7 @@ export function validateBusinessPlan(
   );
   assertReusableReportPlan(reportPlan, capture);
   const layout = repairReportLayoutBindings(reportPlan, candidateLayout, pair);
-  assertReusableReportPresentation(reportPlan, layout, pair, capture);
+  assertReusableReportPresentation(reportPlan, layout, pair);
   return { ...inference, reportPlan, layout };
 }
 

@@ -7,7 +7,7 @@ import { repairReportTableCapacities } from './planner/planner.js';
 import type { ReportPlanReplayFailure } from './planner/planner.js';
 import { executeReportPlan } from './plan/execute.js';
 import { materializeReportLayout, verifyReportExampleReplay } from './layout/materialize.js';
-import { renderReportMetadataTemplate, reportExecutionMetadata } from './period-metadata.js';
+import { reportExecutionMetadata } from './period-metadata.js';
 import { captureReportSources } from './source/capture.js';
 import { normalizeReportHttpPath } from './source/schema.js';
 import { reportDigest, type ReportCheckpoint } from './checkpoints.js';
@@ -20,7 +20,24 @@ import { errorCode, safeErrorData } from './service/errors.js';
 import { planReportSources } from './service/source-planning.js';
 import { listReportFiles } from './service/file-sources.js';
 import { dateMentions, mentionInPeriod } from './period-mentions.js';
+import { periodFilePath } from './source/period-file.js';
+import type { ReportPeriod } from './source/schema.js';
 
+
+/**
+ * The new report is named after the one it was written from, with its period moved on
+ * ("월간매출보고서_2026-08.docx" -> "월간매출보고서_2026-09.docx"); a name without a period gets one.
+ */
+function reportOutputName(exampleName: string, examplePeriod: ReportPeriod, targetPeriod: ReportPeriod): string {
+  const base = exampleName.replace(/\.[A-Za-z][A-Za-z0-9]{1,4}$/u, '');
+  try {
+    const moved = periodFilePath(base, examplePeriod, targetPeriod);
+    if (moved !== base) return moved;
+  } catch {
+    // The name does not show its period.
+  }
+  return `${base}_${targetPeriod.label}`;
+}
 
 /** Each span's text with the values taken out: what stays the same from period to period. */
 function formTextAfter(spans: PdfReportSpans, removals: PdfReportValueRemoval[]): string[] {
@@ -335,7 +352,7 @@ export class ReportGenerationService {
         targetSources,
         targetMetadata,
       );
-      const outputFileName = renderReportMetadataTemplate(business.layout.outputFileName, targetMetadata);
+      const outputFileName = reportOutputName(example.source.fileName, capture.examplePeriod, capture.targetPeriod);
       const targetLayout = materializeReportLayout(
         pair,
         { ...business.layout, outputFileName },

@@ -21,6 +21,7 @@ import { applyTableRepairVariants } from './replay-repair/table.js';
 import { applyDateNotationVariants } from './replay-repair/date-notation.js';
 import { applyColumnOrderVariants } from './replay-repair/column-order.js';
 import { applyTextNumberFormatVariants } from './replay-repair/text-numbers.js';
+import { applySubtractionOrderVariants } from './replay-repair/subtraction-order.js';
 import {
   applyAggregateFilterVariants,
   applyAggregateRepairVariants,
@@ -107,6 +108,7 @@ export function repairExampleReplayInference(input: ReplayRepairInput): ReplayRe
   const generators = [
     // Columns bound the wrong way round are the smallest fix: only bindings move.
     applyColumnOrderVariants,
+    applySubtractionOrderVariants,
     applyDerivedCasePredicateVariants,
     applyAggregateFilterVariants,
     applyDerivedTableRatioVariants,

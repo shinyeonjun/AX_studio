@@ -3144,7 +3144,7 @@ describe('ReportPlanner', () => {
     })).rejects.toThrow('report_plan_period_literal_forbidden:2026-08-01');
   });
 
-  it('rejects a target-period filename copied into the layout plan', async () => {
+  it('does not stop on a proposed filename: the host names the file after the example', async () => {
     const runner = fakeRunner([]);
     const original = runner.run.bind(runner);
     runner.run = async <T>(request: InvestigationRunRequest<T>) => {
@@ -3166,6 +3166,6 @@ describe('ReportPlanner', () => {
       goal: 'report', pair, capture,
       exampleSources: { orders: { id: 'orders', complete: true, rows: [{ id: 'o1' }] } },
       connectedConnectors: ['http'],
-    })).rejects.toThrow('report_plan_period_literal_forbidden:2026-09');
+    })).resolves.toBeDefined();
   });
 });
