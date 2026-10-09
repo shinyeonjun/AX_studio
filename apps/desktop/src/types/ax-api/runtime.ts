@@ -37,6 +37,14 @@ export interface AxRuntimeApi {
     | { ok: false; error: string }
   >;
   openLogFolder: () => Promise<{ ok: true } | { ok: false; error: string }>;
+  /** A newer version: being downloaded, or downloaded and waiting for a restart. */
+  getUpdateStatus?: () => Promise<UpdateStatus>;
+  /** Restart into the downloaded version; false when none is ready. */
+  installUpdate?: () => Promise<boolean>;
+  onUpdateStatus?: (listener: (status: UpdateStatus) => void) => () => void;
+  /** Starting the app (in the tray) when the person signs in, so recurring work runs after a restart. */
+  getStartAtLogin?: () => Promise<StartAtLogin>;
+  setStartAtLogin?: (enabled: boolean) => Promise<StartAtLogin>;
   importArtifact: () => Promise<
     | {
       ok: true;
@@ -48,3 +56,10 @@ export interface AxRuntimeApi {
     | { ok: false; error: string }
   >;
 }
+
+export type UpdateStatus =
+  | { state: 'idle'; currentVersion: string }
+  | { state: 'downloading'; currentVersion: string; version: string; percent: number }
+  | { state: 'ready'; currentVersion: string; version: string };
+
+export type StartAtLogin = { supported: false } | { supported: true; enabled: boolean };

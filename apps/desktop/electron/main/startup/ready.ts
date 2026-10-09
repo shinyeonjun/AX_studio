@@ -12,6 +12,7 @@ import {
 } from '@ax-studio/core';
 import { createMainWindow } from '../app-window';
 import { createTray } from '../tray';
+import { startDesktopUpdates } from '../updates/ipc.js';
 import { setCore } from '../core-instance';
 import { registerIpcHandlers } from '../ipc/handlers';
 import { loadEnvFile, purgeDisallowedEnvFileKeys } from '../env-file';
@@ -143,6 +144,7 @@ export function registerDesktopReadyHandler(): void {
       // behind Gmail/Slack/HTTP/RDB secret loads and token refreshes.
       createMainWindow();
       createTray();
+      startDesktopUpdates();
 
       // Connector failures are recorded per connection, never fatal to startup.
       const slackSecret = await runNonFatalStartupStep('connector hydration', () => hydrateConnectorsForStartup(core)) ?? null;

@@ -97,6 +97,15 @@ contextBridge.exposeInMainWorld('ax', {
   attachWorkspaceSource: (sessionId?: string | null) => ipcRenderer.invoke('ax:attachWorkspaceSource', sessionId),
   exportDiagnostics: () => ipcRenderer.invoke('ax:exportDiagnostics'),
   openLogFolder: () => ipcRenderer.invoke('ax:openLogFolder'),
+  getUpdateStatus: () => ipcRenderer.invoke('ax:getUpdateStatus'),
+  installUpdate: () => ipcRenderer.invoke('ax:installUpdate'),
+  getStartAtLogin: () => ipcRenderer.invoke('ax:getStartAtLogin'),
+  setStartAtLogin: (enabled: boolean) => ipcRenderer.invoke('ax:setStartAtLogin', enabled),
+  onUpdateStatus: (listener: (status: unknown) => void) => {
+    const wrapped = (_event: Electron.IpcRendererEvent, status: unknown) => listener(status);
+    ipcRenderer.on('ax:update-status', wrapped);
+    return () => ipcRenderer.removeListener('ax:update-status', wrapped);
+  },
   // The main process adds this switch only for unpackaged AX_E2E runs, the
   // same gate its e2e IPC handlers use; environment variables alone never
   // expose these stubs in a packaged app.
