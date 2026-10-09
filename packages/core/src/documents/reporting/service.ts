@@ -64,15 +64,17 @@ export class ReportGenerationService {
       if (!ctx.workspaceSessionId) throw new Error('report_workspace_session_required');
       if (!ctx.artifactSink) throw new Error('report_artifact_sink_required');
 
-      const template = this.dependencies.workspaceSources.resolveStoredFile(ctx.workspaceSessionId, params.templateSourceId);
+      const template = params.templateSourceId
+        ? this.dependencies.workspaceSources.resolveStoredFile(ctx.workspaceSessionId, params.templateSourceId)
+        : undefined;
       const example = this.dependencies.workspaceSources.resolveStoredFile(ctx.workspaceSessionId, params.exampleSourceId);
-      if (!template.source.fileName.toLowerCase().endsWith('.pdf')) throw new Error('report_template_pdf_required');
+      if (template && !template.source.fileName.toLowerCase().endsWith('.pdf')) throw new Error('report_template_pdf_required');
       if (!example.source.fileName.toLowerCase().endsWith('.pdf')) throw new Error('report_example_pdf_required');
 
       if (params.resumeExecutionId && !this.dependencies.checkpoints) throw new Error('report_resume_unavailable');
       if (this.dependencies.checkpoints) {
         const [templateHash, exampleHash] = await Promise.all([
-          fileDigest(template.artifact.storedPath), fileDigest(example.artifact.storedPath),
+          template ? fileDigest(template.artifact.storedPath) : 'derived-from-example', fileDigest(example.artifact.storedPath),
         ]);
         const identity = reportDigest({ version: 1, goal: params.goal,
           template: templateHash, example: exampleHash,
@@ -87,10 +89,26 @@ export class ReportGenerationService {
         saveCheckpoint();
       }
 
+      let templatePath = template?.artifact.storedPath;
+      if (!templatePath) {
+        // Only last period's report: its values are told from its form, then taken out of it.
+        ctx.log({ at: new Date().toISOString(), level: 'info', code: 'report_template_derivation_started', message: '완성 보고서에서 기간마다 바뀌는 값을 찾아 빈 양식을 만들고 있습니다.' });
+        outputDirectory = this.dependencies.makeTemporaryDirectory?.() ?? mkdtempSync(join(tmpdir(), 'ax-report-'));
+        mkdirSync(outputDirectory, { recursive: true });
+        const blankPath = join(outputDirectory, 'blank-template.pdf');
+        const { pdfReportSpans, pdfReportBlank } = this.dependencies.documentEngine;
+        const inferExampleValues = planner.inferExampleValues?.bind(planner);
+        if (!pdfReportSpans || !pdfReportBlank || !inferExampleValues) throw new Error('report_template_source_required');
+        templatePath = await stage('template_derivation', { version: 1, example: params.exampleSourceId }, async () => {
+          const listed = await pdfReportSpans.call(this.dependencies.documentEngine, example.artifact.storedPath);
+          const removals = await inferExampleValues({ goal: params.goal, spans: listed, signal: ctx.abortSignal, log: ctx.log });
+          return (await pdfReportBlank.call(this.dependencies.documentEngine, example.artifact.storedPath, removals, blankPath)).templatePath;
+        }, (saved) => existsSync(saved));
+      }
       ctx.log({ at: new Date().toISOString(), level: 'info', code: 'report_pair_analysis_started', message: '보고서 양식과 완성 예시를 비교하고 있습니다.' });
       phase = 'pair_analysis';
-      const pair = await stage('pair_analysis', { version: 2, template: params.templateSourceId, example: params.exampleSourceId }, () => this.dependencies.documentEngine.pdfReportAnalyze(
-        template.artifact.storedPath,
+      const pair = await stage('pair_analysis', { version: 2, template: params.templateSourceId ?? 'derived', example: params.exampleSourceId }, () => this.dependencies.documentEngine.pdfReportAnalyze(
+        templatePath,
         example.artifact.storedPath,
       ), (saved) => [...saved.templateImages, ...saved.exampleImages].every(existsSync));
       const reportEvidencePathnames = reportHttpEvidencePathnames(params.goal, pair);
@@ -259,14 +277,14 @@ export class ReportGenerationService {
         targetResult,
         targetMetadata,
       );
-      outputDirectory = this.dependencies.makeTemporaryDirectory?.() ?? mkdtempSync(join(tmpdir(), 'ax-report-'));
+      outputDirectory ??= this.dependencies.makeTemporaryDirectory?.() ?? mkdtempSync(join(tmpdir(), 'ax-report-'));
       mkdirSync(outputDirectory, { recursive: true });
       const fileName = safePdfFileName(outputFileName);
       // A short fixed name keeps the engine's temp path well under Windows MAX_PATH;
       // the display name only travels as artifact metadata.
       const outputPath = join(outputDirectory, 'report.pdf');
       phase = 'pdf_render';
-      const filled = await this.dependencies.documentEngine.pdfFormFill(template.artifact.storedPath, {
+      const filled = await this.dependencies.documentEngine.pdfFormFill(templatePath, {
         template: targetLayout.template,
         values: targetLayout.values,
         outputPath,

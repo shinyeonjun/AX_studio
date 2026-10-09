@@ -89,6 +89,31 @@ def _same_static_span(left: _Span, right: _Span) -> bool:
     return all(abs(a - b) <= _POSITION_TOLERANCE for a, b in zip(left.rect, right.rect))
 
 
+def _same_line(left: _Span, right: _Span) -> bool:
+    return abs(left.rect[1] - right.rect[1]) <= _POSITION_TOLERANCE and abs(left.rect[3] - right.rect[3]) <= _POSITION_TOLERANCE
+
+
+def _value_beside_label(candidate: _Span, label: _Span) -> _Span | None:
+    """"합계: 1,000" in the example where the form has "합계:": the value is the part after the label
+    (or before it, for a trailing unit such as "1,000 원"), boxed by the space the label leaves."""
+    if not label.text.strip() or not _same_line(candidate, label):
+        return None
+    text = candidate.text
+    if text.startswith(label.text) and abs(candidate.rect[0] - label.rect[0]) <= _POSITION_TOLERANCE:
+        value = text[len(label.text):].strip()
+        x0, x1 = label.rect[2] + 1.0, candidate.rect[2]
+    elif text.endswith(label.text) and abs(candidate.rect[2] - label.rect[2]) <= _POSITION_TOLERANCE:
+        value = text[: len(text) - len(label.text)].strip()
+        x0, x1 = candidate.rect[0], label.rect[0] - 1.0
+    else:
+        return None
+    if not value or x1 <= x0:
+        return None
+    return _Span(candidate.page_index, (round(x0, 3), candidate.rect[1], round(x1, 3), candidate.rect[3]), value,
+                 candidate.font_size, candidate.font, candidate.color,
+                 candidate.block_index, candidate.line_index, candidate.span_index + 1)
+
+
 def _dynamic_spans(example: list[_Span], template: list[_Span]) -> list[_Span]:
     used: set[int] = set()
     dynamic: list[_Span] = []
@@ -101,10 +126,22 @@ def _dynamic_spans(example: list[_Span], template: list[_Span]) -> list[_Span]:
             ),
             None,
         )
-        if match is None:
+        if match is not None:
+            used.add(match)
+            continue
+        partial = next(
+            (
+                (index, value)
+                for index, template_span in enumerate(template)
+                if index not in used and (value := _value_beside_label(candidate, template_span)) is not None
+            ),
+            None,
+        )
+        if partial is None:
             dynamic.append(candidate)
         else:
-            used.add(match)
+            used.add(partial[0])
+            dynamic.append(partial[1])
     return dynamic
 
 

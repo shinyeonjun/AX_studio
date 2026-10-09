@@ -200,7 +200,7 @@ function planOneShot(
   });
 }
 
-const REPORT_INPUTS_REQUIRED = '보고서를 만들려면 현재 대화에 빈 PDF 템플릿과 완성된 보고서 예시를 각각 첨부해 주세요.';
+const REPORT_INPUTS_REQUIRED = '보고서를 만들려면 지난 기간에 완성한 보고서 PDF를 이 대화에 올려 주세요. 빈 양식 PDF가 있으면 함께 올려 주셔도 됩니다.';
 
 async function reportRoute(context: JevRouteContext): Promise<JevChatRouterResult> {
   const { input, withTelemetry, confidence } = context;
@@ -209,7 +209,7 @@ async function reportRoute(context: JevRouteContext): Promise<JevChatRouterResul
   });
   if (!input.hasWorkspaceSession) return clarify();
   const reportSelection = reportSources(input.resolveWorkspaceSources?.() ?? input.workspaceSources);
-  if (reportSelection.catalogSize < 2) return clarify();
+  if (reportSelection.catalogSize < 1) return clarify();
   const sourceEvaluation = await context.evaluateFollowup({
     request: input.requestAnchor!.text,
     context: { ready_pdf_candidate_count: reportSelection.catalogSize },
@@ -223,6 +223,7 @@ async function reportRoute(context: JevRouteContext): Promise<JevChatRouterResul
     answers: sourceEvaluation.answers,
     candidates: reportSelection.candidates,
   });
+  if ('message' in command) return withTelemetry({ kind: 'clarify', route: 'report_generate', message: command.message, confidence });
   if ('kind' in command) return withTelemetry(command);
   return withTelemetry({ kind: 'command', command, route: 'report_generate', confidence });
 }

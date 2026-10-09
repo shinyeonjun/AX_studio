@@ -7,6 +7,8 @@ import type {
   PdfFormFillResult,
   PdfFormTemplate,
   PdfReportPairAnalysis,
+  PdfReportSpans,
+  PdfReportValueRemoval,
   PdfToHtmlOptions,
   PdfToHtmlResult,
 } from '../types.js';
@@ -34,6 +36,10 @@ export interface DocumentEngineClient {
   pdfFormAnalyze(path: string, options?: PdfFormAnalyzeOptions): Promise<PdfFormTemplate>;
   pdfFormFill(path: string, options: PdfFormFillOptions): Promise<PdfFormFillResult>;
   pdfReportAnalyze(templatePath: string, examplePath: string): Promise<PdfReportPairAnalysis>;
+  /** The text pieces of a completed report, so its values can be told from the form. */
+  pdfReportSpans(examplePath: string): Promise<PdfReportSpans>;
+  /** The completed report with these values taken out: the blank form it was written on. */
+  pdfReportBlank(examplePath: string, removals: PdfReportValueRemoval[], outputPath: string): Promise<{ templatePath: string }>;
   getChunk(documentId: string, chunkId: string): Promise<{ chunk: Record<string, unknown> }>;
   getPage(documentId: string, pageIndex: number): Promise<{ page: Record<string, unknown>; text: string | null }>;
   search(documentId: string, query: string): Promise<{ hits: DocumentChunkHit[] }>;

@@ -64,7 +64,8 @@ export function reportConnectionIdentity(
 
 interface ReportGenerateParams {
   goal: string;
-  templateSourceId: string;
+  /** The blank form. Absent when only a completed report was given; the form is then derived. */
+  templateSourceId?: string;
   exampleSourceId: string;
   resumeExecutionId?: string;
 }
@@ -74,12 +75,11 @@ export function parseParams(params: Record<string, unknown>): ReportGeneratePara
   const templateSourceId = typeof params.templateSourceId === 'string' ? params.templateSourceId.trim() : '';
   const exampleSourceId = typeof params.exampleSourceId === 'string' ? params.exampleSourceId.trim() : '';
   if (!goal) throw new Error('report_goal_required');
-  if (!templateSourceId) throw new Error('report_template_source_required');
   if (!exampleSourceId) throw new Error('report_example_source_required');
   if (templateSourceId === exampleSourceId) throw new Error('report_sources_must_differ');
   const resumeExecutionId = typeof params.resumeExecutionId === 'string' ? params.resumeExecutionId.trim() : undefined;
   if (resumeExecutionId && resumeExecutionId.length > 160) throw new Error('report_resume_id_invalid');
-  return { goal, templateSourceId, exampleSourceId, ...(resumeExecutionId ? { resumeExecutionId } : {}) };
+  return { goal, ...(templateSourceId ? { templateSourceId } : {}), exampleSourceId, ...(resumeExecutionId ? { resumeExecutionId } : {}) };
 }
 
 const MAX_REPORT_BASE_NAME_CHARS = 120;

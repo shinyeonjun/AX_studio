@@ -61,7 +61,8 @@ export async function executeReportCommand(
       const step = workflow.steps.length === 1 ? workflow.steps[0] : undefined;
       if (step?.type !== 'action' || step.connector !== 'document' || step.action !== 'pdf.report.generate'
           || typeof step.params.goal !== 'string' || !step.params.goal.trim()
-          || typeof step.params.templateSourceId !== 'string' || typeof step.params.exampleSourceId !== 'string') {
+          || (step.params.templateSourceId !== undefined && typeof step.params.templateSourceId !== 'string')
+          || typeof step.params.exampleSourceId !== 'string') {
         throw new Error('report_resume_snapshot_invalid');
       }
       if ((templateSourceId && templateSourceId !== step.params.templateSourceId)
@@ -74,26 +75,26 @@ export async function executeReportCommand(
       requestAnchor = step.params.requestAnchor === undefined
         ? undefined : verifyAuthoritativeRequestAnchor(step.params.requestAnchor);
       if (requestAnchor && requestAnchor.text !== goal) throw new Error('request_anchor_mismatch');
-      templateSourceId = step.params.templateSourceId;
+      templateSourceId = typeof step.params.templateSourceId === 'string' ? step.params.templateSourceId : undefined;
       exampleSourceId = step.params.exampleSourceId;
     } catch {
       return result(command.name, 'invalid', undefined, [issue('report_resume_snapshot_invalid', '저장된 보고서 실행을 복원할 수 없습니다. 새 실행으로 요청해 주세요.')]);
     }
   }
+  // The blank form is optional: last period's completed report alone is enough to work from.
   const missing = [
     !goal ? 'goal' : undefined,
-    !templateSourceId ? 'templateSourceId' : undefined,
     !exampleSourceId ? 'exampleSourceId' : undefined,
   ].filter((value): value is string => Boolean(value));
   if (missing.length > 0) {
     return result(command.name, 'needs_input', undefined, [issue(
       'report_sources_required',
-      '빈 PDF 양식과 완성된 PDF 예시를 현재 대화 자료에서 선택해야 합니다.',
+      '지난 기간에 완성한 보고서 PDF를 이 대화에 올려 주세요. 빈 양식 PDF가 있으면 함께 올려 주셔도 됩니다.',
       undefined,
       { missing },
     )]);
   }
-  if (templateSourceId === exampleSourceId) {
+  if (templateSourceId && templateSourceId === exampleSourceId) {
     return result(command.name, 'invalid', undefined, [issue('report_sources_must_differ', '빈 양식과 완성 예시는 서로 다른 자료여야 합니다.')]);
   }
   const workspaceSources = state.options.workspaceSources;
@@ -102,6 +103,7 @@ export async function executeReportCommand(
   }
   const sources = workspaceSources.list(options.workspaceSessionId);
   for (const [role, sourceId] of [['template', templateSourceId], ['example', exampleSourceId]] as const) {
+    if (!sourceId) continue;
     const source = sources.find((candidate) => candidate.id === sourceId);
     if (!source) return result(command.name, 'not_found', undefined, [issue(`report_${role}_not_found`, '선택한 자료를 현재 대화에서 찾을 수 없습니다.')]);
     if (source.status === 'processing') return result(command.name, 'needs_input', undefined, [issue('workspace_source_processing', 'PDF 분석이 끝날 때까지 잠시 기다려 주세요.')]);
@@ -123,7 +125,8 @@ export async function executeReportCommand(
         connector: 'document',
         action: 'pdf.report.generate',
         actionRef: 'document.pdf.report.generate',
-        params: { goal, ...(requestAnchor ? { requestAnchor } : {}), templateSourceId, exampleSourceId, ...(resumeExecutionId ? { resumeExecutionId } : {}) },
+        params: { goal, ...(requestAnchor ? { requestAnchor } : {}), ...(templateSourceId ? { templateSourceId } : {}), exampleSourceId,
+          ...(resumeExecutionId ? { resumeExecutionId } : {}) },
       }],
     },
   };

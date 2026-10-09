@@ -64,23 +64,28 @@ export function reportCommand(input: {
   requestBudget?: Partial<AuthoritativeRequestBudget>;
   answers: Record<string, DecisionAnswer>;
   candidates: readonly WorkspaceSourceRecord[];
-}): AxCommand | { kind: 'fallback'; reason: 'missing_context' | 'uncertain' } {
+}): AxCommand | { kind: 'fallback'; reason: 'missing_context' | 'uncertain' } | { message: string } {
   const anchor = resolveAuthoritativeRequestAnchor(input.userMessage, input.requestAnchor, {}, input.requestBudget);
-  if (!input.hasWorkspaceSession || input.candidates.length < 2) {
+  if (!input.hasWorkspaceSession || input.candidates.length < 1) {
     return { kind: 'fallback', reason: 'missing_context' };
   }
   const sources = selectedSources(input.answers, input.candidates);
-  const templateSourceId = sources?.template;
-  const exampleSourceId = sources?.example;
-  if (!templateSourceId || !exampleSourceId || templateSourceId === exampleSourceId) {
-    return { kind: 'fallback', reason: 'uncertain' };
+  if (!sources) return { kind: 'fallback', reason: 'uncertain' };
+  // One PDF given for a report request is the report to follow, unless it is plainly a blank form.
+  const exampleSourceId = sources.example
+    ?? (input.candidates.length === 1 && !sources.template ? input.candidates[0]!.id : undefined);
+  if (!exampleSourceId) {
+    return sources.template
+      ? { message: '올린 PDF는 빈 양식으로 보여요. 값이 채워진 지난 기간 보고서 PDF도 함께 올려 주세요. 그 보고서를 보고 이번 기간 값을 찾아 채웁니다.' }
+      : { kind: 'fallback', reason: 'uncertain' };
   }
+  const templateSourceId = sources.template;
   return {
     name: 'report.generate',
     args: {
       goal: anchor.text,
       requestAnchor: anchor,
-      templateSourceId,
+      ...(templateSourceId ? { templateSourceId } : {}),
       exampleSourceId,
     },
   };

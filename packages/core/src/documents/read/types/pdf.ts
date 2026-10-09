@@ -143,6 +143,33 @@ export interface PdfReportTableGroup {
   pageBounds?: Array<{ pageIndex: number; x: number; width: number }>;
 }
 
+/** One piece of text in a completed report, for deciding which pieces are this period's values. */
+export interface PdfReportSpan {
+  id: string;
+  pageIndex: number;
+  text: string;
+  rect: { x: number; y: number; width: number; height: number };
+  fontSize: number;
+}
+
+/** Every text piece of a completed report that came without its blank form. */
+export interface PdfReportSpans {
+  schemaVersion: 1;
+  exampleHash: string;
+  pageCount: number;
+  pages: PdfFormPage[];
+  spans: PdfReportSpan[];
+  /** Host-owned paths consumed only to attach actual vision bytes. */
+  exampleImages: string[];
+}
+
+/** A value to take out of the completed report: `text` inside the span's box. */
+export interface PdfReportValueRemoval {
+  pageIndex: number;
+  rect: PdfReportSpan['rect'];
+  text: string;
+}
+
 /** Geometry-first comparison of a completed report and its blank template. */
 export interface PdfReportPairAnalysis {
   schemaVersion: 1;

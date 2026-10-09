@@ -94,10 +94,11 @@ describe('report source selection', () => {
     const valid = answersFor(candidates, 'template', 'example');
 
     expect(reportCommand({ ...base, answers: {} })).toEqual({ kind: 'fallback', reason: 'uncertain' });
+    // Only a blank form recognised: the completed report it would be traced from is asked for.
     expect(reportCommand({
       ...base,
       answers: answersFor(candidates, 'template', 'template'),
-    })).toEqual({ kind: 'fallback', reason: 'uncertain' });
+    })).toEqual({ message: expect.stringContaining('지난 기간 보고서') });
 
     const lowConfidence = { ...valid,
       report_source_role_0: { type: 'choice', choice: 'template', probabilities: { template: 0.7 }, confidence: 0.7 } as const };
@@ -112,7 +113,29 @@ describe('report source selection', () => {
     expect(reportCommand({ ...base, answers: invalid })).toEqual({ kind: 'fallback', reason: 'uncertain' });
   });
 
-  it('requires a workspace session and at least two sources before generating', () => {
+  it('works from the completed report of the last period alone', () => {
+    const candidates = [source('august', '8월 매출 보고서.pdf')];
+    const base = { hasWorkspaceSession: true, userMessage: '지난달 보고서야, 이번 달 걸로 써 줘', candidates };
+    const expected = {
+      name: 'report.generate',
+      args: { goal: base.userMessage, requestAnchor: createAuthoritativeRequestAnchor(base.userMessage), exampleSourceId: 'august' },
+    };
+    expect(reportCommand({ ...base, answers: answersFor(candidates, '', 'august') })).toEqual(expected);
+    // One PDF for a report request is the report to follow even when its role was not named.
+    expect(reportCommand({ ...base, answers: answersFor(candidates, '', '') })).toEqual(expected);
+    // A blank form alone has nothing to trace values from.
+    expect(reportCommand({ ...base, answers: answersFor(candidates, 'august', '') })).toEqual({ message: expect.stringContaining('지난 기간 보고서') });
+  });
+
+  it('uses a completed report without a blank form when several PDFs are in the conversation', () => {
+    const candidates = [source('notes', 'meeting.pdf'), source('august', 'august.pdf')];
+    expect(reportCommand({ hasWorkspaceSession: true, userMessage: '보고서', candidates, answers: answersFor(candidates, '', 'august') }))
+      .toMatchObject({ name: 'report.generate', args: { exampleSourceId: 'august' } });
+    expect(reportCommand({ hasWorkspaceSession: true, userMessage: '보고서', candidates, answers: answersFor(candidates, '', '') }))
+      .toEqual({ kind: 'fallback', reason: 'uncertain' });
+  });
+
+  it('requires a workspace session and a source before generating', () => {
     expect(reportCommand({
       hasWorkspaceSession: false,
       userMessage: '보고서',
