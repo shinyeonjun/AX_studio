@@ -23,12 +23,10 @@ export function formatReportValue(value: ReportPrimitive, format?: ReportFormat)
     case 'currency':
       {
         const currency = format?.currency?.trim() ?? '';
-        const prefix = format?.prefix ?? '';
-        const trimmedPrefix = prefix.trimStart();
-        const prefixAlreadyIncludesCurrency = currency.length > 0
-          && trimmedPrefix.startsWith(currency)
-          && (trimmedPrefix.length === currency.length || /^\s/.test(trimmedPrefix.slice(currency.length)));
-        display = `${prefixAlreadyIncludesCurrency || currency.length === 0 ? '' : `${currency} `}${numericValue(value, 'format.currency').toLocaleString('en-US', {
+        // A prefix or suffix ("$1,000", "8,466,900원", "KRW 1,000") already marks the currency the
+        // way the report writes it; the code is added only to a bare number.
+        const markedByAffix = Boolean(format?.prefix?.trim() || format?.suffix?.trim());
+        display = `${markedByAffix || currency.length === 0 ? '' : `${currency} `}${numericValue(value, 'format.currency').toLocaleString('en-US', {
           minimumFractionDigits: format?.decimals ?? 0,
           maximumFractionDigits: format?.decimals ?? 0,
         })}`.trim();

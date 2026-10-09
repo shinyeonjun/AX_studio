@@ -5,7 +5,7 @@ it('distinguishes missing source evidence from provider failure without promisin
   const text = formatExecutionResultMessage({ executionId: 'execution', status: 'failed', errorCode: 'report_source_discovery_needs_input',
     log: [{ at: '2038-01-01', level: 'error', message: 'private data', data: { phase: 'source_plan', resumeAvailable: true } }],
   });
-  expect(text).toContain('서비스 설명 문서');
+  expect(text).toContain('쓸 자료를 함께 적어');
   expect(text).toContain('보고서를 만들지 않았습니다');
   expect(text).not.toContain('이어서 다시 해줘');
   expect(text).not.toContain('private data');

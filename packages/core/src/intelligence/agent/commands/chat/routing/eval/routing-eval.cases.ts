@@ -44,6 +44,8 @@ export const JEV_ROUTING_CASES: readonly JevRoutingCase[] = [
   { id: 'slack-channels', message: '슬랙 채널 목록 보여줘', expect: { kind: ['command'], capabilityId: 'slack.channels.list' } },
   { id: 'connections', message: '연결된 데이터 뭐 있어?', expect: { kind: ['command'], route: ['connection_list', 'source_list', 'resource_list'] } },
   { id: 'works', message: '내 업무 목록 보여줘', expect: { kind: ['command'], route: ['workflow_list'] } },
+  // Last period's report alone: the host asks for the PDF when none is attached in the eval chat.
+  { id: 'report-from-last-month', message: '지난달 보고서야. 이번 달 걸로 써 줘', expect: { kind: ['clarify', 'command'], route: ['report_generate'] } },
   { id: 'recurring-report', message: '매주 월요일 9시에 지역별 매출 합계를 슬랙 #ax테스트로 보내줘', expect: { kind: ['command', 'clarify'], route: ['workflow_create', 'job_propose'] } },
   { id: 'mail-trigger', message: 'Gmail로 새 메일이 오면 요약해서 슬랙으로 알려주는 업무 만들어줘', expect: { kind: ['command', 'clarify'], route: ['workflow_create', 'job_propose'] } },
   { id: 'remember', message: '앞으로 이 대화에서는 금액을 만원 단위로 말해줘', expect: { kind: ['command', 'clarify'], route: ['context_remember'] } },

@@ -99,12 +99,16 @@ def _value_beside_label(candidate: _Span, label: _Span) -> _Span | None:
     if not label.text.strip() or not _same_line(candidate, label):
         return None
     text = candidate.text
+    # Keep the space the example had between label and value ("기간: 2026-08"), about a third of an em.
+    space = candidate.font_size * 0.3
     if text.startswith(label.text) and abs(candidate.rect[0] - label.rect[0]) <= _POSITION_TOLERANCE:
         value = text[len(label.text):].strip()
-        x0, x1 = label.rect[2] + 1.0, candidate.rect[2]
+        gap = space if text[len(label.text):][:1].isspace() else 1.0
+        x0, x1 = label.rect[2] + gap, candidate.rect[2]
     elif text.endswith(label.text) and abs(candidate.rect[2] - label.rect[2]) <= _POSITION_TOLERANCE:
         value = text[: len(text) - len(label.text)].strip()
-        x0, x1 = candidate.rect[0], label.rect[0] - 1.0
+        gap = space if text[: len(text) - len(label.text)][-1:].isspace() else 1.0
+        x0, x1 = candidate.rect[0], label.rect[0] - gap
     else:
         return None
     if not value or x1 <= x0:
