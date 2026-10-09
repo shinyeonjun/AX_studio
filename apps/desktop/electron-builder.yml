@@ -59,6 +59,7 @@
     }
   },
   "nsis": {
+    "artifactName": "AX-Studio-Setup-${version}.${ext}",
     "oneClick": false,
     "allowToChangeInstallationDirectory": true
   },
@@ -78,6 +79,14 @@
     "executableName": "ax-studio",
     "category": "Office"
   },
+  "publish": [
+    {
+      "provider": "github",
+      "owner": "shinyeonjun",
+      "repo": "AX_studio",
+      "releaseType": "release"
+    }
+  ],
   "afterPack": "scripts/after-pack-linux.mjs",
   "appImage": {
     "executableArgs": []

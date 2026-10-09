@@ -6,6 +6,8 @@ import { registerStateHandlers } from './state-handlers.js';
 import { registerDiscoveryHandlers } from './discovery-handlers.js';
 import { registerArtifactHandlers } from './artifact-handlers.js';
 import { registerDiagnosticsHandlers } from '../diagnostics/ipc.js';
+import { registerUpdateHandlers } from '../updates/ipc.js';
+import { registerLoginItemHandlers } from '../startup/login-item.js';
 
 export function registerIpcHandlers() {
   registerStateHandlers();
@@ -16,4 +18,6 @@ export function registerIpcHandlers() {
   registerDiscoveryHandlers();
   registerArtifactHandlers();
   registerDiagnosticsHandlers();
+  registerUpdateHandlers();
+  registerLoginItemHandlers();
 }

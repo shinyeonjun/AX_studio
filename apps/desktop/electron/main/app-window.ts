@@ -1,4 +1,5 @@
 import { app, BrowserWindow, dialog, Notification, session, shell } from 'electron';
+import { startedHidden } from './startup/login-item.js';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { desktopAppDisplayName } from './data-paths.js';
@@ -155,7 +156,8 @@ export function createMainWindow() {
   mainWindow = new BrowserWindow({
     width: 1440,
     height: 900,
-    show: true,
+    // Started at sign-in for recurring work: stay in the tray until the person opens the window.
+    show: !startedHidden(),
     title: desktopAppDisplayName(),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
