@@ -218,3 +218,27 @@ svg.icon {
   white-space: pre-wrap;
   word-break: break-word;
 }
+
+/* A part of a screen that failed to draw: the message sits in its place, the rest keeps working. */
+.ui-error-section {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  margin: 16px;
+  padding: 16px 18px;
+  border: 1px solid color-mix(in srgb, var(--red) 30%, var(--border));
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+}
+
+.ui-error-section p {
+  margin: 0;
+  font-size: 13px;
+}
+
+.ui-error-section .ui-error-message {
+  max-width: 100%;
+  margin: 0;
+  overflow-x: auto;
+  font-size: 12px;
+}

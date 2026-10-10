@@ -13,6 +13,14 @@ export interface ScheduleLike {
 
 export const CUSTOM_SCHEDULE_LABEL = '사용자 지정 일정';
 
+/**
+ * A stored schedule field as trimmed text. Schedules come back from storage and older versions,
+ * so a field that is not text reads as unset instead of throwing while a screen is drawn.
+ */
+export function scheduleText(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
 const WEEKDAY_LABEL: Record<WeekdayCode, string> = {
   MO: '월', TU: '화', WE: '수', TH: '목', FR: '금', SA: '토', SU: '일',
 };
@@ -110,7 +118,7 @@ function scheduleRecurrence(value: ScheduleLike): Recurrence | undefined {
 }
 
 function cronTimeZone(value: ScheduleLike): string {
-  const zone = value.timezone?.trim();
+  const zone = scheduleText(value.timezone);
   return zone && isValidTimeZone(zone) ? zone : localTimeZone();
 }
 
@@ -122,7 +130,7 @@ function cronTimeZone(value: ScheduleLike): string {
 export function describeSchedule(value: ScheduleLike, options: { viewerTimeZone?: string } = {}): string {
   const recurrence = scheduleRecurrence(value);
   if (recurrence) return describeRecurrence(recurrence, options);
-  const cron = value.schedule?.trim();
+  const cron = scheduleText(value.schedule);
   if (!cron) return value.recurrence ? CUSTOM_SCHEDULE_LABEL : '';
   if (!isValidCronExpression(cron)) return CUSTOM_SCHEDULE_LABEL;
   const zone = cronTimeZone(value);
@@ -134,7 +142,7 @@ export function describeSchedule(value: ScheduleLike, options: { viewerTimeZone?
 export function nextScheduleRuns(value: ScheduleLike, after: Date, count: number): Date[] {
   const recurrence = scheduleRecurrence(value);
   if (recurrence) return nextOccurrences(recurrence, after, count);
-  const cron = value.schedule?.trim();
+  const cron = scheduleText(value.schedule);
   return cron ? nextCronOccurrences(cron, cronTimeZone(value), after, count) : [];
 }
 

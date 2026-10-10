@@ -2,6 +2,7 @@ import { isValidCronExpression, isValidTimeZone } from '../../cron.js';
 import { validateRecurrence } from '../../schedule/occurrences.js';
 import type { WorkflowIR } from '../../schema.js';
 import type { ContractValidationIssue } from '../types.js';
+import { scheduleText } from '../../schedule/describe.js';
 
 /** One structured schedule form (repeat, days, times, start date, time zone); never a cron field. */
 const SCHEDULE_INPUT = {
@@ -21,11 +22,11 @@ function scheduleTriggerIssues(trigger: Extract<NonNullable<WorkflowIR['trigger'
     const result = validateRecurrence(trigger.recurrence);
     return result.ok ? [] : [scheduleIssue(`실행 일정을 확인해 주세요: ${result.issues.map((issue) => issue.message).join(' ')}`)];
   }
-  const cron = trigger.schedule?.trim() ?? '';
+  const cron = scheduleText(trigger.schedule);
   if (!cron) return [scheduleIssue('반복 업무에 실행 일정이 필요합니다.')];
   if (!isValidCronExpression(cron)) return [scheduleIssue('저장된 실행 일정을 이해하지 못했습니다. 일정을 다시 골라 주세요.')];
   // A legacy cron with a missing or unknown zone is re-chosen through the same form.
-  if (!trigger.timezone.trim() || !isValidTimeZone(trigger.timezone)) {
+  if (!scheduleText(trigger.timezone) || !isValidTimeZone(trigger.timezone)) {
     return [scheduleIssue('실행 일정의 시간대를 확인하지 못했습니다. 일정을 다시 골라 주세요.')];
   }
   return [];
