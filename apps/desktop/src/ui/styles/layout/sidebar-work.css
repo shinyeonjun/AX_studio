@@ -79,7 +79,7 @@
 
 .sidebar-work-group-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 8px;
   padding: 0 4px;
@@ -95,8 +95,7 @@
 }
 
 .sidebar-work-group-subtitle {
-  max-width: 190px;
-  margin: 3px 0 0;
+  margin: -4px 4px 0;
   font-size: 11px;
   line-height: 1.35;
   color: var(--text-dim);
@@ -147,12 +146,9 @@
   text-align: center;
 }
 
+/* An empty group is a quiet note, not a box that takes the room of the lists. */
 .sidebar-work-empty {
-  padding: 12px 8px;
-  border: 1px dashed var(--border-light);
-  border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--bg-chat) 70%, transparent);
-  text-align: center;
+  padding: 2px 4px;
 }
 
 .sidebar-work-empty p,

@@ -44,6 +44,11 @@
   flex-direction: column;
 }
 
+/* The tabs panel fills the column, so its background does not stop where its content ends. */
+.tool-result-context > .workspace-context-panel {
+  flex: 1;
+}
+
 .tool-result-panel [hidden] {
   display: none !important;
 }
