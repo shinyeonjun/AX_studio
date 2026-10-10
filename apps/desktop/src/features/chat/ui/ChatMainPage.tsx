@@ -12,6 +12,7 @@ import { WorkspaceContextPanel } from './workspace/WorkspaceContextPanel';
 import { WorkspaceFlowPanel } from './workspace/WorkspaceFlowPanel';
 import './workspace/ax-workspace.css';
 import { toolResultMessages, ToolResultPane } from './workspace/tool-result/ToolResultPane';
+import { ErrorBoundary } from '../../../app/ErrorBoundary';
 
 const WorkflowPreviewPanel = lazy(() =>
   import('../../workflows/authoring/WorkflowPreviewPanel').then(({ WorkflowPreviewPanel }) => ({
@@ -78,9 +79,10 @@ export function ChatMainPage({ workspaceChat, setupNotice, executions, works, on
   const workflowState = workspaceChat.workspaceWorkflowState;
   const title = workflowState?.title ?? 'AX Workspace';
   // When it runs and whether it will, so a saved work says so without opening its flow.
-  const whenItRuns = workflowState?.workflow
-    ? displayForTrigger(workflowState.workflow).lines.map((line) => line.text).filter(Boolean).join(' · ')
-    : '';
+  const trigger = workflowState?.workflow ? displayForTrigger(workflowState.workflow) : undefined;
+  const whenItRuns = trigger?.incomplete
+    ? '언제 시작할지 정해야 해요'
+    : trigger?.lines.map((line) => line.text).filter(Boolean).join(' · ') ?? '';
   const workStatus = !openWorkflowId || isManualWork ? undefined : workActive ? '자동 실행 중' : '자동 실행 꺼짐';
   const showGraph = Boolean(workflowState);
   const workflowPreview = showGraph ? (
@@ -208,14 +210,17 @@ export function ChatMainPage({ workspaceChat, setupNotice, executions, works, on
             </div>
           </>}
           <div className="tool-result-context" hidden={Boolean(toolResult && !showContext)}>
-          <WorkspaceContextPanel
-            sources={workspaceChat.workspaceSources}
-            sourceBusy={workspaceChat.sourceBusy}
-            onAttachSource={workspaceChat.attachWorkspaceSource}
-            flow={flowPanel}
-            workflow={workflowPreview}
-            workflowAvailable={showGraph}
-          />
+          {/* A flow that cannot be drawn fails here alone; the conversation beside it keeps working. */}
+          <ErrorBoundary scope="section" label="오른쪽 패널" resetKey={workspaceChat.workspaceContextKey}>
+            <WorkspaceContextPanel
+              sources={workspaceChat.workspaceSources}
+              sourceBusy={workspaceChat.sourceBusy}
+              onAttachSource={workspaceChat.attachWorkspaceSource}
+              flow={flowPanel}
+              workflow={workflowPreview}
+              workflowAvailable={showGraph}
+            />
+          </ErrorBoundary>
           </div>
           </div>
         }

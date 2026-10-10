@@ -6,6 +6,7 @@ import { branchHintsFromWorkflow } from '../branch-hints.js';
 import { actionStepParamFilled } from '../filled.js';
 import type { SlotState } from '../types.js';
 import { CORE_QUESTIONS } from './questions.js';
+import { scheduleText } from '../../../schedule/describe.js';
 
 function hasExternalHigh(steps: Step[]): boolean {
   return steps.some((step) => step.type === 'action' && step.sideEffect === 'EXTERNAL_HIGH');
@@ -17,7 +18,7 @@ export function computeRequiredSlots(ir: Partial<WorkflowIR>): SlotState[] {
     slots.push({ slot: 'trigger', filled: false, ...CORE_QUESTIONS.trigger });
   } else if (ir.trigger.type === 'schedule') {
     // One schedule slot: the time zone is chosen inside the same schedule form.
-    const filled = Boolean(ir.trigger.recurrence) || Boolean(ir.trigger.schedule?.trim() && ir.trigger.timezone?.trim());
+    const filled = Boolean(ir.trigger.recurrence) || Boolean(scheduleText(ir.trigger.schedule) && scheduleText(ir.trigger.timezone));
     slots.push({ slot: 'trigger.schedule', filled, ...CORE_QUESTIONS['trigger.schedule'] });
   } else if (ir.trigger.type === 'once') {
     slots.push({ slot: 'trigger.runAt', filled: Boolean(ir.trigger.runAt), ...CORE_QUESTIONS['trigger.runAt'] });

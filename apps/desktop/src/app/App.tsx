@@ -13,6 +13,7 @@ import { UpdateNotice } from '../ui/layout/UpdateNotice';
 import { ConfirmDialogHost } from '../ui/layout/ConfirmDialogHost';
 import { createAppActions, retryFailedAppSources } from './actions';
 import { AppMainContent } from './main-content';
+import { ErrorBoundary } from './ErrorBoundary';
 
 const AppSettingsPage = lazy(() =>
   import('./settings-page').then(({ AppSettingsPage }) => ({ default: AppSettingsPage })),
@@ -139,7 +140,10 @@ export default function App() {
         />
         <SystemWarningBanner state={state} />
         <UpdateNotice />
-        {mainContent}
+        {/* A page that fails to draw stays inside the main panel; the sidebar still navigates away. */}
+        <ErrorBoundary scope="section" resetKey={`${sidebarTab}:${activeSessionId ?? workspaceChat.workspaceSessionId ?? ''}`}>
+          {mainContent}
+        </ErrorBoundary>
       </main>
       <ConfirmDialogHost />
     </div>
