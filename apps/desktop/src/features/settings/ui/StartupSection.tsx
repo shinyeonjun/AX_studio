@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { StartAtLogin } from '../../../types/ax-api/runtime';
 import { ipcErrorMessage } from '../../../ui/lib/ipc-error';
 import { SettingsCategory } from './SettingsCategory';
+import { SettingRow, SettingSwitch } from './SettingRow';
 
 /**
  * Recurring work runs only while the app is running. Starting it, in the tray, when the person
@@ -33,15 +34,20 @@ export function StartupSection() {
   };
 
   return (
-    <SettingsCategory
-      title="시작"
-      description="반복 업무는 AX Studio가 켜져 있을 때만 실행됩니다. 컴퓨터를 켜면 창 없이 트레이에서 시작해 두면 다시 시작한 뒤에도 제때 실행돼요."
-    >
-      <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-        <input type="checkbox" checked={setting.enabled} disabled={busy} onChange={(event) => void toggle(event.target.checked)} />
-        컴퓨터를 켜면 AX Studio 자동으로 시작
-      </label>
-      {message && <p className="muted" role="status">{message}</p>}
+    <SettingsCategory title="시작">
+      <SettingRow
+        title="컴퓨터를 켜면 AX Studio 자동으로 시작"
+        description="반복 업무는 AX Studio가 켜져 있을 때만 실행됩니다. 켜 두면 창 없이 트레이에서 시작해서, 컴퓨터를 다시 켠 뒤에도 제때 실행돼요."
+        control={(
+          <SettingSwitch
+            label="컴퓨터를 켜면 AX Studio 자동으로 시작"
+            checked={setting.enabled}
+            disabled={busy}
+            onChange={(checked) => void toggle(checked)}
+          />
+        )}
+      />
+      {message && <p className="setting-row-message" role="status">{message}</p>}
     </SettingsCategory>
   );
 }
