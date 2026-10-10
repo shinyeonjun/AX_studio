@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { SettingsCategory } from './SettingsCategory';
+import { SettingRow } from './SettingRow';
 import { ipcErrorMessage } from '../../../ui/lib/ipc-error';
 
 /** Support entry: export a redacted diagnostics bundle or open the log folder. */
@@ -32,19 +33,22 @@ export function DiagnosticsSection() {
   };
 
   return (
-    <SettingsCategory
-      title="문제 해결"
-      description="토큰·비밀번호·이메일은 가린 로그와 앱 버전 정보를 파일로 저장해 전달할 수 있습니다."
-    >
-      <div className="diagnostics-actions" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        <button type="button" className="btn btn-secondary" onClick={() => void exportDiagnostics()} disabled={busy}>
-          {busy ? '내보내는 중…' : '진단 정보 내보내기'}
-        </button>
-        <button type="button" className="btn btn-secondary" onClick={() => void openLogFolder()}>
-          로그 폴더 열기
-        </button>
-      </div>
-      {message && <p className="muted" role="status">{message}</p>}
+    <SettingsCategory title="문제 해결">
+      <SettingRow
+        title="진단 정보"
+        description="문제가 생기면 로그와 앱 버전 정보를 파일로 저장해 전달할 수 있어요. 토큰·비밀번호·이메일은 가려서 저장합니다."
+        control={(
+          <div className="setting-row-buttons">
+            <button type="button" className="btn btn-secondary" onClick={() => void openLogFolder()}>
+              로그 폴더 열기
+            </button>
+            <button type="button" className="btn btn-primary" onClick={() => void exportDiagnostics()} disabled={busy}>
+              {busy ? '내보내는 중…' : '진단 정보 내보내기'}
+            </button>
+          </div>
+        )}
+      />
+      {message && <p className="setting-row-message" role="status">{message}</p>}
     </SettingsCategory>
   );
 }
