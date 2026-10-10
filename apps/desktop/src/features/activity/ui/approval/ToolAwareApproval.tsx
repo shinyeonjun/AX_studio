@@ -7,6 +7,7 @@ import { toolDraftLoadError } from '../../../chat/ui/workspace/tool-result/load-
 import { reloadOnStateChange } from '../../../chat/ui/workspace/tool-result/reload-on-state-change';
 import { ApprovalTruncationNote } from './approval-truncation-note';
 import { ApprovalSendPreview, approvalPreview } from './approval-send-preview';
+import { formatRelativeTime } from '../../../../ui/lib/work-display';
 
 interface ToolAwareApprovalProps {
   approval: AppState['approvals'][number];
@@ -62,19 +63,25 @@ export function ToolAwareApproval({ approval, busy, onLegacyAction, onRefresh, o
       }} />
   </article>;
 
+  // The reason reads under the title only when it says something the title does not.
+  const title = approval.title ?? approval.reason;
+  const reason = approval.title && approval.reason !== approval.title ? approval.reason : undefined;
   return <article className="approval-card">
-    <h3>{approval.title ?? approval.reason}</h3>
-    {approvalPreview(approval).length > 0
-      ? <ApprovalSendPreview approval={approval} />
-      : <p className="muted">{approval.reason}</p>}
+    <div className="approval-card-meta">
+      <span className="approval-kind">보내기 전 확인</span>
+      <span>{formatRelativeTime(approval.createdAt)}</span>
+    </div>
+    <h3>{title}</h3>
+    {reason && <p className="approval-reason">{reason}</p>}
+    {approvalPreview(approval).length > 0 && <ApprovalSendPreview approval={approval} />}
     <ApprovalTruncationNote approval={approval} />
-    {!view.legacy && <p role="status">{view.error ?? view.notice ?? '요청의 실제 전송 정보를 불러오는 중…'}</p>}
+    {!view.legacy && <p className="approval-status" role="status">{view.error ?? view.notice ?? '요청의 실제 전송 정보를 불러오는 중…'}</p>}
     <div className="approval-actions">
-      {view.legacy && <button type="button" className="btn btn-approve" disabled={busy}
-        onClick={() => void onLegacyAction(approval.id, 'approve')}>{busy ? '처리 중…' : '승인'}</button>}
       {view.error && <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => setRetry(value => value + 1)}>다시 불러오기</button>}
-      <button type="button" className="btn btn-reject" disabled={busy}
+      <button type="button" className="btn btn-secondary btn-reject" disabled={busy}
         onClick={() => void onLegacyAction(approval.id, 'reject')}>거절</button>
+      {view.legacy && <button type="button" className="btn btn-approve" disabled={busy}
+        onClick={() => void onLegacyAction(approval.id, 'approve')}>{busy ? '처리 중…' : '승인하고 실행'}</button>}
     </div>
   </article>;
 }

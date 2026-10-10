@@ -48,7 +48,7 @@ export function ApprovalsPage({ state, onRefresh, onApprove, onReject }: Approva
         title="승인"
         subtitle="외부 전송·고위험 작업은 실행 전에 승인이 필요합니다"
       />
-      <div className="page-content">
+      <div className="page-content approvals-page">
         {actionError && (
           <div className="approval-error" role="alert">
             {actionError}
@@ -63,10 +63,11 @@ export function ApprovalsPage({ state, onRefresh, onApprove, onReject }: Approva
               업무 실행 중 외부 전송이나 고위험 작업이 필요하면 여기에 표시됩니다.
             </p>
           </div>
-        ) : (
-          approvals.map(approval => <ToolAwareApproval key={approval.id} approval={approval} busy={busyId === approval.id}
-            onLegacyAction={runAction} onRefresh={onRefresh} onOutcome={recordOutcome} />)
-        )}
+        ) : (<>
+          <p className="approvals-count">확인을 기다리는 요청 {approvals.length}건</p>
+          {approvals.map(approval => <ToolAwareApproval key={approval.id} approval={approval} busy={busyId === approval.id}
+            onLegacyAction={runAction} onRefresh={onRefresh} onOutcome={recordOutcome} />)}
+        </>)}
       </div>
     </>
   );
