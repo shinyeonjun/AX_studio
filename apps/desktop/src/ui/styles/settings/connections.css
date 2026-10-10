@@ -276,13 +276,6 @@
   flex-shrink: 0;
 }
 
-.setting-row-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
 .setting-row-message {
   margin: 8px 0 0;
   color: var(--text-muted);
@@ -294,10 +287,6 @@
     align-items: flex-start;
     flex-direction: column;
     gap: 12px;
-  }
-
-  .setting-row-buttons {
-    justify-content: flex-start;
   }
 }
 

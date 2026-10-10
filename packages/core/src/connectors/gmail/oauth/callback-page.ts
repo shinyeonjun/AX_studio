@@ -23,7 +23,7 @@ const PAGES: Record<GmailCallbackOutcome, { tone: 'ok' | 'warn' | 'error'; title
     tone: 'error',
     title: 'Google 로그인에 실패했어요',
     body: 'Google에서 로그인 결과를 받지 못했어요. AX Studio에서 "Gmail 연결하기"를 다시 눌러 주세요.',
-    hint: '계속 실패하면 AX Studio의 설정 > 문제 해결에서 진단 정보를 보내 주세요.',
+    hint: '계속 실패하면 AX Studio를 다시 시작한 뒤 연결해 주세요.',
   },
   expired: {
     tone: 'warn',

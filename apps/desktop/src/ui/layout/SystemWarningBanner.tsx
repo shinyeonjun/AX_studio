@@ -5,7 +5,7 @@ type SystemWarningKey = 'databaseBackendFallback' | 'credentialStorageWarning';
 
 const SYSTEM_WARNING_COPY: Record<SystemWarningKey, string> = {
   databaseBackendFallback:
-    '기본 데이터베이스 엔진을 불러오지 못해 임시 저장 방식으로 실행 중입니다. 앱이 갑자기 종료되면 최근 몇 초간의 변경이 저장되지 않을 수 있습니다. 앱을 다시 설치하거나 설정 > 문제 해결 > 진단 정보 내보내기로 문의해 주세요.',
+    '기본 데이터베이스 엔진을 불러오지 못해 임시 저장 방식으로 실행 중입니다. 앱이 갑자기 종료되면 최근 몇 초간의 변경이 저장되지 않을 수 있습니다. 계속되면 앱을 다시 설치해 주세요.',
   credentialStorageWarning:
     '이 컴퓨터의 비밀번호 보관함을 쓸 수 없어 토큰·비밀번호가 암호화되지 않은 채 저장되고 있어요. 컴퓨터 관리자에게 비밀번호 보관함(키링) 설정을 요청한 뒤 앱을 다시 시작해 주세요.',
 };
@@ -67,7 +67,7 @@ function CorruptRowsNotice({ summary, onDismiss }: { summary: NonNullable<AppSta
       <div className="system-corrupt-rows-body">
         <span>
           손상된 데이터 {summary.total}건{areas ? `(${areas})` : ''}을 읽지 못해 목록과 실행에서 제외했습니다.
-          계속되면 설정 &gt; 문제 해결 &gt; 진단 정보 내보내기로 문의해 주세요.
+          계속되면 아래 상세 정보를 지원팀에 전달해 주세요.
         </span>
         <details className="system-corrupt-rows-details">
           <summary>지원팀에 보낼 상세 정보</summary>
