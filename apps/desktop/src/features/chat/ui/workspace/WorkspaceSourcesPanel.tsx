@@ -12,6 +12,13 @@ function statusLabel(source: WorkspaceSourceRecord): string {
   return '분석 완료';
 }
 
+/** The badge names the file's own kind: "report.docx" is Word, not PDF. */
+function kindLabel(fileName: string): string {
+  const extension = fileName.toLowerCase().match(/\.([a-z0-9]+)$/)?.[1];
+  if (extension === 'docx') return 'Word';
+  return extension ? extension.toUpperCase().slice(0, 4) : '파일';
+}
+
 export function WorkspaceSourcesPanel({ sources, busy, onAttach }: WorkspaceSourcesPanelProps) {
   return (
     <section className="workspace-sources-panel" aria-label="대화 자료">
@@ -37,13 +44,15 @@ export function WorkspaceSourcesPanel({ sources, busy, onAttach }: WorkspaceSour
         <div className="workspace-sources-empty">
           <span className="workspace-sources-empty-icon" aria-hidden="true">＋</span>
           <p>아직 이 대화에 올린 자료가 없습니다.</p>
-          <span>PDF·엑셀·CSV 파일을 올리면 내용을 읽어 대화에 씁니다.</span>
+          <span>PDF나 Word 파일을 올리면 내용을 읽어 대화에 씁니다.</span>
         </div>
       ) : (
         <ul className="workspace-sources-list">
           {sources.map((source) => (
             <li key={source.id} className={`workspace-source-item workspace-source-item--${source.status}`}>
-              <div className="workspace-source-icon" aria-hidden="true">PDF</div>
+              <div className={`workspace-source-icon${kindLabel(source.fileName) === 'Word' ? ' workspace-source-icon--word' : ''}`} aria-hidden="true">
+                {kindLabel(source.fileName)}
+              </div>
               <div className="workspace-source-body">
                 <div className="workspace-source-name" title={source.fileName}>{source.fileName}</div>
                 <div className="workspace-source-meta">

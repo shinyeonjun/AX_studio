@@ -7,7 +7,7 @@ export type ExecutionSummary = AppState['executions'][number];
 function executionTitle(execution: ExecutionSummary, sessions: ChatSessionSummary[]): string {
   const sessionTitle = sessions.find((session) => session.id === execution.workspaceSessionId)?.title;
   if (sessionTitle?.trim()) return sessionTitle;
-  if (execution.generatedPdf?.fileName) return execution.generatedPdf.fileName;
+  if (execution.generatedFile?.fileName) return execution.generatedFile.fileName;
   return execution.name?.trim() || '일회성 작업';
 }
 
@@ -58,7 +58,10 @@ export function ExecutionList({ executions, sessions, onOpen }: {
                   <span>·</span>
                   <span>{formatRelativeTime(execution.startedAt)}</span>
                 </span>
-                <span className="sidebar-execution-detail">{executionDetail(execution)}</span>
+                {/* A finished run says so in its status; only other states need a line of detail. */}
+                {presentation.tone !== 'success' && (
+                  <span className="sidebar-execution-detail">{executionDetail(execution)}</span>
+                )}
               </span>
               <span className="sidebar-execution-open" aria-hidden="true">보기</span>
             </button>

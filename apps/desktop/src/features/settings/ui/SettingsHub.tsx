@@ -46,15 +46,13 @@ export function SettingsHub({ state, detecting, detection, onRefresh, onOpenScre
       </SettingsCategory>
 
       <SettingsCategory
-        title="판단 엔진"
-        description="짧은 결정을 빠르게 내리는 별도 엔진을 연결합니다."
+        title="요청 판단"
+        description="요청을 보고 무엇을 할지 빠르게 정하는 기능을 연결합니다."
       >
         <div className="connection-hub">
           <ConnectionCard
-            title="판단 엔진(Jev)"
-            description={state?.jevDecisionModel
-              ? `${state.jevDecisionModel} · 자료 선택 같은 짧은 결정`
-              : '자료 선택 같은 짧은 결정'}
+            title="요청 판단 기능"
+            description="자료 선택 같은 짧은 결정"
             emojiIcon="🧭"
             badge={jevBadge}
             badgeClass={jevConfigured ? 'connected' : ''}

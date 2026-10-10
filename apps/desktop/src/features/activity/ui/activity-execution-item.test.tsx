@@ -4,7 +4,7 @@ import { ActivityExecutionItem } from './activity-execution-item.js';
 
 const actions = { deleting: false, clearing: false, exporting: false, isExporting: false, exported: false,
   savingToFolder: false, isSavingToFolder: false, savedToFolder: false,
-  onDelete: vi.fn(), onExportPdf: vi.fn(), onSavePdfToFolder: vi.fn() };
+  onDelete: vi.fn(), onExportFile: vi.fn(), onSaveFileToFolder: vi.fn() };
 
 describe('historical calculated output entry', () => {
   it('restores the existing on-demand result button only for successful records with stored output', () => {

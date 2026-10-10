@@ -14,13 +14,15 @@
 
 .ask-bar {
   display: flex;
+  flex-wrap: wrap;
   align-items: stretch;
   gap: 10px;
   margin-bottom: 20px;
 }
 
+/* In a narrow window the button moves under the question rather than squeezing it. */
 .ask-bar input {
-  flex: 1;
+  flex: 1 1 240px;
   width: auto;
   min-width: 0;
   height: 42px;
@@ -111,13 +113,15 @@
 }
 
 
+/* Deleting stays quiet until reached for: the red shows on hover and in the confirmation dialog. */
 .btn-danger-text {
-  color: var(--red, #f87171);
+  color: var(--text-muted);
 }
 
-.btn-danger-text:hover {
-  color: #fca5a5;
-  background: rgba(248, 113, 113, 0.08);
+.btn-danger-text:hover:not(:disabled),
+.btn-danger-text:focus-visible {
+  color: var(--red);
+  background: var(--red-bg);
 }
 
 /* Filled destructive button (confirmation dialogs). Not .btn-danger: that name is the red-outline

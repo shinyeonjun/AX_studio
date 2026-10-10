@@ -161,7 +161,7 @@ export async function openAiSettings(page: Page, brand: 'Claude' | 'GPT'): Promi
 }
 
 export async function toggleTheme(page: Page): Promise<void> {
-  await page.getByRole('checkbox', { name: /모드로 전환/ }).click();
+  await page.getByRole('button', { name: /모드로 전환/ }).click();
 }
 
 export async function openContextTab(page: Page, tab: '자료' | '실행 흐름'): Promise<void> {

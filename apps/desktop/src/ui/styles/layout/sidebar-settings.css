@@ -137,7 +137,7 @@
 }
 
 .sidebar-ai-off-badge {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-muted);
   flex-shrink: 0;
 }

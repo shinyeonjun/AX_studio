@@ -114,7 +114,6 @@ export default function App() {
         onDeleteWork={appActions.deleteWork}
         onOpenSettings={openSettings}
         aiHub={aiHub}
-        aiDetecting={detection.detecting}
         isDark={isDark}
         onToggleTheme={toggleTheme}
       />

@@ -18,7 +18,7 @@
   --border-light: #c5d3ea;
   --text: #2a2f45;
   --text-muted: #5c6478;
-  --text-dim: #8b93a8;
+  --text-dim: #6b7389;
   --purple: var(--lavender-purple);
   --purple-light: var(--lavender-periwinkle);
   --purple-glow: rgba(142, 112, 207, 0.18);
@@ -50,7 +50,7 @@
   --border-light: #38425a;
   --text: #e8ebf4;
   --text-muted: #9aa3b8;
-  --text-dim: #6f7a90;
+  --text-dim: #8a94aa;
   --purple-glow: rgba(164, 165, 245, 0.22);
   --green-bg: rgba(47, 158, 111, 0.18);
   --red-bg: rgba(214, 69, 69, 0.16);

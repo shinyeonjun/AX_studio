@@ -45,6 +45,8 @@ export function WorkspaceFlowPanel({
   const executionStatus = resolveWorkspaceExecutionStatus(latest?.executionStatus, latest?.content ?? '');
   const foundMethod = methodTitle(workflow, discovery);
   const replay = discovery?.replaySummary;
+  // Before the first request there is no progress to show: five grey steps would only read as clutter.
+  const nothingYet = presentation.status === 'idle' && presentation.activeStage === 0 && !workflow && !latest && !error;
 
   return (
     <section className="workspace-flow-panel" aria-label="실행 흐름">
@@ -56,31 +58,35 @@ export function WorkspaceFlowPanel({
         <span className={statusClass(presentation.status)}>{presentation.statusLabel}</span>
       </header>
 
-      <section
-        className="workspace-flow-stage-card"
-        aria-label="요청부터 실행까지"
-        data-flow-status={presentation.status}
-      >
-        <h3>요청부터 실행까지</h3>
-        <ol className="workspace-flow-stage-list">
-          {FLOW_STAGES.map((stage, index) => {
-            const state = stageState(index, presentation.activeStage);
-            return (
-              <li
-                key={stage.label}
-                className={`workspace-flow-stage workspace-flow-stage--${state}`}
-                aria-current={state === 'active' ? 'step' : undefined}
-              >
-                <span className="workspace-flow-stage-marker" aria-hidden="true">{index + 1}</span>
-                <div className="workspace-flow-stage-copy">
-                  <strong>{stage.label}</strong>
-                  <span>{stageSubtitle(index, presentation, progress, discovery, latest)}</span>
-                </div>
-              </li>
-            );
-          })}
-        </ol>
-      </section>
+      {nothingYet ? (
+        <p className="workspace-flow-empty">{presentation.message}</p>
+      ) : (
+        <section
+          className="workspace-flow-stage-card"
+          aria-label="요청부터 실행까지"
+          data-flow-status={presentation.status}
+        >
+          <h3>요청부터 실행까지</h3>
+          <ol className="workspace-flow-stage-list">
+            {FLOW_STAGES.map((stage, index) => {
+              const state = stageState(index, presentation.activeStage);
+              return (
+                <li
+                  key={stage.label}
+                  className={`workspace-flow-stage workspace-flow-stage--${state}`}
+                  aria-current={state === 'active' ? 'step' : undefined}
+                >
+                  <span className="workspace-flow-stage-marker" aria-hidden="true">{index + 1}</span>
+                  <div className="workspace-flow-stage-copy">
+                    <strong>{stage.label}</strong>
+                    <span>{stageSubtitle(index, presentation, progress, discovery, latest)}</span>
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+        </section>
+      )}
 
       {foundMethod && (
         <section className="workspace-flow-method" aria-label="찾은 방법">

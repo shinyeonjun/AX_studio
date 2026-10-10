@@ -69,7 +69,7 @@ export function useActivityActions({ state, onRefresh }: ActivityActionsInput) {
     }
   };
 
-  const exportPdf = async (executionId: string, artifactId: string) => {
+  const exportFile = async (executionId: string, artifactId: string) => {
     setExportingId(executionId);
     setExportedId(null);
     setExportError(null);
@@ -79,20 +79,20 @@ export function useActivityActions({ state, onRefresh }: ActivityActionsInput) {
         if (!result.canceled) {
           setExportError({
             executionId,
-            message: result.error ?? 'PDF를 저장하지 못했습니다.',
+            message: result.error ?? '파일을 저장하지 못했습니다.',
           });
         }
         return;
       }
       setExportedId(executionId);
     } catch (err) {
-      setExportError({ executionId, message: ipcErrorMessage(err, 'PDF를 저장하지 못했습니다.') });
+      setExportError({ executionId, message: ipcErrorMessage(err, '파일을 저장하지 못했습니다.') });
     } finally {
       setExportingId(null);
     }
   };
 
-  const savePdfToFolder = async (executionId: string, artifactId: string) => {
+  const saveFileToFolder = async (executionId: string, artifactId: string) => {
     setSavingToFolderId(executionId);
     setSavedToFolderId(null);
     setFolderSaveError(null);
@@ -102,7 +102,7 @@ export function useActivityActions({ state, onRefresh }: ActivityActionsInput) {
         if (!result.canceled) {
           setFolderSaveError({
             executionId,
-            message: result.error ?? 'PDF를 지정 폴더에 저장하지 못했습니다.',
+            message: result.error ?? '파일을 지정 폴더에 저장하지 못했습니다.',
           });
         }
         return;
@@ -111,7 +111,7 @@ export function useActivityActions({ state, onRefresh }: ActivityActionsInput) {
     } catch (err) {
       setFolderSaveError({
         executionId,
-        message: ipcErrorMessage(err, 'PDF를 지정 폴더에 저장하지 못했습니다.'),
+        message: ipcErrorMessage(err, '파일을 지정 폴더에 저장하지 못했습니다.'),
       });
     } finally {
       setSavingToFolderId(null);
@@ -138,7 +138,7 @@ export function useActivityActions({ state, onRefresh }: ActivityActionsInput) {
     askExplain,
     deleteExecution,
     clearExecutions,
-    exportPdf,
-    savePdfToFolder,
+    exportFile,
+    saveFileToFolder,
   };
 }

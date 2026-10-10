@@ -53,8 +53,8 @@ export function ActivityExecutionItem({
   savedToFolder,
   folderSaveError,
   onDelete,
-  onExportPdf,
-  onSavePdfToFolder,
+  onExportFile,
+  onSaveFileToFolder,
 }: {
   execution: ActivityExecution;
   skillName?: string;
@@ -69,8 +69,8 @@ export function ActivityExecutionItem({
   savedToFolder: boolean;
   folderSaveError?: string;
   onDelete: () => void;
-  onExportPdf: (artifactId: string) => void;
-  onSavePdfToFolder: (artifactId: string) => void;
+  onExportFile: (artifactId: string) => void;
+  onSaveFileToFolder: (artifactId: string) => void;
 }) {
   const resultFailed = execution.resultStatus === 'failed';
   const ok = execution.status === 'success' && !resultFailed;
@@ -78,7 +78,7 @@ export function ActivityExecutionItem({
   const pending = execution.status === 'pending_approval';
   const failed = execution.status === 'failed';
   const errorDetail = executionErrorLabel(execution.errorCode);
-  const generatedPdf = execution.generatedPdf;
+  const generatedFile = execution.generatedFile;
   const aiOutput = execution.aiOutput;
   // Field keys are internal names; show the work's own description, or just their place.
   const aiFieldLabel = (field: string, index: number) => aiOutput?.labels?.[field] ?? `항목 ${index + 1}`;
@@ -146,38 +146,38 @@ export function ActivityExecutionItem({
           </div>
         )}
         {ok && execution.hasOutput && <CalculatedOutput key={execution.id} executionId={execution.id} />}
-        {generatedPdf && (
-          <div className="generated-pdf" data-testid="generated-pdf">
-            <div className="generated-pdf-copy">
-              <span className="generated-pdf-eyebrow">생성된 파일 · PDF</span>
-              <div className="generated-pdf-name" title={generatedPdf.fileName}>
-                {generatedPdf.fileName}
+        {generatedFile && (
+          <div className="generated-file" data-testid="generated-file">
+            <div className="generated-file-copy">
+              <span className="generated-file-eyebrow">생성된 파일 · {generatedFile.label}</span>
+              <div className="generated-file-name" title={generatedFile.fileName}>
+                {generatedFile.fileName}
               </div>
-              <div className="generated-pdf-size">{formatFileSize(generatedPdf.size)}</div>
+              <div className="generated-file-size">{formatFileSize(generatedFile.size)}</div>
             </div>
-            <div className="generated-pdf-action" aria-live="polite">
-              <div className="generated-pdf-buttons">
+            <div className="generated-file-action" aria-live="polite">
+              <div className="generated-file-buttons">
                 <button
                   type="button"
-                  className="btn btn-sm generated-pdf-button"
-                  onClick={() => onExportPdf(generatedPdf.artifactId)}
+                  className="btn btn-sm generated-file-button"
+                  onClick={() => onExportFile(generatedFile.artifactId)}
                   disabled={exporting || savingToFolder || deleting || clearing}
-                  aria-label={`${generatedPdf.fileName} PDF 다운로드`}
+                  aria-label={`${generatedFile.fileName} 다운로드`}
                 >
                   {isExporting ? '다운로드 중…' : exported ? '다운로드됨' : '다운로드'}
                 </button>
                 <button
                   type="button"
-                  className="btn btn-sm generated-pdf-button"
-                  onClick={() => onSavePdfToFolder(generatedPdf.artifactId)}
+                  className="btn btn-sm generated-file-button"
+                  onClick={() => onSaveFileToFolder(generatedFile.artifactId)}
                   disabled={exporting || savingToFolder || deleting || clearing}
-                  aria-label={`${generatedPdf.fileName} 지정 폴더에 저장`}
+                  aria-label={`${generatedFile.fileName} 지정 폴더에 저장`}
                 >
                   {isSavingToFolder ? '저장 중…' : savedToFolder ? '폴더에 저장됨' : '지정 폴더에 저장'}
                 </button>
               </div>
               {(exportError || folderSaveError) && (
-                <div className="generated-pdf-error" role="alert">
+                <div className="generated-file-error" role="alert">
                   {exportError ?? folderSaveError}
                 </div>
               )}

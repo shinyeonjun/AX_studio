@@ -30,8 +30,8 @@ export function ActivityPage({ state, onRefresh }: ActivityPageProps) {
     askExplain,
     deleteExecution,
     clearExecutions,
-    exportPdf,
-    savePdfToFolder,
+    exportFile,
+    saveFileToFolder,
   } = useActivityActions({ state, onRefresh });
 
   return (
@@ -112,8 +112,8 @@ export function ActivityPage({ state, onRefresh }: ActivityPageProps) {
                 savedToFolder={savedToFolderId === execution.id}
                 folderSaveError={folderSaveError?.executionId === execution.id ? folderSaveError.message : undefined}
                 onDelete={() => void deleteExecution(execution.id)}
-                onExportPdf={(artifactId) => void exportPdf(execution.id, artifactId)}
-                onSavePdfToFolder={(artifactId) => void savePdfToFolder(execution.id, artifactId)}
+                onExportFile={(artifactId) => void exportFile(execution.id, artifactId)}
+                onSaveFileToFolder={(artifactId) => void saveFileToFolder(execution.id, artifactId)}
               />
             ))
           )}

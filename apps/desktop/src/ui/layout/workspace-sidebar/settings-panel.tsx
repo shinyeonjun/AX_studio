@@ -15,14 +15,12 @@ import {
 interface SidebarSettingsPanelProps {
   state: AppState | null;
   aiHub: AiHubController;
-  aiDetecting: boolean;
   onOpenSettings: (screen: SettingsScreen) => void;
 }
 
 export function SidebarSettingsPanel({
   state,
   aiHub,
-  aiDetecting,
   onOpenSettings,
 }: SidebarSettingsPanelProps) {
   return (
@@ -42,7 +40,6 @@ export function SidebarSettingsPanel({
 
       <div className="sidebar-settings-group">
         <hr className="sidebar-settings-divider" />
-        {aiDetecting && <p className="sidebar-ai-hub-note">AI 연결 확인 중…</p>}
         {aiHub.hubMessage && <p className="sidebar-ai-hub-note">{aiHub.hubMessage}</p>}
         {SIDEBAR_AI_BRANDS.map((brand) => (
           <SidebarAiBrandRow

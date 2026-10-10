@@ -152,6 +152,11 @@ export function formatExecutionResultMessage(
     const fileName = safeText(record(sourceFile?.data)?.fileName, 200);
     if (fileName) lines.push(`읽은 파일: ${fileName}`);
     lines.push(...computedValueLines(result.log));
+    // A report is written only after its method reproduced the example; say how much was checked.
+    const replay = record([...result.log].reverse().find((entry) => entry.code === 'report_example_replay_passed')?.data);
+    if (typeof replay?.verifiedSlots === 'number' && replay.verifiedSlots > 0) {
+      lines.push(`검증: 지난 보고서의 값 ${replay.verifiedSlots.toLocaleString('ko-KR')}개를 같은 방법으로 다시 만들어 일치하는지 확인했어요.`);
+    }
   }
   const preview = outputPreviewFromLog(result.log);
   if (preview) {

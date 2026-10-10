@@ -30,7 +30,6 @@ export function AiHubCards({ state, detecting, hub, onOpenBrand }: AiHubCardsPro
 
   return (
     <>
-      {detecting && <p className="muted settings-hub-note">AI 연결 상태를 확인하는 중…</p>}
       {hub.hubMessage && <p className="muted settings-hub-note">{hub.hubMessage}</p>}
       <div className="connection-hub">
         {brands.map((brand) => {
@@ -71,10 +70,12 @@ export function AiHubCards({ state, detecting, hub, onOpenBrand }: AiHubCardsPro
                 <div className="connection-card-body">
                   <div className="connection-card-title-row">
                     <div className="connection-card-title">{meta.title}</div>
+                    {/* Until the check answers, a card that is not in use is unknown, not "off". */}
                     <span
                       className={`connection-badge ${status === 'active' ? 'connected' : status === 'ready' ? 'ready' : ''}`}
+                      aria-live="polite"
                     >
-                      {aiBrandStatusLabel(brand, status)}
+                      {detecting && status !== 'active' ? '확인 중…' : aiBrandStatusLabel(brand, status)}
                     </span>
                   </div>
                   <div className="connection-card-desc">

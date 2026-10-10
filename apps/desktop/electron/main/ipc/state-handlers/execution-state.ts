@@ -173,7 +173,7 @@ export function buildExecutions(core: AxCore) {
         ...logSummary.aiOutput,
         labels: facts?.aiFieldLabels?.[logSummary.aiOutput.stepId] ?? {},
       },
-      generatedPdf: logSummary.generatedPdf,
+      generatedFile: logSummary.generatedFile,
       sourceFile: logSummary.sourceFile,
       computedResults: logSummary.computedResults,
     };
