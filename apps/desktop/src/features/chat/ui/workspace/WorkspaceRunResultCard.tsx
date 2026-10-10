@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import type {
   ExecutionResultStatus,
   WorkspaceChatApproval,
@@ -138,7 +138,15 @@ export function WorkspaceRunResultCard({
       <p className="ax-workspace-run-card-label">
         {presentation.label}
       </p>
-      <p>{content}</p>
+      <p>
+        {content.split('\n').map((line, index) => (
+          // The run number is there for resuming, not for reading: it sits apart, small and quiet.
+          <Fragment key={index}>
+            {index > 0 && '\n'}
+            <span className={/^실행 번호:/u.test(line) ? 'ax-workspace-run-card-ref' : undefined}>{line}</span>
+          </Fragment>
+        ))}
+      </p>
       {recoveryGuidance && <p className="ax-workspace-run-card-guidance">{recoveryGuidance}</p>}
       {generatedArtifact && (
         <section className="ax-workspace-generated-pdf" aria-label={`생성된 ${artifactLabel} 결과물`}>

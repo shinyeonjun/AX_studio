@@ -93,29 +93,6 @@
   color: #ffb0b0;
 }
 
-[data-theme='dark'] .ax-workspace-run-card {
-  background: rgba(45, 98, 73, 0.2);
-  border-color: rgba(90, 180, 140, 0.35);
-  color: #9fd8bb;
-}
-
-[data-theme='dark'] .ax-workspace-run-card--failed {
-  background: #351e26;
-  border-color: #80404f;
-  color: #ffbcc6;
-}
-
-[data-theme='dark'] .ax-workspace-run-card--approval {
-  background: rgba(146, 103, 32, 0.18);
-  border-color: rgba(236, 194, 105, 0.38);
-  color: #f1d38f;
-}
-
-[data-theme='dark'] .ax-workspace-run-card--cancelled {
-  background: rgba(95, 102, 119, 0.18);
-  border-color: rgba(157, 164, 181, 0.3);
-  color: #b7bdca;
-}
 
 [data-theme='dark'] .ax-workspace-generated-pdf {
   border-color: rgba(157, 139, 236, 0.38);

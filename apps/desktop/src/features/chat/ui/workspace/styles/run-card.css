@@ -1,31 +1,33 @@
 /* Run result cards, generated files and inline approvals in the thread. */
 
+/* A plain card with body-colour text; the state shows in its left edge and its label only. */
 .ax-workspace-run-card {
+  --run-card-accent: var(--green);
   padding: 14px 16px;
-  border: 1px solid #ccebd9;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--run-card-accent);
   border-radius: 14px;
-  background: #effaf4;
-  color: #2d6249;
+  background: var(--bg-card);
+  color: var(--text);
   font-size: 14px;
   line-height: 1.55;
 }
 
 .ax-workspace-run-card--failed {
-  background: #fff1f2;
-  border-color: #f5b9c1;
-  color: #9f2435;
+  --run-card-accent: var(--red);
 }
 
 .ax-workspace-run-card--approval {
-  border-color: #efd9a9;
-  background: #fffaf1;
-  color: #5f4a20;
+  --run-card-accent: var(--amber);
 }
 
 .ax-workspace-run-card--cancelled {
-  border-color: #d9deea;
-  background: #f5f6fa;
-  color: #5f6677;
+  --run-card-accent: var(--text-dim);
+}
+
+.ax-workspace-run-card-ref {
+  color: var(--text-dim);
+  font-size: 12px;
 }
 
 .ax-workspace-run-card > p {
@@ -127,6 +129,7 @@
 }
 
 .ax-workspace-run-card-label {
+  color: var(--run-card-accent);
   font-size: 13px;
   font-weight: 750;
 }
