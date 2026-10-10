@@ -9,35 +9,88 @@
   font-size: 14px;
 }
 
+/* Approvals read at one width, like Activity. */
+.approvals-page > * {
+  max-width: 920px;
+}
+
+.approvals-count {
+  margin: 4px 0 12px;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
 .approval-card {
   background: var(--bg-card);
   border: 1px solid var(--border);
+  border-left: 3px solid var(--amber);
   border-radius: var(--radius);
-  padding: 20px;
+  padding: 16px 20px 18px;
   margin-bottom: 12px;
 }
 
-.approval-card h3 {
-  margin: 0 0 8px;
-  font-size: 15px;
+.approval-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  color: var(--text-dim);
+  font-size: 12px;
 }
 
+.approval-kind {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(201, 138, 26, 0.12);
+  color: var(--amber);
+  font-weight: 600;
+}
+
+.approval-card h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.approval-reason {
+  margin: 4px 0 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.approval-status {
+  margin: 10px 0 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+/* Decide at the end of the card: refusing is quiet, going ahead is the clear action. */
 .approval-actions {
   display: flex;
-  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
   margin-top: 16px;
 }
 
 .btn-approve {
-  background: var(--green-bg);
+  background: var(--green);
   border-color: var(--green);
-  color: var(--green);
+  color: #fff;
+  font-weight: 600;
 }
 
+.btn-approve:hover:not(:disabled) {
+  background: var(--green);
+  border-color: var(--green);
+  filter: brightness(1.06);
+}
 
-.btn-reject {
-  background: var(--red-bg);
+.btn-reject:hover:not(:disabled) {
   border-color: var(--red);
+  background: var(--red-bg);
   color: var(--red);
 }
 
@@ -56,19 +109,20 @@
 .approval-preview {
   display: grid;
   gap: 10px;
-  margin: 10px 0 14px;
+  margin: 12px 0 0;
 }
 
 .approval-preview-item {
   padding: 12px 14px;
-  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  background: var(--bg-elevated);
+  background: var(--bg-hover);
 }
 
 .approval-preview-item h4 {
   margin: 0 0 8px;
-  font-size: 13px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .approval-preview-item dl {
