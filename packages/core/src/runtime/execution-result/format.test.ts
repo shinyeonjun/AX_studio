@@ -35,6 +35,14 @@ describe('formatExecutionResultMessage', () => {
     expect(message).not.toContain('art_abc123');
   });
 
+  it('says how much of the example a written report reproduced, only when it succeeded', () => {
+    const log = [{ at: '2026-10-06T00:00:00.000Z', level: 'info' as const, code: 'report_example_replay_passed',
+      message: 'ok', data: { verifiedSlots: 18 } }];
+    expect(formatExecutionResultMessage({ executionId: 'exec-1', status: 'success', log }))
+      .toContain('지난 보고서의 값 18개를 같은 방법으로 다시 만들어 일치하는지 확인했어요.');
+    expect(formatExecutionResultMessage({ executionId: 'exec-1', status: 'failed', log })).not.toContain('검증:');
+  });
+
   it('says why a run failed in words and keeps the run number for resuming', () => {
     const message = formatExecutionResultMessage({
       executionId: 'exec-9',

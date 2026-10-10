@@ -1,120 +1,33 @@
-/* Light/dark switch in the sidebar header. */
+/* Light/dark switch in the sidebar header: a small icon button, not a second headline. */
 
 .theme-toggle {
-  position: relative;
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  cursor: pointer;
-}
-
-.theme-toggle-input {
-  /* Invisible but covers the whole toggle so clicks land on the real input. */
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  padding: 0;
-  margin: 0;
-  border: 0;
-  opacity: 0;
-  cursor: pointer;
-}
-
-.theme-toggle-track {
-  position: relative;
-  display: block;
-  /* 장식용 트랙이 클릭을 가로채지 않도록 — 클릭은 label을 통해 input으로 전달된다. */
-  pointer-events: none;
-  width: 52px;
-  height: 26px;
-  border-radius: 999px;
-  background: #8ec5ff;
-  border: 1px solid #6eb0f0;
-  transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.theme-toggle-icon {
-  position: absolute;
-  top: 50%;
-  z-index: 1;
   display: grid;
+  flex-shrink: 0;
   place-items: center;
-  width: 14px;
-  height: 14px;
-  color: #8b93a8;
-  transform: translateY(-50%);
-  pointer-events: none;
-  transition: color 0.2s ease, opacity 0.2s ease;
+  width: 30px;
+  height: 30px;
+  margin-left: auto;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 
-.theme-toggle-icon svg {
-  width: 12px;
-  height: 12px;
+.theme-toggle svg {
+  width: 16px;
+  height: 16px;
 }
 
-.theme-toggle-icon--sun {
-  left: 6px;
+.theme-toggle:hover {
+  border-color: var(--border);
+  background: var(--bg-hover);
+  color: var(--text);
 }
 
-.theme-toggle-icon--moon {
-  right: 6px;
-}
-
-.theme-toggle-thumb {
-  position: absolute;
-  top: 3px;
-  left: 3px;
-  z-index: 2;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: #ffffff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-  transition: transform 0.2s ease, background 0.2s ease;
-}
-
-/* 라이트 모드: 하늘색 배경 + 검은 달 */
-.theme-toggle-input:not(:checked) + .theme-toggle-track {
-  background: #8ec5ff;
-  border-color: #6eb0f0;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
-}
-
-.theme-toggle-input:not(:checked) + .theme-toggle-track .theme-toggle-icon--sun {
-  color: #f59e0b;
-  opacity: 0.35;
-}
-
-.theme-toggle-input:not(:checked) + .theme-toggle-track .theme-toggle-icon--moon {
-  color: #141414;
-  opacity: 1;
-}
-
-/* 다크 모드: 검은 배경 + 흰 해 */
-.theme-toggle-input:checked + .theme-toggle-track {
-  background: #141414;
-  border-color: #2a2a2a;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.35);
-}
-
-.theme-toggle-input:checked + .theme-toggle-track .theme-toggle-icon--sun {
-  color: #ffffff;
-  opacity: 1;
-}
-
-.theme-toggle-input:checked + .theme-toggle-track .theme-toggle-icon--moon {
-  color: #ffffff;
-  opacity: 0.3;
-}
-
-.theme-toggle-input:checked + .theme-toggle-track .theme-toggle-thumb {
-  transform: translateX(26px);
-  background: #3a3a3a;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
-}
-
-.theme-toggle-input:focus-visible + .theme-toggle-track {
+.theme-toggle:focus-visible {
   outline: 2px solid var(--purple-light);
   outline-offset: 2px;
 }

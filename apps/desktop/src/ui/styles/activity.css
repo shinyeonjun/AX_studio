@@ -139,35 +139,32 @@
   border-bottom: 1px solid var(--border);
 }
 
-.generated-pdf {
+.generated-file {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
   margin-top: 12px;
   padding: 10px 12px 10px 14px;
-  border: 1px solid color-mix(in srgb, var(--red) 24%, var(--border));
-  border-left: 3px solid var(--red);
+  border: 1px solid color-mix(in srgb, var(--green) 24%, var(--border));
+  border-left: 3px solid var(--green);
   border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--red-bg) 55%, var(--bg-card));
+  background: color-mix(in srgb, var(--green-bg) 55%, var(--bg-card));
 }
 
-.generated-pdf-copy {
+.generated-file-copy {
   min-width: 0;
 }
 
-.generated-pdf-eyebrow {
+.generated-file-eyebrow {
   display: block;
   margin-bottom: 2px;
-  color: var(--red);
-  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
-  font-size: 10px;
+  color: var(--green);
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 
-.generated-pdf-name {
+.generated-file-name {
   overflow: hidden;
   color: var(--text);
   font-size: 13px;
@@ -176,15 +173,14 @@
   white-space: nowrap;
 }
 
-.generated-pdf-size {
+.generated-file-size {
   margin-top: 1px;
   color: var(--text-dim);
-  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
   font-size: 11px;
   font-variant-numeric: tabular-nums;
 }
 
-.generated-pdf-action {
+.generated-file-action {
   display: flex;
   align-items: flex-end;
   flex-shrink: 0;
@@ -192,28 +188,28 @@
   gap: 4px;
 }
 
-.generated-pdf-buttons {
+.generated-file-buttons {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 6px;
 }
 
-.generated-pdf-button {
-  border-color: color-mix(in srgb, var(--red) 32%, var(--border));
-  color: var(--red);
+.generated-file-button {
+  border-color: color-mix(in srgb, var(--green) 32%, var(--border));
+  color: var(--text);
 }
 
-.generated-pdf-button:hover {
-  border-color: var(--red);
-  background: var(--red-bg);
+.generated-file-button:hover {
+  border-color: var(--green);
+  background: var(--green-bg);
 }
 
-.generated-pdf-button:disabled {
+.generated-file-button:disabled {
   cursor: wait;
 }
 
-.generated-pdf-error {
+.generated-file-error {
   max-width: 220px;
   color: var(--red);
   font-size: 11px;
@@ -222,20 +218,20 @@
 }
 
 @media (max-width: 560px) {
-  .generated-pdf {
+  .generated-file {
     align-items: stretch;
     flex-direction: column;
   }
 
-  .generated-pdf-action {
+  .generated-file-action {
     align-items: flex-start;
   }
 
-  .generated-pdf-buttons {
+  .generated-file-buttons {
     justify-content: flex-start;
   }
 
-  .generated-pdf-error {
+  .generated-file-error {
     max-width: none;
     text-align: left;
   }

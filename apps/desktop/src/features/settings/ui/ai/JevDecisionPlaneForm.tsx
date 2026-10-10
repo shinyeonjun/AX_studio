@@ -35,7 +35,7 @@ export function JevDecisionPlaneForm({ onRefresh }: JevDecisionPlaneFormProps) {
       })
       .catch((error) => {
         if (!cancelled) {
-          setMessage(ipcErrorMessage(error, 'Jev 설정을 읽지 못했습니다.'));
+          setMessage(ipcErrorMessage(error, '요청 판단 설정을 읽지 못했습니다.'));
           setMessageIsError(true);
         }
       })
@@ -73,7 +73,7 @@ export function JevDecisionPlaneForm({ onRefresh }: JevDecisionPlaneFormProps) {
       setMessage(`연결되었습니다. 모델: ${result.model}`);
       await onRefresh();
     } catch (error) {
-      setMessage(ipcErrorMessage(error, 'Jev 연결 테스트에 실패했습니다.'));
+      setMessage(ipcErrorMessage(error, '요청 판단 연결 테스트에 실패했습니다.'));
       setMessageIsError(true);
     } finally {
       setTesting(false);
@@ -101,11 +101,11 @@ export function JevDecisionPlaneForm({ onRefresh }: JevDecisionPlaneFormProps) {
       setApiKeyVerified(config.apiKeyVerified === true);
       setApiKeyDraft('');
       setMessage(config.enabled
-        ? '저장했어요. 판단 엔진(Jev)을 바로 사용합니다.'
-        : '저장했어요. 판단 엔진(Jev)은 꺼져 있습니다.');
+        ? '저장했어요. 요청 판단 기능을 바로 사용합니다.'
+        : '저장했어요. 요청 판단 기능은 꺼져 있습니다.');
       await onRefresh();
     } catch (error) {
-      setMessage(ipcErrorMessage(error, 'Jev 설정 저장에 실패했습니다.'));
+      setMessage(ipcErrorMessage(error, '요청 판단 설정 저장에 실패했습니다.'));
       setMessageIsError(true);
     } finally {
       setSaving(false);
@@ -113,7 +113,7 @@ export function JevDecisionPlaneForm({ onRefresh }: JevDecisionPlaneFormProps) {
   };
 
   if (!loaded) {
-    return <div className="settings-section"><p className="muted">판단 엔진 설정을 불러오는 중…</p></div>;
+    return <div className="settings-section"><p className="muted">요청 판단 설정을 불러오는 중…</p></div>;
   }
 
   return (
@@ -122,7 +122,7 @@ export function JevDecisionPlaneForm({ onRefresh }: JevDecisionPlaneFormProps) {
         <div className="connection-form-header">
           <div className="sidebar-settings-link-icon sidebar-settings-link-icon--emoji" aria-hidden>🧭</div>
           <div>
-            <h3>판단 엔진(Jev)</h3>
+            <h3>요청 판단 기능</h3>
             <p className="muted">
               자료 선택처럼 짧은 결정을 빠르게 내려요. 실제로 실행할지는 항상 앱의 안전 규칙이 정해요.
             </p>
@@ -132,7 +132,7 @@ export function JevDecisionPlaneForm({ onRefresh }: JevDecisionPlaneFormProps) {
         <div className="provider-option selected" style={{ marginBottom: 16 }}>
           <div className="provider-option-header">
             <div>
-              <div className="provider-option-title">판단 엔진 사용</div>
+              <div className="provider-option-title">요청 판단 사용</div>
               <div className="provider-option-desc">
                 켜도 실행·저장 여부는 앱의 안전 규칙이 최종으로 정합니다.
               </div>
@@ -140,7 +140,7 @@ export function JevDecisionPlaneForm({ onRefresh }: JevDecisionPlaneFormProps) {
             <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <input
                 type="checkbox"
-                aria-label="판단 엔진 사용"
+                aria-label="요청 판단 사용"
                 checked={enabled}
                 onChange={(event) => setEnabled(event.target.checked)}
               />
@@ -151,7 +151,7 @@ export function JevDecisionPlaneForm({ onRefresh }: JevDecisionPlaneFormProps) {
 
         <div className="provider-option selected" style={{ marginBottom: 16 }}>
           <div className="provider-option-header">
-            <div className="provider-option-title">판단 엔진 API</div>
+            <div className="provider-option-title">요청 판단 연결 주소와 키</div>
             <span className={`connection-badge ${apiKeyVerified ? 'connected' : ''}`}>
               {apiKeyVerified ? '인증 확인됨' : apiKeyConfigured ? '키 등록됨 · 인증 미확인' : '미등록'}
             </span>
@@ -166,7 +166,7 @@ export function JevDecisionPlaneForm({ onRefresh }: JevDecisionPlaneFormProps) {
           <input
             id="jev-api-key"
             type="password"
-            placeholder="판단 엔진 API 키"
+            placeholder="요청 판단 API 키"
             value={apiKeyDraft}
             onChange={(event) => {
               setApiKeyDraft(event.target.value);
@@ -232,7 +232,7 @@ export function JevDecisionPlaneForm({ onRefresh }: JevDecisionPlaneFormProps) {
       <div className="connection-guide">
         <h4>적용 범위</h4>
         <div className="guide-placeholder">
-          판단 엔진은 긴 답변을 만들지 않고 짧은 결정에만 쓰여요. 판단 엔진이 실패하거나 확실하지 않으면 기존 규칙을 따르거나 사용자에게 물어봅니다.
+          요청 판단 기능은 긴 답변을 만들지 않고 짧은 결정에만 쓰여요. 이 기능이 실패하거나 확실하지 않으면 기존 규칙을 따르거나 사용자에게 물어봅니다.
         </div>
       </div>
     </div>

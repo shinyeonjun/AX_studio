@@ -105,7 +105,8 @@
   .work-conversation-body--result > .work-conversation-chat {
     flex: 0 0 320px;
   }
-  .tool-result-panel {
+  /* Only an open tool result needs the tall editor; the ordinary side panel keeps its own height. */
+  .work-conversation-body--result > .tool-result-panel {
     min-height: 650px;
     border-left: 0;
     border-top: 1px solid #e1e6f3;
@@ -137,43 +138,6 @@
 }
 
 @media (max-width: 720px) {
-  .app--workspace:has(.work-conversation-body--result) .workspace-sidebar {
-    width: 100%;
-    max-width: 100%;
-    max-height: 45vh;
-    overflow: auto;
-  }
-  .app--workspace:has(.work-conversation-body--result) .workspace-sidebar-brand {
-    padding: 8px 16px;
-  }
-  .app--workspace:has(.work-conversation-body--result) .workspace-sidebar-tabs {
-    padding-bottom: 4px;
-  }
-  .app--workspace:has(.work-conversation-body--result) .tool-result-mobile-navigation {
-    display: block;
-    width: auto;
-    margin: 0 12px 8px;
-    border: 1px solid #d6ccec;
-    border-radius: 8px;
-    padding: 6px 12px;
-    background: #f5f1ff;
-    color: #66528f;
-    font: inherit;
-    cursor: pointer;
-  }
-  .app--workspace:has(.work-conversation-body--result) .tool-result-mobile-navigation:focus-visible {
-    outline: 2px solid #7c5ce8;
-    outline-offset: 2px;
-  }
-  .app--workspace:has(.work-conversation-body--result) .tool-result-sidebar-navigation {
-    display: none;
-  }
-  .app--workspace:has(.work-conversation-body--result) .workspace-sidebar--expanded .tool-result-sidebar-navigation {
-    display: block;
-  }
-  .app--workspace:has(.work-conversation-body--result) .workspace-sidebar-panel {
-    max-height: 180px;
-  }
   .work-conversation-body--result > .work-conversation-chat {
     flex-basis: 220px;
   }

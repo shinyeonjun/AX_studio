@@ -97,7 +97,7 @@
 .sidebar-work-group-subtitle {
   max-width: 190px;
   margin: 3px 0 0;
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.35;
   color: var(--text-dim);
 }
@@ -115,8 +115,25 @@
 .sidebar-work-subgroup-title {
   margin: 0 4px;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
+}
+
+.sidebar-work-more {
+  align-self: flex-start;
+  margin: 2px 4px 0;
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  color: var(--purple);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sidebar-work-more:hover {
+  text-decoration: underline;
 }
 
 .sidebar-work-count {
@@ -125,7 +142,7 @@
   border: 1px solid var(--border);
   border-radius: 999px;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.2;
   text-align: center;
 }
@@ -151,7 +168,7 @@
 
 .sidebar-work-empty span {
   margin-top: 3px;
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.35;
   color: var(--text-dim);
 }
@@ -273,7 +290,7 @@
 .sidebar-work-trigger {
   overflow: hidden;
   color: var(--text-dim);
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -292,7 +309,7 @@
   flex-direction: column;
   min-width: 0;
   color: var(--amber);
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.35;
 }
 

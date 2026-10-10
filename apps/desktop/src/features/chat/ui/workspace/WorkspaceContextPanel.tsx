@@ -41,6 +41,8 @@ export function WorkspaceContextPanel({
   const hasWorkflow = workflowAvailable && Boolean(workflow);
   const [activeTab, setActiveTab] = useState<WorkspaceContextTab>(workflowAvailable ? 'flow' : 'sources');
   const previousWorkflowAvailability = useRef(workflowAvailable);
+  // In a narrow window the panel sits under the chat; it stays folded to its tabs until opened.
+  const [folded, setFolded] = useState(true);
 
   useEffect(() => {
     setActiveTab((current) => {
@@ -53,6 +55,7 @@ export function WorkspaceContextPanel({
 
   const selectTab = (tab: WorkspaceContextTab) => {
     setActiveTab(tab);
+    setFolded(false);
   };
 
   const handleTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>, tab: WorkspaceContextTab) => {
@@ -71,7 +74,7 @@ export function WorkspaceContextPanel({
   };
 
   return (
-    <aside className="workspace-context-panel">
+    <aside className={`workspace-context-panel${folded ? ' workspace-context-panel--folded' : ''}`}>
       <div className="workspace-context-tabs" role="tablist" aria-label="대화 컨텍스트">
         {TAB_ORDER.map((tab) => (
           <button
@@ -89,6 +92,14 @@ export function WorkspaceContextPanel({
           </button>
         ))}
       </div>
+      <button
+        type="button"
+        className="workspace-context-fold"
+        aria-expanded={!folded}
+        onClick={() => setFolded((value) => !value)}
+      >
+        {folded ? '펼치기' : '접기'}
+      </button>
       <div
         id={`workspace-context-panel-${activeTab}`}
         className="workspace-context-content"

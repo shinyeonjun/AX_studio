@@ -148,11 +148,13 @@ export interface AppState {
       /** Readable names for fields, when the work described them; the keys themselves are internal. */
       labels?: Record<string, string>;
     };
-    generatedPdf?: {
+    /** The file the run wrote for people to keep (PDF, Word or Excel). */
+    generatedFile?: {
       artifactId: string;
       fileName: string;
       size: number;
-      mimeType: 'application/pdf';
+      mimeType: string;
+      label: string;
     };
     /** The file a "newest file" read opened this run. */
     sourceFile?: string;

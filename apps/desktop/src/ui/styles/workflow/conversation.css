@@ -88,3 +88,62 @@ body.work-resizing * {
   margin-top: 12px;
   color: var(--text);
 }
+
+/* Setup checklist: one quiet line once started, the full list only for a new person or on request. */
+.chat-setup-checklist {
+  flex-shrink: 0;
+  margin: 12px 24px 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--purple);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--text);
+  font-size: 13px;
+}
+
+.chat-setup-checklist-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+
+.chat-setup-checklist-next {
+  min-width: 0;
+  flex: 1 1 200px;
+  color: var(--text-muted);
+}
+
+.chat-setup-checklist-toggle {
+  color: var(--text-muted);
+}
+
+.chat-setup-checklist-steps {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0 2px;
+  padding: 0;
+  list-style: none;
+}
+
+.chat-setup-checklist-steps li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.chat-setup-checklist-steps li.done {
+  color: var(--text-muted);
+}
+
+.chat-setup-checklist-mark {
+  width: 16px;
+  color: var(--text-dim);
+  text-align: center;
+}
+
+.chat-setup-checklist-steps li.done .chat-setup-checklist-mark {
+  color: var(--green);
+}

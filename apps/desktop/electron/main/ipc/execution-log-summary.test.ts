@@ -59,11 +59,12 @@ describe('execution log summary', () => {
       },
     ]));
 
-    expect(summary.generatedPdf).toEqual({
+    expect(summary.generatedFile).toEqual({
       artifactId: 'art_pdf_1',
       fileName: 'report.pdf',
       size: 1234,
       mimeType: 'application/pdf',
+      label: 'PDF',
     });
     expect(summary).not.toHaveProperty('storedPath');
     expect(summary).not.toHaveProperty('pdfBytes');
@@ -82,6 +83,32 @@ describe('execution log summary', () => {
     ]));
 
     expect(summary.currentStepId).toBe('step-1');
-    expect(summary.generatedPdf).toBeUndefined();
+    expect(summary.generatedFile).toBeUndefined();
+  });
+
+  it('shows a Word report the run wrote, named as Word', () => {
+    const summary = executionLogSummary(JSON.stringify([
+      {
+        code: 'docx_generated',
+        data: {
+          artifactId: 'art_docx_1',
+          fileName: '9월 보고서.docx',
+          size: 2048,
+          mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        },
+      },
+    ]), 'success');
+
+    expect(summary.generatedFile).toMatchObject({ artifactId: 'art_docx_1', fileName: '9월 보고서.docx', label: 'Word' });
+  });
+
+  it('does not show an error the run recovered from as the reason a successful run failed', () => {
+    const log = JSON.stringify([
+      { level: 'error', message: 'http.request_failed', data: { status: 500 } },
+      { level: 'info', code: 'step_completed', message: '단계 완료', data: { stepId: 'fetch' } },
+    ]);
+
+    expect(executionLogSummary(log, 'success').errorMessage).toBeUndefined();
+    expect(executionLogSummary(log, 'failed').errorMessage).toBeDefined();
   });
 });

@@ -17,4 +17,47 @@
   .app--workspace {
     flex-direction: column;
   }
+
+  /* Above the page, the sidebar keeps only the brand and tabs; its lists open on request,
+     so the chat or page starts on the first screen instead of below every list. */
+  .app--workspace .workspace-sidebar {
+    flex-shrink: 0;
+    max-height: 60vh;
+    overflow: auto;
+  }
+
+  .app--workspace .workspace-sidebar-brand {
+    padding: 8px 16px;
+  }
+
+  .app--workspace .workspace-sidebar-tabs {
+    padding-bottom: 4px;
+  }
+
+  .app--workspace .tool-result-mobile-navigation {
+    display: block;
+    width: auto;
+    margin: 0 12px 8px;
+    padding: 6px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-card);
+    color: var(--text-muted);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  .app--workspace .tool-result-mobile-navigation:focus-visible {
+    outline: 2px solid var(--purple-light);
+    outline-offset: 2px;
+  }
+
+  .app--workspace .tool-result-sidebar-navigation {
+    display: none;
+  }
+
+  .app--workspace .workspace-sidebar--expanded .tool-result-sidebar-navigation {
+    display: block;
+  }
 }

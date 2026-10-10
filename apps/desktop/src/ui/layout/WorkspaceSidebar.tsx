@@ -18,7 +18,6 @@ interface WorkspaceSidebarProps {
   pendingApprovals: number;
   state: AppState | null;
   aiHub: AiHubController;
-  aiDetecting: boolean;
   isDark: boolean;
   onToggleTheme: () => void;
   onTabChange: (tab: SidebarTab) => void;
@@ -40,7 +39,6 @@ export function WorkspaceSidebar({
   pendingApprovals,
   state,
   aiHub,
-  aiDetecting,
   isDark,
   onToggleTheme,
   onTabChange,
@@ -55,6 +53,8 @@ export function WorkspaceSidebar({
   onOpenSettings,
 }: WorkspaceSidebarProps) {
   const [navigationExpanded, setNavigationExpanded] = useState(false);
+  // What the folded list holds, named for the tab it belongs to.
+  const listName = tab === 'settings' ? '설정 목록' : tab === 'work' ? '대화와 업무 목록' : '대화 목록';
   return (
     <aside className={'workspace-sidebar' + (navigationExpanded ? ' workspace-sidebar--expanded' : '')}>
       <div className="workspace-sidebar-brand">
@@ -64,7 +64,7 @@ export function WorkspaceSidebar({
       </div>
       <button type="button" className="tool-result-mobile-navigation" aria-expanded={navigationExpanded}
         aria-controls="workspace-sidebar-result-navigation" onClick={() => setNavigationExpanded(value => !value)}>
-        {navigationExpanded ? '대화와 업무 목록 닫기' : '대화와 업무 목록 열기'}
+        {`${listName} ${navigationExpanded ? '닫기' : '열기'}`}
       </button>
 
       <SidebarNavigation
@@ -84,6 +84,7 @@ export function WorkspaceSidebar({
             onToggleWorkActive={onToggleWorkActive}
             onRunWork={onRunWork}
             onDeleteWork={onDeleteWork}
+            onShowActivity={() => { setNavigationExpanded(false); onTabChange('activity'); }}
           />
         )}
 
@@ -97,19 +98,21 @@ export function WorkspaceSidebar({
           <SidebarSettingsPanel
             state={state}
             aiHub={aiHub}
-            aiDetecting={aiDetecting}
-            onOpenSettings={onOpenSettings}
+            onOpenSettings={screen => { setNavigationExpanded(false); onOpenSettings(screen); }}
           />
         )}
       </div>
 
-      <SidebarSessionList
-        sessions={sessions}
-        activeSessionId={activeSessionId}
-        onNewChat={() => { setNavigationExpanded(false); onNewChat(); }}
-        onSelectSession={session => { setNavigationExpanded(false); onSelectSession(session); }}
-        onDeleteSession={onDeleteSession}
-      />
+      {/* Settings has its own list of screens; the chats are a click away under 업무. */}
+      {tab !== 'settings' && (
+        <SidebarSessionList
+          sessions={sessions}
+          activeSessionId={activeSessionId}
+          onNewChat={() => { setNavigationExpanded(false); onNewChat(); }}
+          onSelectSession={session => { setNavigationExpanded(false); onSelectSession(session); }}
+          onDeleteSession={onDeleteSession}
+        />
+      )}
       </div>
     </aside>
   );

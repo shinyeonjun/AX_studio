@@ -24,13 +24,13 @@ describe('the start checklist', () => {
     const html = renderToStaticMarkup(<SetupChecklist state={base} onOpenSettings={noop} />);
     expect(html).toContain('시작 준비 0/3');
     expect(html).toContain('AI 연결하기');
-    expect(html).toContain('판단 엔진 연결하기');
+    expect(html).toContain('요청 판단 연결하기');
     expect(html).toContain('자료 연결하기');
   });
 
   it('asks to switch Jev on when it is set up but off', () => {
     const steps = setupSteps({ ...ready, jevDecisionEnabled: false });
-    expect(steps.find((step) => step.id === 'jev')).toMatchObject({ done: false, action: '판단 엔진 켜기', screen: 'ai-jev' });
+    expect(steps.find((step) => step.id === 'jev')).toMatchObject({ done: false, action: '요청 판단 켜기', screen: 'ai-jev' });
   });
 
   it('counts only connections that bring data in', () => {

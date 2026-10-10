@@ -5,6 +5,7 @@ import { issue, result, textArg } from '../../contract.js';
 import type { AxCommandExecuteOptions, AxCommandServiceState } from '../contracts.js';
 import { parseWorkflowIR } from '../../../../../workflow/schema.js';
 import { isReportExampleFile } from '../../../../../documents/reporting/service/request.js';
+import { generatedFileType } from '../../../../../contracts/artifacts/generated-file.js';
 
 const REPORT_RESUME_ACTION_MARKER = /재시도|재개|\b(?:retry|resume|continue)\b/giu;
 const REPORT_FRESH_MARKER = /새로|처음부터|새\s*(?:실행|요청|보고서)|신규|\b(?:fresh|new)\b/giu;
@@ -107,8 +108,8 @@ export async function executeReportCommand(
     if (!sourceId) continue;
     const source = sources.find((candidate) => candidate.id === sourceId);
     if (!source) return result(command.name, 'not_found', undefined, [issue(`report_${role}_not_found`, '선택한 자료를 현재 대화에서 찾을 수 없습니다.')]);
-    if (source.status === 'processing') return result(command.name, 'needs_input', undefined, [issue('workspace_source_processing', 'PDF 분석이 끝날 때까지 잠시 기다려 주세요.')]);
-    if (source.status !== 'ready') return result(command.name, 'error', undefined, [issue(source.errorCode ?? 'workspace_source_failed', 'PDF 자료 분석에 실패했습니다.')]);
+    if (source.status === 'processing') return result(command.name, 'needs_input', undefined, [issue('workspace_source_processing', '자료 분석이 끝날 때까지 잠시 기다려 주세요.')]);
+    if (source.status !== 'ready') return result(command.name, 'error', undefined, [issue(source.errorCode ?? 'workspace_source_failed', '자료 분석에 실패했습니다.')]);
     const usable = role === 'example' ? isReportExampleFile(source.fileName) : source.fileName.toLowerCase().endsWith('.pdf');
     if (!usable) {
       return result(command.name, 'invalid', undefined, [issue(`report_${role}_pdf_required`,
@@ -116,13 +117,16 @@ export async function executeReportCommand(
     }
   }
 
+  // The new report is written in the example's own format, so the run is named after it.
+  const exampleName = sources.find((candidate) => candidate.id === exampleSourceId)?.fileName ?? '';
+  const outputLabel = generatedFileType(exampleName.toLowerCase().endsWith('.docx') ? 'docx' : 'pdf').label;
   const delegated: AxCommand = {
     name: 'execution.enqueue_once',
     args: {
-      name: '예시 기반 PDF 보고서 생성',
+      name: `예시 기반 ${outputLabel} 보고서 생성`,
       goal,
       ...(requestAnchor ? { requestAnchor } : {}),
-      success: '완성 예시의 계산 기준이 재현 검증되고 다음 기간 PDF가 생성됨',
+      success: `완성 예시의 계산 기준이 재현 검증되고 다음 기간 ${outputLabel} 파일이 생성됨`,
       assumptions: ['외부 전송과 원본 데이터 변경 없음', '예시 재현 실패 시 결과물 생성 중단'],
       steps: [{
         type: 'action',

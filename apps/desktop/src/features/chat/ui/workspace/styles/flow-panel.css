@@ -323,3 +323,14 @@
 [data-theme='dark'] .workspace-flow-validation--warning {
   color: #f1d38f;
 }
+
+.workspace-flow-empty {
+  margin: 0;
+  padding: 18px 16px;
+  border: 1px dashed var(--ax-chat-border, var(--border));
+  border-radius: 12px;
+  color: var(--ax-chat-text-secondary, var(--text-muted));
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: center;
+}

@@ -38,7 +38,7 @@ export function DataFlowSection() {
     >
       <ul className="data-flow-list" style={{ margin: 0, paddingLeft: 18, display: 'grid', gap: 8 }}>
         <li>
-          <strong>판단 엔진(Jev, api.typesafe.ai)</strong>: 보낸 요청 문장과 최근 대화 6개(각 800자까지)를 받아 무엇을 할지 정합니다.
+          <strong>요청 판단 기능(Jev, api.typesafe.ai)</strong>: 보낸 요청 문장과 최근 대화 6개(각 800자까지)를 받아 무엇을 할지 정합니다.
           표를 거르거나 정렬할 때는 해당 열의 값 일부를 받습니다.
           {keepLocal
             ? ' 반복 업무의 메일·문서 내용은 보내지 않습니다(아래 설정).'
@@ -64,7 +64,7 @@ export function DataFlowSection() {
         <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginTop: 12 }}>
           <input type="checkbox" checked={keepLocal} disabled={busy} onChange={(event) => void toggle(event.target.checked)} />
           <span>
-            반복 업무의 메일·문서·조회 내용을 이 컴퓨터 밖(판단 엔진·클라우드 AI)으로 보내지 않기
+            반복 업무의 메일·문서·조회 내용을 이 컴퓨터 밖(요청 판단·클라우드 AI)으로 보내지 않기
             <br />
             <span className="muted">
               켜면 그런 내용이 필요한 AI 판단 단계는 이 컴퓨터의 AI(Ollama)로만 실행되고, 클라우드 AI를 쓰면 실행하지 않고 멈춥니다.

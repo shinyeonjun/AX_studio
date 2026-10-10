@@ -23,7 +23,12 @@ interface SidebarWorkPanelProps {
   /** Runs a saved workflow now; resolves when the run has finished or waits for approval. */
   onRunWork: (workflowId: string) => Promise<void>;
   onDeleteWork: (workflowId: string, name: string) => void;
+  /** Opens Activity, where every run is listed; the sidebar keeps only the latest few. */
+  onShowActivity?: () => void;
 }
+
+/** The sidebar shares its height with the chat list, so it shows only the latest runs. */
+const SIDEBAR_RECENT_RUNS = 3;
 
 /**
  * Works with an action in flight from the sidebar (a run, or switching it on/off), so the button
@@ -53,6 +58,7 @@ export function SidebarWorkPanel({
   onToggleWorkActive,
   onRunWork,
   onDeleteWork,
+  onShowActivity,
 }: SidebarWorkPanelProps) {
   const { running, runWork } = useBusyWorks(onRunWork);
   const { running: switching, runWork: toggleWork } = useBusyWorks(onToggleWorkActive);
@@ -63,10 +69,9 @@ export function SidebarWorkPanel({
   const works = allWorks.filter((work) => !work.corrupted);
   const recurringWorks = works.filter((work) => isPersistentWork(work.trigger));
   const oneOffWorks = works.filter((work) => isEphemeralWork(work.trigger));
-  const singleExecutions = (state?.executions ?? [])
-    .filter(isSingleExecution)
-    .slice(0, 6);
-  const oneOffCount = oneOffWorks.length + singleExecutions.length;
+  const allSingleExecutions = (state?.executions ?? []).filter(isSingleExecution);
+  const singleExecutions = allSingleExecutions.slice(0, SIDEBAR_RECENT_RUNS);
+  const oneOffCount = oneOffWorks.length + allSingleExecutions.length;
 
   return (
     <div className="sidebar-panel-section sidebar-work-overview">
@@ -195,6 +200,11 @@ export function SidebarWorkPanel({
               <div className="sidebar-work-subgroup">
                 <p className="sidebar-work-subgroup-title">최근 실행 결과</p>
                 <ExecutionList executions={singleExecutions} sessions={sessions} onOpen={onOpenExecution} />
+                {onShowActivity && allSingleExecutions.length > singleExecutions.length && (
+                  <button type="button" className="sidebar-work-more" onClick={onShowActivity}>
+                    활동에서 모두 보기 ({allSingleExecutions.length})
+                  </button>
+                )}
               </div>
             )}
           </>

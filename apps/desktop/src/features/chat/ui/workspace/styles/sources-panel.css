@@ -126,6 +126,11 @@
   font-weight: 800;
 }
 
+.workspace-source-icon--word {
+  background: rgba(43, 87, 154, 0.12);
+  color: #2b579a;
+}
+
 .workspace-source-body {
   min-width: 0;
   flex: 1;

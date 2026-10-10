@@ -251,10 +251,45 @@
   }
 }
 
+/* Only a narrow window, where the panel sits under the chat, can fold it. */
+.workspace-context-fold {
+  display: none;
+}
+
 @media (max-width: 960px) {
   .work-conversation-body {
     grid-template-columns: 1fr !important;
     grid-template-rows: minmax(0, 1fr) minmax(240px, 0.55fr);
+  }
+
+  /* Folded to its tabs, the panel leaves the height to the conversation. */
+  .work-conversation-body:has(.workspace-context-panel--folded) {
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+
+  .workspace-context-panel--folded .workspace-context-content {
+    display: none;
+  }
+
+  .workspace-context-panel {
+    position: relative;
+  }
+
+  .workspace-context-fold {
+    position: absolute;
+    top: 13px;
+    right: 14px;
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-muted);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
   }
 
   .work-conversation-splitter {
@@ -263,5 +298,10 @@
 
   .work-conversation-chat {
     border-bottom: 1px solid var(--border);
+  }
+
+  /* Under the chat, the panel's edge is its top, not its left. */
+  .tool-result-panel {
+    border-left: 0;
   }
 }

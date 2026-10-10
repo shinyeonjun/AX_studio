@@ -1,4 +1,4 @@
-import { connectorErrorMessage, executionErrorReason } from '@ax-studio/core';
+import { connectorErrorMessage, executionErrorReason, GENERATED_FILE_TYPES, generatedFileTypeOf } from '@ax-studio/core';
 
 type PersistedExecutionLogEntry = {
   at?: string;
@@ -8,11 +8,14 @@ type PersistedExecutionLogEntry = {
   data?: unknown;
 };
 
-export interface GeneratedPdfSummary {
+/** A file the run wrote for people to keep: PDF, Word or Excel. */
+export interface GeneratedFileSummary {
   artifactId: string;
   fileName: string;
   size: number;
-  mimeType: 'application/pdf';
+  mimeType: string;
+  /** "PDF", "Word", "Excel": what people call the kind. */
+  label: string;
 }
 
 export interface ExecutionLogSummary {
@@ -26,7 +29,7 @@ export interface ExecutionLogSummary {
     fields: string[];
     preview: Record<string, string>;
   };
-  generatedPdf?: GeneratedPdfSummary;
+  generatedFile?: GeneratedFileSummary;
   /** The file a "newest file" read actually opened this run. */
   sourceFile?: string;
   /** What the run computed, in step order: values and the visible part of tables. */
@@ -99,7 +102,7 @@ function record(value: unknown): Record<string, unknown> | undefined {
     : undefined;
 }
 
-function safePdfFileName(value: unknown): string | undefined {
+function safeFileName(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined;
   const leaf = value.replace(/^.*[\\/]/, '');
   const sanitized = leaf
@@ -111,11 +114,11 @@ function safePdfFileName(value: unknown): string | undefined {
   return sanitized && sanitized !== '.' && sanitized !== '..' ? sanitized : undefined;
 }
 
-function generatedPdfSummary(data: unknown): GeneratedPdfSummary | undefined {
+function generatedFileSummary(data: unknown): GeneratedFileSummary | undefined {
   const entry = record(data);
   if (!entry) return undefined;
   const artifactId = typeof entry.artifactId === 'string' ? entry.artifactId.trim() : '';
-  const fileName = safePdfFileName(entry.fileName);
+  const fileName = safeFileName(entry.fileName);
   const size = entry.size;
   const mimeType = entry.mimeType;
   if (
@@ -128,11 +131,12 @@ function generatedPdfSummary(data: unknown): GeneratedPdfSummary | undefined {
     typeof size !== 'number' ||
     !Number.isSafeInteger(size) ||
     size < 0 ||
-    mimeType !== 'application/pdf'
+    typeof mimeType !== 'string'
   ) {
     return undefined;
   }
-  return { artifactId, fileName, size, mimeType };
+  const type = generatedFileTypeOf(mimeType, fileName);
+  return type ? { artifactId, fileName, size, mimeType, label: type.label } : undefined;
 }
 
 export function executionLogSummary(logJson: string | null, executionStatus?: string): ExecutionLogSummary {
@@ -144,7 +148,10 @@ export function executionLogSummary(logJson: string | null, executionStatus?: st
       (entry): entry is PersistedExecutionLogEntry => Boolean(entry && typeof entry === 'object'),
     );
     const last = entries.at(-1);
-    const errorMessage = readableLogMessage(entries.filter((entry) => entry.level === 'error').at(-1));
+    // A run that succeeded may still have logged an error it recovered from; it is not why the run stopped.
+    const errorMessage = executionStatus === 'success'
+      ? undefined
+      : readableLogMessage(entries.filter((entry) => entry.level === 'error').at(-1));
     let current = [...entries].reverse().find((entry) => STEP_PROGRESS_CODES.has(entry.code ?? ''));
     if (current?.code === 'waiting_approval' && ['success', 'failed', 'cancelled'].includes(executionStatus ?? '')) {
       current = undefined;
@@ -165,8 +172,9 @@ export function executionLogSummary(logJson: string | null, executionStatus?: st
           ),
         )
       : {};
-    const pdfGenerated = [...entries].reverse().find((entry) => entry.code === 'pdf_generated');
-    const generatedPdf = generatedPdfSummary(pdfGenerated?.data);
+    const fileLogCodes = new Set<string>(Object.values(GENERATED_FILE_TYPES).map((type) => type.logCode));
+    const fileGenerated = [...entries].reverse().find((entry) => fileLogCodes.has(entry.code ?? ''));
+    const generatedFile = generatedFileSummary(fileGenerated?.data);
     const resolvedSource = record([...entries].reverse().find((entry) => entry.code === 'sheet_source_resolved')?.data);
     const sourceFile = typeof resolvedSource?.fileName === 'string' ? resolvedSource.fileName.slice(0, 200) : undefined;
     const computedResults = executionStatus === 'success'
@@ -180,7 +188,7 @@ export function executionLogSummary(logJson: string | null, executionStatus?: st
       ...(currentStepMessage ? { currentStepMessage } : {}),
       ...(lastLogMessage ? { lastLogMessage } : {}),
       ...(aiStepId ? { aiOutput: { stepId: aiStepId, fields: aiFields, preview: aiPreview } } : {}),
-      ...(generatedPdf ? { generatedPdf } : {}),
+      ...(generatedFile ? { generatedFile } : {}),
       ...(sourceFile ? { sourceFile } : {}),
       ...(computedResults.length > 0 ? { computedResults } : {}),
     };
