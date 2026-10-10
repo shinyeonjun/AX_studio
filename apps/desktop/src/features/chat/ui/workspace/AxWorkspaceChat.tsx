@@ -207,28 +207,32 @@ export function AxWorkspaceChat({
         </ThreadPrimitive.Root>
 
         <div className="ax-workspace-footer">
-          {workflowId && onRegisterWorkflow && (
-            <button
-              type="button"
-              className="ax-workspace-register-button"
-              disabled={busy || workflowRegistered}
-              onClick={() => void onRegisterWorkflow()}
-            >
-              {workflowRegistered ? '자동 실행 중' : '자동 실행 켜기'}
-            </button>
-          )}
-          {workflowId && onRunWorkflow && (
-            <button
-              type="button"
-              className="ax-workspace-register-button"
-              disabled={busy || running}
-              onClick={() => {
-                setRunning(true);
-                void onRunWorkflow().finally(() => setRunning(false));
-              }}
-            >
-              {running ? '실행 중…' : '지금 실행'}
-            </button>
+          {workflowId && (onRegisterWorkflow || onRunWorkflow) && (
+          <div className="ax-workspace-work-actions">
+            {onRegisterWorkflow && (
+              <button
+                type="button"
+                className="ax-workspace-register-button ax-workspace-register-button--secondary"
+                disabled={busy || workflowRegistered}
+                onClick={() => void onRegisterWorkflow()}
+              >
+                {workflowRegistered ? '자동 실행 중' : '자동 실행 켜기'}
+              </button>
+            )}
+            {onRunWorkflow && (
+              <button
+                type="button"
+                className="ax-workspace-register-button"
+                disabled={busy || running}
+                onClick={() => {
+                  setRunning(true);
+                  void onRunWorkflow().finally(() => setRunning(false));
+                }}
+              >
+                {running ? '실행 중…' : '지금 실행'}
+              </button>
+            )}
+          </div>
           )}
           <ComposerPrimitive.Root className="ax-workspace-composer">
             <WorkspaceComposer
