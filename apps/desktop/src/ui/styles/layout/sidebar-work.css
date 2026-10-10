@@ -53,6 +53,11 @@
   overflow: auto;
   padding: 0 12px 8px;
   border-bottom: 1px solid var(--border);
+  /* The last row fades out where the box cuts it, so the cut reads as "more below";
+     the bottom padding lets the real last row scroll clear of the fade. */
+  padding-bottom: 20px;
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 20px), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 20px), transparent);
 }
 
 .sidebar-panel-section {

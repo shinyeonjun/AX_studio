@@ -14,11 +14,11 @@
   justify-content: center;
   gap: 8px;
   width: 100%;
-  padding: 10px 12px;
+  padding: 8px 12px;
   margin-bottom: 8px;
-  border: 1px dashed var(--border-light);
+  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  background: linear-gradient(135deg, rgba(158, 240, 255, 0.15), rgba(164, 165, 245, 0.12));
+  background: var(--bg-card);
   color: var(--purple);
   font-size: 13px;
   font-weight: 600;
@@ -28,7 +28,7 @@
 
 .sidebar-new-chat:hover {
   border-color: var(--purple-light);
-  background: linear-gradient(135deg, rgba(158, 240, 255, 0.28), rgba(164, 165, 245, 0.2));
+  background: var(--purple-glow);
 }
 
 .sidebar-new-chat svg {
@@ -39,6 +39,11 @@
 .sidebar-session-list {
   flex: 1;
   overflow: auto;
+  /* The last row fades out where the box cuts it, so the cut reads as "more below";
+     the bottom padding lets the real last row scroll clear of the fade. */
+  padding-bottom: 20px;
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 20px), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 20px), transparent);
 }
 
 .sidebar-work-row .sidebar-work-item {
@@ -67,18 +72,22 @@
   border: 0;
   border-radius: 8px;
   background: transparent;
-  color: #141414;
+  color: var(--text-muted);
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  opacity: 0;
+  transition: background 0.15s ease, color 0.15s ease, opacity 0.15s ease;
+}
+
+/* A delete button on every row is noise: it shows for the row being pointed at, focused or open. */
+.sidebar-session-row:hover .sidebar-session-delete,
+.sidebar-session-row:focus-within .sidebar-session-delete,
+.sidebar-session-row:has(.sidebar-session-item.active) .sidebar-session-delete {
+  opacity: 1;
 }
 
 .sidebar-session-delete:hover {
   background: var(--red-bg);
   color: var(--red);
-}
-
-[data-theme='dark'] .sidebar-session-delete {
-  color: #e8ebf4;
 }
 
 .sidebar-session-delete svg {

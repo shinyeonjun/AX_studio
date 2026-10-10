@@ -3,7 +3,7 @@
 .sidebar-execution-list {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 2px;
   list-style: none;
   margin: 0;
   padding: 0;
@@ -15,10 +15,10 @@
   align-items: start;
   gap: 8px;
   width: 100%;
-  padding: 9px 8px;
-  border: 1px solid var(--border);
+  padding: 7px 8px;
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  background: var(--bg-card);
+  background: transparent;
   color: var(--text);
   text-align: left;
   cursor: pointer;
@@ -76,7 +76,7 @@
 }
 
 .sidebar-execution-title {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
 }
 
