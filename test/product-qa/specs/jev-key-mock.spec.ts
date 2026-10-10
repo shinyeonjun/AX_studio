@@ -76,7 +76,7 @@ test('Jev form distinguishes registration, mocked authentication and failed retr
     // Untranslated English from the main process is never shown as is.
     await page.evaluate(() => { (window as any).__jevQa.mode = 'english'; });
     await page.getByRole('button', { name: 'API 연결 테스트' }).click();
-    await expect(page.locator('.connection-form-message')).toHaveText('Jev 연결 테스트에 실패했습니다.');
+    await expect(page.locator('.connection-form-message')).toHaveText('요청 판단 연결 테스트에 실패했습니다.');
     await expect(badge).not.toHaveClass(/connected/);
     writeFileSync(join(runRoot, 'result.json'), JSON.stringify({ status: 'passed', mode: 'mock-renderer-only', liveApiRequests: 0,
       checked: ['registered badge', 'raw invalid draft', 'mock authentication', 'failed retry clears authentication'] }, null, 2));
