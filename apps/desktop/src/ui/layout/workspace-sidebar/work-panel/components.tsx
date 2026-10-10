@@ -17,12 +17,10 @@ export function WorkGroup({ id, title, subtitle, count, countLabel, children }: 
   return (
     <section className="sidebar-work-group" aria-labelledby={id}>
       <div className="sidebar-work-group-header">
-        <div>
-          <h2 id={id} className="sidebar-section-title">{title}</h2>
-          <p className="sidebar-work-group-subtitle">{subtitle}</p>
-        </div>
+        <h2 id={id} className="sidebar-section-title">{title}</h2>
         <span className="sidebar-work-count" aria-label={`${countLabel} ${count}개`}>{count}</span>
       </div>
+      <p className="sidebar-work-group-subtitle">{subtitle}</p>
       {children}
     </section>
   );

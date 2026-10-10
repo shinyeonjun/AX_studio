@@ -103,12 +103,13 @@
   text-overflow: ellipsis;
 }
 
+/* A detail of the chat, so it reads as quiet text rather than another highlight. */
 .sidebar-session-tag {
   font-size: 11px;
-  padding: 2px 6px;
+  padding: 1px 6px;
   border-radius: 999px;
-  background: rgba(164, 165, 245, 0.35);
-  color: var(--purple);
+  background: var(--bg-hover);
+  color: var(--text-muted);
   flex-shrink: 0;
 }
 
