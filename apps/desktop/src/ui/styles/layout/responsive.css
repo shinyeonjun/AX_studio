@@ -6,6 +6,30 @@
   }
 }
 
+/* A short window: two small scroll boxes stacked in the sidebar would each show a sliver,
+   so the sidebar scrolls as one column and every list keeps its natural height. */
+@media (max-height: 760px) and (min-width: 721px) {
+  .workspace-sidebar {
+    overflow-y: auto;
+  }
+
+  .workspace-sidebar .workspace-sidebar-panel {
+    flex: none;
+  }
+
+  .workspace-sidebar .workspace-sidebar-sessions {
+    min-height: 0;
+    max-height: none;
+  }
+
+  .workspace-sidebar .sidebar-session-list,
+  .workspace-sidebar .workspace-sidebar-panel {
+    overflow: visible;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+}
+
 @media (max-width: 720px) {
   .workspace-sidebar {
     width: 100%;

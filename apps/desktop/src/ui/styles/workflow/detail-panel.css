@@ -257,14 +257,18 @@
 }
 
 @media (max-width: 960px) {
+  /* Stacked: the conversation keeps room for a few messages and the composer. In a short
+     window the two rows together are taller than the page, which then scrolls as a whole
+     instead of squeezing the messages to a sliver. */
   .work-conversation-body {
     grid-template-columns: 1fr !important;
-    grid-template-rows: minmax(0, 1fr) minmax(240px, 0.55fr);
+    grid-template-rows: minmax(500px, 1fr) minmax(280px, 0.55fr);
+    overflow-y: auto;
   }
 
   /* Folded to its tabs, the panel leaves the height to the conversation. */
   .work-conversation-body:has(.workspace-context-panel--folded) {
-    grid-template-rows: minmax(0, 1fr) auto;
+    grid-template-rows: minmax(min(460px, calc(100% - 60px)), 1fr) auto;
   }
 
   .workspace-context-panel--folded .workspace-context-content {

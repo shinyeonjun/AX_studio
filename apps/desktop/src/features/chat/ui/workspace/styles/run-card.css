@@ -42,6 +42,7 @@
 .ax-workspace-generated-pdf {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   justify-content: space-between;
   gap: 16px;
   margin-top: 14px;
@@ -54,6 +55,7 @@
 
 .ax-workspace-generated-pdf-copy {
   display: grid;
+  flex: 1 1 200px;
   min-width: 0;
   gap: 2px;
 }
