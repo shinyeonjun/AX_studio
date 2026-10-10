@@ -72,13 +72,13 @@
   padding: 4px 10px;
   border-radius: 999px;
   background: rgba(245, 158, 11, 0.12);
-  color: #fbbf24;
+  color: var(--amber);
   border: 1px solid rgba(245, 158, 11, 0.25);
 }
 
 .wf-preview-status-done {
   background: var(--green-bg);
-  color: #86efac;
+  color: var(--green);
   border-color: rgba(34, 197, 94, 0.25);
 }
 
@@ -199,5 +199,10 @@
 }
 
 .wf-graph .react-flow__pane::-webkit-scrollbar {
+  display: none;
+}
+
+/* In the side panel the minimap covers the flow it maps; the zoom buttons are enough there. */
+.workspace-context-content .wf-minimap {
   display: none;
 }

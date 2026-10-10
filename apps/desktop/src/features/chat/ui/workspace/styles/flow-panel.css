@@ -213,7 +213,7 @@
 .workspace-flow-method-label,
 .workspace-flow-approval-label {
   margin: 0;
-  color: var(--purple-light);
+  color: var(--purple);
   font-size: 11px;
   font-weight: 750;
 }

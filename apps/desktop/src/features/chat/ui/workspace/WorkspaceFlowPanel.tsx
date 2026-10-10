@@ -45,8 +45,10 @@ export function WorkspaceFlowPanel({
   const executionStatus = resolveWorkspaceExecutionStatus(latest?.executionStatus, latest?.content ?? '');
   const foundMethod = methodTitle(workflow, discovery);
   const replay = discovery?.replaySummary;
-  // Before the first request there is no progress to show: five grey steps would only read as clutter.
-  const nothingYet = presentation.status === 'idle' && presentation.activeStage === 0 && !workflow && !latest && !error;
+  // Before the first request, or before a saved work's first run, there is no progress to show:
+  // five grey steps (one of them about approvals) would only read as clutter.
+  const nothingYet = presentation.status === 'idle' && !latest && !error
+    && (workflow?.workflowId ? true : presentation.activeStage === 0 && !workflow);
 
   return (
     <section className="workspace-flow-panel" aria-label="실행 흐름">

@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react';
-import { useReactFlow, type Node } from '@xyflow/react';
+import { getNodesBounds, useReactFlow, useStoreApi, type Node } from '@xyflow/react';
 import { draftToFlow } from '../draft-to-flow.js';
 import { computeWorkflowDiff } from '../workflow-diff.js';
 import type { WorkflowVisualNodeData } from '../types.js';
 import type { WorkflowGraphProps } from './contracts.js';
 
 type WorkflowGraphModel = ReturnType<typeof draftToFlow>;
+
+/** Below this zoom the step labels cannot be read; a tall flow scrolls instead of shrinking further. */
+export const READABLE_ZOOM = 0.8;
 
 export interface WorkflowGraphState {
   graph: WorkflowGraphModel;
@@ -27,7 +30,8 @@ export function useWorkflowGraphState({
   autoSelectSourceId,
   onSelectNode,
 }: WorkflowGraphProps): WorkflowGraphState {
-  const { fitView } = useReactFlow();
+  const { fitView, getNodes, getZoom, setViewport } = useReactFlow();
+  const store = useStoreApi();
   const [collapseSystemSteps, setCollapseSystemSteps] = useState(true);
   const [enteringIds, setEnteringIds] = useState<Set<string>>(() => new Set());
   const prevNodeIdsRef = useRef<Set<string>>(new Set());
@@ -84,10 +88,20 @@ export function useWorkflowGraphState({
   useEffect(() => {
     if (!graph.hasContent) return;
     const frame = window.requestAnimationFrame(() => {
-      void fitView({ padding: expanded ? 0.2 : 0.35, duration: 180 });
+      void fitView({ padding: expanded ? 0.2 : 0.35 }).then(() => {
+        if (getZoom() >= READABLE_ZOOM) return;
+        // Too tall or wide to fit legibly: keep a readable size and start at the trigger, centred.
+        const bounds = getNodesBounds(getNodes());
+        const { width } = store.getState();
+        void setViewport({
+          x: width / 2 - (bounds.x + bounds.width / 2) * READABLE_ZOOM,
+          y: 24 - bounds.y * READABLE_ZOOM,
+          zoom: READABLE_ZOOM,
+        });
+      });
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [graphNodeIdsKey, expanded, graph.hasContent, fitView]);
+  }, [graphNodeIdsKey, expanded, graph.hasContent, fitView, getNodes, getZoom, setViewport, store]);
 
   useEffect(() => {
     if (!autoSelectSourceId || selectedNodeId || !onSelectNode) return;

@@ -6,6 +6,7 @@ import { useDiscovery } from '../hooks/useDiscovery';
 import { WorkConversationSplit } from './workspace/WorkConversationSplit';
 import { useWorkflowPanelWidth } from '../hooks/useWorkflowPanelWidth';
 import type { WorkflowVisualNodeData } from '../../workflows/authoring/types';
+import { displayForTrigger } from '../../workflows/authoring/node-display';
 import { AxWorkspaceChat } from './workspace/AxWorkspaceChat';
 import { WorkspaceContextPanel } from './workspace/WorkspaceContextPanel';
 import { WorkspaceFlowPanel } from './workspace/WorkspaceFlowPanel';
@@ -76,6 +77,11 @@ export function ChatMainPage({ workspaceChat, setupNotice, executions, works, on
 
   const workflowState = workspaceChat.workspaceWorkflowState;
   const title = workflowState?.title ?? 'AX Workspace';
+  // When it runs and whether it will, so a saved work says so without opening its flow.
+  const whenItRuns = workflowState?.workflow
+    ? displayForTrigger(workflowState.workflow).lines.map((line) => line.text).filter(Boolean).join(' · ')
+    : '';
+  const workStatus = !openWorkflowId || isManualWork ? undefined : workActive ? '자동 실행 중' : '자동 실행 꺼짐';
   const showGraph = Boolean(workflowState);
   const workflowPreview = showGraph ? (
     <Suspense fallback={<div className="muted">업무 구성을 불러오는 중…</div>}>
@@ -166,6 +172,14 @@ export function ChatMainPage({ workspaceChat, setupNotice, executions, works, on
             <h1 className="chat-main-title">{title}</h1>
             <span className="draft-badge draft-badge-done">업무</span>
           </div>
+          {(whenItRuns || workStatus) && (
+            <p className="chat-main-subtitle">
+              {whenItRuns}
+              {workStatus && (
+                <span className={`chat-main-work-status${workActive ? ' on' : ''}`}>{workStatus}</span>
+              )}
+            </p>
+          )}
         </header>
       )}
 

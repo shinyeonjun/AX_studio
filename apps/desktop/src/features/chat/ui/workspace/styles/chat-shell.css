@@ -63,17 +63,31 @@
   background: var(--ax-chat-surface);
 }
 
-.ax-workspace-register-button {
-  display: block;
+/* A saved work's actions sit above the composer at their own size, not as a full-width bar. */
+.ax-workspace-work-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
   width: min(var(--ax-chat-max-width), calc(100% - 32px));
   margin: 0 auto 10px;
-  padding: 10px 16px;
+}
+
+.ax-workspace-register-button {
+  padding: 8px 16px;
   border: 1px solid #7c5ce6;
-  border-radius: 12px;
+  border-radius: 10px;
   background: #7c5ce6;
   color: #fff;
+  font-size: 13px;
   font-weight: 700;
   cursor: pointer;
+}
+
+.ax-workspace-register-button--secondary {
+  border-color: color-mix(in srgb, #7c5ce6 45%, var(--border));
+  background: var(--bg-card);
+  color: #6a4fd6;
 }
 
 .ax-workspace-register-button:disabled {
