@@ -7,24 +7,50 @@
   gap: 0;
 }
 
+/* Activity reads at one comfortable width; long lines on a wide window are hard to follow. */
+.activity-page > * {
+  max-width: 920px;
+}
+
+.timeline-day + .timeline-day {
+  margin-top: 12px;
+}
+
+.timeline-day-label {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 8px 0 12px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.timeline-day-label span {
+  color: var(--text-dim);
+  font-size: 12px;
+  font-weight: 500;
+}
+
 .timeline-item {
   display: flex;
-  gap: 16px;
-  padding-bottom: 20px;
+  gap: 14px;
+  padding-bottom: 12px;
   position: relative;
 }
 
-.timeline-item:not(:last-child)::before {
+.timeline-day .timeline-item:not(:last-child)::before {
   content: '';
   position: absolute;
   left: 11px;
-  top: 28px;
-  bottom: 0;
+  top: 36px;
+  bottom: -10px;
   width: 2px;
   background: var(--border);
 }
 
 .timeline-dot {
+  margin-top: 10px;
   width: 24px;
   height: 24px;
   border-radius: 50%;
@@ -62,41 +88,84 @@
 }
 
 .activity-hint {
-  margin: 16px 0 0;
+  margin: -8px 0 16px;
   font-size: 13px;
   line-height: 1.5;
 }
 
 .timeline-body {
   flex: 1;
+  min-width: 0;
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  padding: 14px 16px;
+  padding: 12px 16px 14px;
 }
 
+/* Name first, then its status; deleting stays out of the way at the end. */
 .timeline-body-header {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
+  align-items: center;
+  gap: 8px;
+}
+
+.timeline-title {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.timeline-status-pill {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--bg-hover);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.timeline-status-pill.tone-success {
+  background: var(--green-bg);
+  color: var(--green);
+}
+
+.timeline-status-pill.tone-failed {
+  background: var(--red-bg);
+  color: var(--red);
+}
+
+.timeline-status-pill.tone-pending {
+  background: rgba(201, 138, 26, 0.12);
+  color: var(--amber);
+}
+
+.timeline-status-pill.tone-running {
+  background: var(--purple-glow);
+  color: var(--purple);
 }
 
 .timeline-delete {
   flex-shrink: 0;
+  margin-left: auto;
   padding: 2px 8px;
   min-height: 0;
 }
 
-.timeline-time {
-  font-size: 12px;
+.timeline-meta {
+  margin-top: 2px;
   color: var(--text-dim);
-  margin-bottom: 4px;
+  font-size: 12px;
 }
 
-.timeline-status {
-  font-weight: 500;
-  font-size: 14px;
+.timeline-problem {
+  margin-top: 8px;
+  color: var(--red);
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .timeline-step {

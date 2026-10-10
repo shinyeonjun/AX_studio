@@ -3,6 +3,7 @@ import { PageHeader } from '../../../ui/layout/PageHeader';
 import { ActivityExecutionItem } from './activity-execution-item.js';
 import { useActivityActions } from './use-activity-actions.js';
 import { runWorkName } from '../../../ui/lib/work-display';
+import { groupByDay } from './format.js';
 
 interface ActivityPageProps {
   state: AppState | null;
@@ -52,14 +53,14 @@ export function ActivityPage({ state, onRefresh }: ActivityPageProps) {
           ) : undefined
         }
       />
-      <div className="page-content">
+      <div className="page-content activity-page">
         {clearError && <div className="approval-error" role="alert">{clearError}</div>}
         <div className={`ask-bar${canExplain ? '' : ' ask-bar--disabled'}`}>
           <input
             aria-label="실행 결과에 대해 AI에게 물어볼 내용"
             value={explainQ}
             onChange={(e) => setExplainQ(e.target.value)}
-            placeholder="실행이 멈췄거나 실패한 이유를 물어보세요"
+            placeholder="실행 기록에 대해 물어보세요. 예: 어제 실패한 업무는 왜 멈췄어?"
             disabled={!canExplain || explaining}
             onKeyDown={(e) => {
               // Korean IME commits the composition with Enter; only a real Enter submits.
@@ -85,36 +86,37 @@ export function ActivityPage({ state, onRefresh }: ActivityPageProps) {
         )}
         {explainA && <div className="review-box">{explainA}</div>}
 
-        <p className="muted activity-hint">
-          실행할 때마다 결과가 따로 남아요. 직접 실행이 실패해도 Gmail·Slack 자동 시작으로 실행된 업무는 성공했을 수 있어요.
-        </p>
-
-        <div className="timeline" style={{ marginTop: 16 }}>
+        <div className="timeline">
           {executions.length === 0 ? (
             <div className="empty-state">
               <p>아직 실행 기록이 없습니다</p>
               <p className="muted">업무를 실행하거나 자동 시작 조건이 맞으면 여기에 표시됩니다.</p>
             </div>
           ) : (
-            executions.map((execution) => (
-              <ActivityExecutionItem
-                key={execution.id}
-                execution={execution}
-                skillName={runWorkName(execution, state?.works)}
-                deleting={busyId === execution.id}
-                clearing={clearing}
-                exporting={exportingId !== null}
-                isExporting={exportingId === execution.id}
-                exported={exportedId === execution.id}
-                exportError={exportError?.executionId === execution.id ? exportError.message : undefined}
-                savingToFolder={savingToFolderId !== null}
-                isSavingToFolder={savingToFolderId === execution.id}
-                savedToFolder={savedToFolderId === execution.id}
-                folderSaveError={folderSaveError?.executionId === execution.id ? folderSaveError.message : undefined}
-                onDelete={() => void deleteExecution(execution.id)}
-                onExportFile={(artifactId) => void exportFile(execution.id, artifactId)}
-                onSaveFileToFolder={(artifactId) => void saveFileToFolder(execution.id, artifactId)}
-              />
+            groupByDay(executions).map((group) => (
+              <section key={group.label} className="timeline-day" aria-label={group.label}>
+                <h2 className="timeline-day-label">{group.label}<span>{group.runs.length}건</span></h2>
+                {group.runs.map((execution) => (
+                  <ActivityExecutionItem
+                    key={execution.id}
+                    execution={execution}
+                    skillName={runWorkName(execution, state?.works)}
+                    deleting={busyId === execution.id}
+                    clearing={clearing}
+                    exporting={exportingId !== null}
+                    isExporting={exportingId === execution.id}
+                    exported={exportedId === execution.id}
+                    exportError={exportError?.executionId === execution.id ? exportError.message : undefined}
+                    savingToFolder={savingToFolderId !== null}
+                    isSavingToFolder={savingToFolderId === execution.id}
+                    savedToFolder={savedToFolderId === execution.id}
+                    folderSaveError={folderSaveError?.executionId === execution.id ? folderSaveError.message : undefined}
+                    onDelete={() => void deleteExecution(execution.id)}
+                    onExportFile={(artifactId) => void exportFile(execution.id, artifactId)}
+                    onSaveFileToFolder={(artifactId) => void saveFileToFolder(execution.id, artifactId)}
+                  />
+                ))}
+              </section>
             ))
           )}
         </div>

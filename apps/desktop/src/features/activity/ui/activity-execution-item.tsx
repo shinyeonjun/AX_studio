@@ -6,7 +6,7 @@ import {
   executionTriggerLabel,
   formatRelativeTime,
 } from '../../../ui/lib/work-display';
-import { formatFileSize, formatTimestamp } from './format.js';
+import { formatClock, formatFileSize, formatTimestamp } from './format.js';
 import { CalculatedOutput } from './calculated-output.js';
 
 type ComputedResult = NonNullable<ActivityExecution['computedResults']>[number];
@@ -78,6 +78,11 @@ export function ActivityExecutionItem({
   const pending = execution.status === 'pending_approval';
   const failed = execution.status === 'failed';
   const errorDetail = executionErrorLabel(execution.errorCode);
+  const tone = ok ? 'success' : failed || resultFailed ? 'failed' : pending ? 'pending' : running ? 'running' : 'neutral';
+  const statusText = resultFailed ? '결과 확인 필요' : executionStatusLabel(execution.status);
+  const extraError = execution.errorMessage && execution.errorMessage.replace(/[.。]$/u, '') !== errorDetail
+    ? execution.errorMessage
+    : undefined;
   const generatedFile = execution.generatedFile;
   const aiOutput = execution.aiOutput;
   // Field keys are internal names; show the work's own description, or just their place.
@@ -92,9 +97,8 @@ export function ActivityExecutionItem({
       </div>
       <div className="timeline-body">
         <div className="timeline-body-header">
-          <div className="timeline-time">
-            {formatRelativeTime(execution.startedAt)} · {formatTimestamp(execution.startedAt)}
-          </div>
+          <div className="timeline-title">{skillName ?? '일회성 작업'}</div>
+          <span className={`timeline-status-pill tone-${tone}`}>{statusText}</span>
           <button
             type="button"
             className="btn btn-sm btn-ghost btn-danger-text timeline-delete"
@@ -107,14 +111,13 @@ export function ActivityExecutionItem({
             {deleting ? '…' : '삭제'}
           </button>
         </div>
-        <div className="timeline-status">
-          {skillName ?? '일회성 작업'} — {resultFailed ? '실행은 끝났지만 결과를 확인해야 해요' : executionStatusLabel(execution.status)}
+        <div className="timeline-meta" title={formatTimestamp(execution.startedAt)}>
+          {executionTriggerLabel(execution.triggerType)} · {formatClock(execution.startedAt)} · {formatRelativeTime(execution.startedAt)}
         </div>
-        <div className="muted">
-          {executionTriggerLabel(execution.triggerType)}
-          {errorDetail ? ` · ${errorDetail}` : ''}
-          {execution.errorMessage && execution.errorMessage.replace(/[.。]$/u, '') !== errorDetail ? ` · ${execution.errorMessage}` : ''}
-        </div>
+        {resultFailed && <div className="timeline-problem">실행은 끝났지만 결과를 확인해야 해요.</div>}
+        {(errorDetail || extraError) && (
+          <div className="timeline-problem">{[errorDetail, extraError].filter(Boolean).join(' · ')}</div>
+        )}
         {Boolean(execution.historyDiagnostics?.length) && (
           <div className="timeline-step" role="alert">
             이전 기록을 완전히 읽을 수 없습니다. 원본은 보존되어 있습니다.
