@@ -55,7 +55,7 @@
 /* Settings — connection hub */
 .connection-hub {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 16px;
 }
 
@@ -169,9 +169,12 @@
   color: var(--text-muted);
 }
 
-.btn-secondary.btn-danger {
-  border-color: var(--red, #ef4444);
-  color: var(--red, #ef4444);
+/* Removing a connection asks first, so the button stays quiet until reached for. */
+.btn-secondary.btn-danger:hover:not(:disabled),
+.btn-secondary.btn-danger:focus-visible {
+  border-color: var(--red);
+  background: var(--red-bg);
+  color: var(--red);
 }
 
 .connection-card-body {

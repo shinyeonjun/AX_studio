@@ -69,7 +69,11 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
-  max-width: 640px;
+}
+
+/* Every settings screen but the hub reads at one comfortable width. */
+.settings-detail-frame {
+  max-width: 760px;
 }
 
 .connection-form-header {
@@ -91,16 +95,19 @@
   object-fit: contain;
 }
 
+/* How-to notes sit quietly under the form: a tinted note, not another card. */
 .connection-guide {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 20px;
+  padding: 14px 16px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-hover);
+  color: var(--text-muted);
+  font-size: 13px;
 }
 
 .connection-guide h4 {
-  margin: 0 0 12px;
-  font-size: 14px;
+  margin: 0 0 6px;
+  color: var(--text);
+  font-size: 13px;
   font-weight: 600;
 }
 
@@ -132,8 +139,9 @@
 }
 
 .provider-option.selected {
-  border-color: var(--purple);
-  background: var(--purple-glow);
+  border-color: color-mix(in srgb, var(--purple) 55%, var(--border));
+  background: var(--bg-card);
+  box-shadow: inset 3px 0 0 var(--purple);
 }
 
 .provider-option.disabled,
@@ -177,9 +185,14 @@
 }
 
 .provider-option.selected .provider-option-title {
-  color: var(--purple-light);
+  color: var(--text);
 }
 
 .connection-mode-panel {
   margin-bottom: 8px;
+}
+
+.connection-guide > :last-child,
+.connection-guide p:last-child {
+  margin-bottom: 0;
 }

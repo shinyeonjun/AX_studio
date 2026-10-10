@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ipcErrorMessage } from '../../../../ui/lib/ipc-error';
+import { SettingSwitch } from '../SettingRow';
 
 interface JevDecisionPlaneFormProps {
   onRefresh: () => Promise<void>;
@@ -137,15 +138,7 @@ export function JevDecisionPlaneForm({ onRefresh }: JevDecisionPlaneFormProps) {
                 켜도 실행·저장 여부는 앱의 안전 규칙이 최종으로 정합니다.
               </div>
             </div>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <input
-                type="checkbox"
-                aria-label="요청 판단 사용"
-                checked={enabled}
-                onChange={(event) => setEnabled(event.target.checked)}
-              />
-              {enabled ? '켜짐' : '꺼짐'}
-            </label>
+            <SettingSwitch label="요청 판단 사용" checked={enabled} onChange={setEnabled} />
           </div>
         </div>
 
