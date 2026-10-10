@@ -54,7 +54,7 @@ export function WorkspaceSidebar({
 }: WorkspaceSidebarProps) {
   const [navigationExpanded, setNavigationExpanded] = useState(false);
   // What the folded list holds, named for the tab it belongs to.
-  const listName = tab === 'settings' ? '설정 목록' : tab === 'work' ? '대화와 업무 목록' : '대화 목록';
+  const listName = tab === 'settings' ? '설정과 대화 목록' : tab === 'work' ? '대화와 업무 목록' : '대화 목록';
   return (
     <aside className={'workspace-sidebar' + (navigationExpanded ? ' workspace-sidebar--expanded' : '')}>
       <div className="workspace-sidebar-brand">
@@ -103,16 +103,13 @@ export function WorkspaceSidebar({
         )}
       </div>
 
-      {/* Settings has its own list of screens; the chats are a click away under 업무. */}
-      {tab !== 'settings' && (
-        <SidebarSessionList
-          sessions={sessions}
-          activeSessionId={activeSessionId}
-          onNewChat={() => { setNavigationExpanded(false); onNewChat(); }}
-          onSelectSession={session => { setNavigationExpanded(false); onSelectSession(session); }}
-          onDeleteSession={onDeleteSession}
-        />
-      )}
+      <SidebarSessionList
+        sessions={sessions}
+        activeSessionId={activeSessionId}
+        onNewChat={() => { setNavigationExpanded(false); onNewChat(); }}
+        onSelectSession={session => { setNavigationExpanded(false); onSelectSession(session); }}
+        onDeleteSession={onDeleteSession}
+      />
       </div>
     </aside>
   );
