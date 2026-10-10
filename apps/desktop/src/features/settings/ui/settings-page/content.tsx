@@ -40,7 +40,7 @@ export function SettingsPageContent({
   const detailBrand = brandFromSettingsScreen(screen);
 
   return (
-    <div className="page-content">
+    <div className={`page-content${screen === 'hub' ? '' : ' settings-detail-frame'}`}>
       {screen === 'hub' && (
         <SettingsHub
           state={state}
