@@ -56,7 +56,9 @@ export class TriggerEngine {
       }, this.tickMs);
       this.startPollTick();
     }
-    void this.refreshPushTransports();
+    void this.refreshPushTransports().catch((error) => {
+      console.error('[trigger-engine] push transport refresh failed:', error);
+    });
   }
 
   private startPollTick(): void {
