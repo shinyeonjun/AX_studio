@@ -1,6 +1,11 @@
 import type { AppDatabase } from '../db.js';
 import { readRow } from '../db/types.js';
-import { decideTriggerClaim, type TriggerReceiptStatus } from '../../domain/trigger-receipt-state.js';
+import {
+  decideTriggerClaim,
+  TRIGGER_RECEIPT_FINISH_FROM,
+  type TriggerReceiptFinish,
+  type TriggerReceiptStatus,
+} from '../../domain/trigger-receipt-state.js';
 
 export { DEFAULT_TRIGGER_RECEIPT_PROCESSING_LEASE_MS } from '../../domain/trigger-receipt-state.js';
 
@@ -58,26 +63,39 @@ export function claimTriggerReceipt(
   return false;
 }
 
+/** Finishes a receipt only from a status the domain allows (see TRIGGER_RECEIPT_FINISH_FROM). */
+function finishTriggerReceipt(
+  db: AppDatabase,
+  finish: TriggerReceiptFinish,
+  dedupeKey: string,
+  columns: { status: TriggerReceiptStatus; executionId?: string | null },
+): boolean {
+  const now = new Date().toISOString();
+  const from = TRIGGER_RECEIPT_FINISH_FROM[finish];
+  const executionClause = columns.executionId === undefined ? '' : ', execution_id = COALESCE(?, execution_id)';
+  const params: Array<string | null> = [columns.status];
+  if (columns.executionId !== undefined) params.push(columns.executionId);
+  params.push(now, dedupeKey, ...from);
+  const changed = db
+    .prepare(
+      `UPDATE trigger_receipts
+       SET status = ?${executionClause}, updated_at = ?
+       WHERE dedupe_key = ? AND status IN (${from.map(() => '?').join(', ')})`,
+    )
+    .run(...params).changes;
+  return changed > 0;
+}
+
 export function completeTriggerReceipt(
   db: AppDatabase,
   dedupeKey: string,
   executionId?: string,
-): void {
-  const now = new Date().toISOString();
-  db.prepare(
-    `UPDATE trigger_receipts
-     SET status = 'completed', execution_id = ?, updated_at = ?
-     WHERE dedupe_key = ?`,
-  ).run(executionId ?? null, now, dedupeKey);
+): boolean {
+  return finishTriggerReceipt(db, 'completed', dedupeKey, { status: 'completed', executionId: executionId ?? null });
 }
 
-export function failTriggerReceipt(db: AppDatabase, dedupeKey: string): void {
-  const now = new Date().toISOString();
-  db.prepare(
-    `UPDATE trigger_receipts
-     SET status = 'failed', updated_at = ?
-     WHERE dedupe_key = ?`,
-  ).run(now, dedupeKey);
+export function failTriggerReceipt(db: AppDatabase, dedupeKey: string): boolean {
+  return finishTriggerReceipt(db, 'failed', dedupeKey, { status: 'failed' });
 }
 
 export function isTriggerReceiptCompleted(db: AppDatabase, dedupeKey: string): boolean {
@@ -92,13 +110,8 @@ export function isTriggerReceiptCompleted(db: AppDatabase, dedupeKey: string): b
  * Terminal dead-letter state. claimTriggerReceipt never reclaims a dead
  * receipt, so the event is neither retried nor allowed to block later events.
  */
-export function deadLetterTriggerReceipt(db: AppDatabase, dedupeKey: string, executionId?: string): void {
-  const now = new Date().toISOString();
-  db.prepare(
-    `UPDATE trigger_receipts
-     SET status = 'dead', execution_id = COALESCE(?, execution_id), updated_at = ?
-     WHERE dedupe_key = ?`,
-  ).run(executionId ?? null, now, dedupeKey);
+export function deadLetterTriggerReceipt(db: AppDatabase, dedupeKey: string, executionId?: string): boolean {
+  return finishTriggerReceipt(db, 'dead', dedupeKey, { status: 'dead', executionId: executionId ?? null });
 }
 
 /** Startup only: a processing receipt has no live owner after restart; never auto-retry it. */
