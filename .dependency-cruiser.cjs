@@ -71,6 +71,14 @@ module.exports = {
       to: { path: '^packages/core/src/runtime' },
     },
     {
+      // Domain rules are pure: they take their inputs and return decisions, so they can be tested
+      // without a database, a clock or a connector.
+      name: 'domain-pure',
+      severity: 'error',
+      from: { path: '^packages/core/src/domain' },
+      to: { path: '^packages/core/src/(persistence|runtime|connectors|intelligence|workflow|triggers|work-discovery|documents|application|platform|catalog)' },
+    },
+    {
       name: 'connectors-no-work-discovery',
       severity: 'error',
       from: { path: '^packages/core/src/connectors/(?!packages)' },

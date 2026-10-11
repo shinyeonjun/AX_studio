@@ -19,6 +19,7 @@ connectors/          External-system adapters and connector package assembly
 workflow/            Workflow IR, canvas authoring, validation, repair, and display
 work-discovery/      Source observation, exploration, synthesis, and publication
 runtime/             Execution engine, scheduling, approvals, and trigger runtime
+domain/              Pure lifecycle rules (approval, trigger receipt): no storage, clock or connector
 triggers/            Poll/push transport and trigger registration
 
 documents/read/      TypeScript client for the Python document engine
@@ -45,6 +46,7 @@ i18n/                Localized product strings
 6. **Intelligence is a policy boundary** — agent prompts, skills, model providers, retrieval, and design tools stay behind `intelligence/`.
 7. **Application composition is explicit** — `application/bootstrap.ts` wires services; importing a connector does not register global side effects.
 8. **Root domain seams are intentional** — workflow, work-discovery, runtime, triggers, contracts, catalog, and platform remain top-level because they are stable cross-feature boundaries.
+9. **Domain rules are pure** — `domain/` decides state transitions from its inputs; persistence performs them as conditional writes derived from the same tables.
 
 ## Architecture checks
 
