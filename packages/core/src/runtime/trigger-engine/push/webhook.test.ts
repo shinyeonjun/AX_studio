@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setWebhookSecretResolver } from '../../../triggers/webhook/secret-provider.js';
 import { createDatabaseAsync } from '../../../persistence/db.js';
 import { WorkflowStore } from '../../../persistence/workflow-store.js';
@@ -88,11 +88,12 @@ describe('TriggerEngine webhook push lifecycle', () => {
         body: '{"id":1}',
       });
       expect(accepted.status).toBe(202);
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      expect(mockSlack(runtime.connectors).messages).toHaveLength(1);
-      expect(store.listExecutions(10)).toEqual([
-        expect.objectContaining({ workflowId, status: 'success', triggerType: 'webhook.inbound' }),
-      ]);
+      await vi.waitFor(() => {
+        expect(mockSlack(runtime.connectors).messages).toHaveLength(1);
+        expect(store.listExecutions(10)).toEqual([
+          expect.objectContaining({ workflowId, status: 'success', triggerType: 'webhook.inbound' }),
+        ]);
+      }, { timeout: 5_000 });
 
       const repeated = await fetch(`http://127.0.0.1:${port}/hooks/invoice-paid`, {
         method: 'POST',
@@ -132,9 +133,10 @@ describe('TriggerEngine webhook push lifecycle', () => {
         body: '{"id":2}',
       });
       expect(restarted.status).toBe(202);
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      expect(mockSlack(runtime.connectors).messages).toHaveLength(2);
-      expect(store.listExecutions(10)).toHaveLength(2);
+      await vi.waitFor(() => {
+        expect(mockSlack(runtime.connectors).messages).toHaveLength(2);
+        expect(store.listExecutions(10)).toHaveLength(2);
+      }, { timeout: 5_000 });
     } finally {
       await engine.stop();
     }
@@ -166,10 +168,11 @@ describe('TriggerEngine webhook push lifecycle', () => {
         body: '{"id":1}',
       });
       expect(accepted.status).toBe(202);
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      expect(store.listExecutions(10)).toEqual([
-        expect.objectContaining({ workflowId, status: 'success', triggerType: 'webhook.inbound' }),
-      ]);
+      await vi.waitFor(() => {
+        expect(store.listExecutions(10)).toEqual([
+          expect.objectContaining({ workflowId, status: 'success', triggerType: 'webhook.inbound' }),
+        ]);
+      }, { timeout: 5_000 });
     } finally {
       await engine.stop();
     }
