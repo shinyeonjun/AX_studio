@@ -1,5 +1,5 @@
-import type { SourceListingConnection } from '../../../connectors/types.js';
-import { parseLocalFolderConnectionConfig } from '../../../platform/local-folder-config.js';
+import type { SourceListingConnection } from '../../connectors/types.js';
+import { parseLocalFolderConnectionConfig } from '../../platform/local-folder-config.js';
 import { addIndexedOperation, type IndexedReadOperation } from './indexed-operation.js';
 import { explicitLimit, explicitParameterValue, limitParameterHint, naturalLimitChoices, text } from './request-values.js';
 
