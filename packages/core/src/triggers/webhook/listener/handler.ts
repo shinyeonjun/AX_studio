@@ -20,6 +20,18 @@ import {
   respond,
 } from './transport.js';
 
+let sharedSecretWarned = false;
+
+/**
+ * The shared-secret header proves identity only: it has no timestamp, so it cannot stop a captured
+ * request from being replayed. Behaviour is unchanged; senders are told once to move to HMAC.
+ */
+function warnSharedSecretOnce(): void {
+  if (sharedSecretWarned) return;
+  sharedSecretWarned = true;
+  console.warn('[trigger-engine] a webhook was authenticated with the deprecated shared-secret header, which has no replay protection. Move the sender to HMAC (x-ax-signature: sha256=…, x-ax-timestamp).');
+}
+
 export async function handleWebhookRequest(
   req: IncomingMessage,
   res: ServerResponse,
@@ -105,6 +117,7 @@ export async function handleWebhookRequest(
       return;
     }
     authLimiter?.recordSuccess(clientKey);
+    if (!signature) warnSharedSecretOnce();
 
     const replayKey = signature && replayCache ? `${requestId}:${signature}` : undefined;
     if (replayKey && !replayCache!.claim(replayKey, timestamp!)) {

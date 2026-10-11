@@ -16,6 +16,7 @@ afterEach(() => setWebhookSecretResolver(null));
 describe('TriggerEngine webhook push lifecycle', () => {
   it('runs enabled webhook workflows and ignores disabled ones', async () => {
     const port = await findFreePort();
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     const webhookWorkflow: WorkflowIR = {
       name: 'Webhook 업무',
       goal: 'Webhook 수신 시 Slack 알림',
@@ -88,6 +89,8 @@ describe('TriggerEngine webhook push lifecycle', () => {
         body: '{"id":1}',
       });
       expect(accepted.status).toBe(202);
+      // Authenticated by the shared secret: the deprecation warning is raised once for this process.
+      await vi.waitFor(() => expect(warn).toHaveBeenCalledWith(expect.stringContaining('deprecated shared-secret header')));
       await vi.waitFor(() => {
         expect(mockSlack(runtime.connectors).messages).toHaveLength(1);
         expect(store.listExecutions(10)).toEqual([
@@ -138,6 +141,7 @@ describe('TriggerEngine webhook push lifecycle', () => {
         expect(store.listExecutions(10)).toHaveLength(2);
       }, { timeout: 5_000 });
     } finally {
+      warn.mockRestore();
       await engine.stop();
     }
   });
