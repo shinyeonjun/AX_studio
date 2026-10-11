@@ -7,7 +7,7 @@ const SYSTEM_WARNING_COPY: Record<SystemWarningKey, string> = {
   databaseBackendFallback:
     '기본 데이터베이스 엔진을 불러오지 못해 임시 저장 방식으로 실행 중입니다. 앱이 갑자기 종료되면 최근 몇 초간의 변경이 저장되지 않을 수 있습니다. 계속되면 앱을 다시 설치해 주세요.',
   credentialStorageWarning:
-    '이 컴퓨터의 비밀번호 보관함을 쓸 수 없어 토큰·비밀번호가 암호화되지 않은 채 저장되고 있어요. 컴퓨터 관리자에게 비밀번호 보관함(키링) 설정을 요청한 뒤 앱을 다시 시작해 주세요.',
+    '이 컴퓨터의 비밀번호 보관함을 쓸 수 없어 토큰·비밀번호가 암호화되지 않은 채 저장되고 있습니다. 컴퓨터 관리자에게 비밀번호 보관함(키링) 설정을 요청한 뒤 앱을 다시 시작해 주세요.',
 };
 
 /** Active system-level warnings derived from app state, in display order. */
