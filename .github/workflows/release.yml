@@ -10,8 +10,13 @@ permissions:
   contents: write
 
 jobs:
+  # The same verification as CI, on the tagged commit. A failing commit is never packaged.
+  verify:
+    uses: ./.github/workflows/ci.yml
+
   windows:
     name: windows installer
+    needs: verify
     runs-on: windows-latest
     timeout-minutes: 45
     steps:
@@ -30,7 +35,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: npm
 
       - name: Install dependencies
@@ -44,10 +49,20 @@ jobs:
       - name: Build Core package
         run: npm run build -w @ax-studio/core
 
+      - name: Require the Windows signing certificate
+        shell: bash
+        env:
+          CSC_LINK: ${{ secrets.WINDOWS_CSC_LINK }}
+        run: |
+          # Installed apps download and install whatever latest.yml points to, so an unsigned installer must never ship.
+          if [ -z "$CSC_LINK" ]; then
+            echo "WINDOWS_CSC_LINK is not set; refusing to publish an unsigned auto-updating installer." >&2
+            exit 1
+          fi
+
       - name: Build Windows installer
         run: npm run pack:win -w @ax-studio/desktop
         env:
-          # Optional: set these repository secrets to sign the installer and to ship Gmail sign-in.
           CSC_LINK: ${{ secrets.WINDOWS_CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.WINDOWS_CSC_KEY_PASSWORD }}
           GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
