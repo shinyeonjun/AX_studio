@@ -1,4 +1,5 @@
 import { RUN_NOT_STARTED_CODES } from '../run-refusals.js';
+import { ExecutionResultStatusSchema } from '../../contracts/execution-status.js';
 import type { WorkflowStore } from '../../persistence/workflow-store.js';
 import type { WorkflowIR } from '../../workflow/schema.js';
 import type { WorkflowRuntime } from '../engine.js';
@@ -42,11 +43,19 @@ type PendingOccurrence = {
   triggerSnapshot?: string;
 };
 
+/** Every status a scheduled occurrence can end with: an execution result, or skipped before it ran. */
+export const SCHEDULER_OCCURRENCE_STATUSES = [...ExecutionResultStatusSchema.options, 'skipped'] as const;
+export type SchedulerOccurrenceStatus = (typeof SCHEDULER_OCCURRENCE_STATUSES)[number];
+
+export function isSchedulerOccurrenceStatus(value: unknown): value is SchedulerOccurrenceStatus {
+  return typeof value === 'string' && (SCHEDULER_OCCURRENCE_STATUSES as readonly string[]).includes(value);
+}
+
 export type SchedulerOccurrenceOutcome = OccurrenceOutcome;
 
 type OccurrenceOutcome = {
   occurrenceKey: string;
-  status: ExecutionResult['status'] | 'skipped';
+  status: SchedulerOccurrenceStatus;
   reason?: string;
   executionId?: string;
   at: string;

@@ -129,3 +129,58 @@ describe('file event identity', () => {
     expect(redelivered).toBe(first);
   });
 });
+
+describe('push fan-out isolation', () => {
+  const driver = PUSH_TRIGGER_DRIVERS.find(({ triggerType }) => triggerType === 'slack.new_message')!;
+
+  it('still runs the other workflows and keeps the event when one workflow throws', async () => {
+    const { db, store, workflowId } = await setup();
+    const second = store.saveWorkflow({ ...workflow, name: 'Slack relay 2' }).workflowId;
+    store.setWorkflowActive(second, true);
+    const realClaim = store.claimTriggerReceipt.bind(store);
+    let failed = false;
+    vi.spyOn(store, 'claimTriggerReceipt').mockImplementation((params) => {
+      if (!failed && params.workflowId === workflowId) {
+        failed = true;
+        throw new Error('database is locked');
+      }
+      return realClaim(params);
+    });
+    const executeWorkflow = vi.fn(async (_ir: WorkflowIR, _options: unknown) => ({ status: 'success', executionId: 'e1', log: [] }));
+    const coordinator = new TriggerEventCoordinator(store, { executeWorkflow } as never, () => true);
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    try {
+      expect(await coordinator.handlePushEvent(driver, slackEvent('7.0'))).toBe(true);
+      await coordinator.drain();
+      expect(executeWorkflow).toHaveBeenCalledTimes(1);
+      expect(executeWorkflow.mock.calls[0]?.[0]).toMatchObject({ name: 'Slack relay 2' });
+      expect(store.getSetting(PUSH_EVENT_JOURNAL_SETTING, null)).toEqual([
+        expect.objectContaining({ state: 'queued', attempts: 1 }),
+      ]);
+    } finally {
+      error.mockRestore();
+      db.close?.();
+    }
+  });
+
+  it('keeps the event journaled when the whole fan-out fails before any workflow runs', async () => {
+    const { db, store } = await setup();
+    vi.spyOn(store, 'listActiveWorkflowDefinitions').mockImplementation(() => {
+      throw new Error('database is locked');
+    });
+    const executeWorkflow = vi.fn(async () => ({ status: 'success', executionId: 'e1', log: [] }));
+    const coordinator = new TriggerEventCoordinator(store, { executeWorkflow } as never, () => true);
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    try {
+      expect(await coordinator.handlePushEvent(driver, slackEvent('8.0'))).toBe(true);
+      await coordinator.drain();
+      expect(executeWorkflow).not.toHaveBeenCalled();
+      expect(store.getSetting(PUSH_EVENT_JOURNAL_SETTING, null)).toEqual([
+        expect.objectContaining({ state: 'queued', attempts: 1 }),
+      ]);
+    } finally {
+      error.mockRestore();
+      db.close?.();
+    }
+  });
+});

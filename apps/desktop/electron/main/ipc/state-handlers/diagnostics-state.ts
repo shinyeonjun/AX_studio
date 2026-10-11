@@ -4,6 +4,7 @@ import {
   TRIGGER_POLL_FAILURE_PREFIX,
   type CorruptRowReport,
   type TriggerPollFailure,
+  isSchedulerOccurrenceStatus,
   type SchedulerOccurrenceOutcome,
   type TriggerDeadLetter,
 } from '@ax-studio/core';
@@ -58,7 +59,7 @@ function isDeadLetter(value: unknown): value is TriggerDeadLetter {
 function isOccurrenceOutcome(value: unknown): value is SchedulerOccurrenceOutcome {
   if (!value || typeof value !== 'object') return false;
   const entry = value as Record<string, unknown>;
-  return typeof entry.occurrenceKey === 'string' && typeof entry.status === 'string' && typeof entry.at === 'string'
+  return typeof entry.occurrenceKey === 'string' && isSchedulerOccurrenceStatus(entry.status) && typeof entry.at === 'string'
     && (entry.reason === undefined || typeof entry.reason === 'string')
     && (entry.executionId === undefined || typeof entry.executionId === 'string');
 }
