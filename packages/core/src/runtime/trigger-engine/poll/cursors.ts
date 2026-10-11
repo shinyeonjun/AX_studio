@@ -1,4 +1,4 @@
-import type { WorkflowStore } from '../../../persistence/workflow-store.js';
+import type { TriggerEngineStore } from '../store-port.js';
 import {
   TRIGGER_CURSOR_SETTING_KEY,
   type TriggerCursor,
@@ -6,7 +6,7 @@ import {
 } from '../../../triggers/types.js';
 import { parseTriggerCursorStore } from '../helpers.js';
 
-export function loadTriggerCursors(store: WorkflowStore): TriggerCursorStore {
+export function loadTriggerCursors(store: TriggerEngineStore): TriggerCursorStore {
   return parseTriggerCursorStore(
     store.getSetting<unknown>(TRIGGER_CURSOR_SETTING_KEY, {}),
   );
@@ -17,7 +17,7 @@ export function loadTriggerCursors(store: WorkflowStore): TriggerCursorStore {
  * poll tick cannot overwrite a cursor advanced meanwhile by a push delivery.
  */
 export function saveTriggerCursors(
-  store: WorkflowStore,
+  store: TriggerEngineStore,
   cursors: TriggerCursorStore,
   workflowIds: Iterable<string>,
 ): void {
@@ -30,7 +30,7 @@ export function saveTriggerCursors(
 }
 
 export function updateTriggerCursor(
-  store: WorkflowStore,
+  store: TriggerEngineStore,
   workflowId: string,
   update: (cursor: TriggerCursor) => TriggerCursor,
 ): void {

@@ -1,9 +1,9 @@
-import type { WorkflowStore } from '../../../persistence/workflow-store.js';
+import type { TriggerEngineStore } from '../store-port.js';
 import type { WorkflowRuntime } from '../../engine.js';
 import type { TriggerCursorStore } from '../../../triggers/types.js';
 
 export interface TriggerPollerOptions {
-  store: WorkflowStore;
+  store: TriggerEngineStore;
   runtime: WorkflowRuntime;
   getLifecycleGeneration: () => number;
   isCurrentGeneration: (generation: number) => boolean;
