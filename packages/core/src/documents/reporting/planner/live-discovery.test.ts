@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { AgentHarness, createInvestigationRunner } from '../../../intelligence/agent/harness.js';
-import { CodexCliProvider } from '../../../intelligence/agent/model/cli/adapters/codex-cli.js';
+import { CodexCliProvider } from '../../../intelligence/providers/cli/adapters/codex-cli.js';
 import type { PdfReportPairAnalysis } from '../../read/types/pdf.js';
 import { ReportPlanner } from './planner.js';
 

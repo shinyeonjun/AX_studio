@@ -2,8 +2,8 @@ import { isCliProviderId } from './ai-provider-id.js';
 import { isAiCliInstalled } from './cli-detect.js';
 import type { AiProviderConfig } from './config-schema.js';
 import { resolveAiProviderConfig } from './config-resolve.js';
-import { isAnthropicApiKeyConfigured } from '../model/anthropic-api.js';
-import { isOpenAiApiKeyConfigured } from '../model/openai-api.js';
+import { isAnthropicApiKeyConfigured } from '../../providers/anthropic-api.js';
+import { isOpenAiApiKeyConfigured } from '../../providers/openai-api.js';
 
 export function isAiProviderReady(config: AiProviderConfig): boolean {
   const resolved = resolveAiProviderConfig(config);

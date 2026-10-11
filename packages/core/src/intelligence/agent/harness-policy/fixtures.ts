@@ -1,4 +1,4 @@
-import type { ModelProvider, StructuredGenerateInput, TextGenerateInput } from '../model/provider.js';
+import type { ModelProvider, StructuredGenerateInput, TextGenerateInput } from '../../providers/provider.js';
 
 export class CloudSpyProvider implements ModelProvider {
   readonly name = 'openai-api';

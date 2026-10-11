@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ChatMessage } from '../../../../model/chat.js';
+import type { ChatMessage } from '../../../../../providers/chat.js';
 import { AxUiPresentationSchema } from '../../../schema/interaction.js';
 import {
   httpEndpointSelectionPresentation,

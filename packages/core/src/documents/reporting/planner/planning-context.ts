@@ -1,5 +1,5 @@
 import type { PdfReportPairAnalysis } from '../../read/types/pdf.js';
-import type { ModelImageInput } from '../../../intelligence/agent/model/provider.js';
+import type { ModelImageInput } from '../../../intelligence/providers/provider.js';
 import type { ReportSourceSnapshot } from '../plan/schema.js';
 
 function sampleCalculationRows<T>(rows: T[]): T[] {

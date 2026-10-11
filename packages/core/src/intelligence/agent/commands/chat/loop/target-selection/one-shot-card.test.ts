@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { AgentHarness } from '../../../../harness.js';
-import type { StructuredGenerateInput, TextGenerateInput } from '../../../../model/provider.js';
+import type { StructuredGenerateInput, TextGenerateInput } from '../../../../../providers/provider.js';
 import { createDatabaseAsync } from '../../../../../../persistence/db.js';
 import { WorkflowStore } from '../../../../../../persistence/workflow-store.js';
 import { runAxCommandChat } from '../../../chat.js';

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import { InvestigationOutputSchema } from '../../../../runtime/investigation-schema.js';
+import { InvestigationOutputSchema } from '../../../runtime/investigation-schema.js';
 import { zodToJsonSchema, zodToCodexJsonSchema } from '../cli-json.js';
 
 describe('cli schema conversion', () => {

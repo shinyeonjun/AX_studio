@@ -1,5 +1,5 @@
 import { CLI_PROVIDER_META, normalizeModelOptions, parseCodexModelsOutput, type CliModelOption } from './catalog.js';
-import { invalidateBinaryCache, resolveBinary, resolveBinaryAsync, runCommand } from '../model/cli-process.js';
+import { invalidateBinaryCache, resolveBinary, resolveBinaryAsync, runCommand } from '../../providers/cli-process.js';
 import { CLI_PROVIDER_IDS, type CliProviderId } from './ai-provider-id.js';
 
 export interface DetectedAiCli {

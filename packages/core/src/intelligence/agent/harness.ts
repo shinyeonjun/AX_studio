@@ -1,7 +1,7 @@
 import type { AiProviderConfig } from './settings/config.js';
 import { resolveAiProviderConfig } from './settings/config.js';
-import { createModelProvider } from './model/factory.js';
-import type { ModelProvider } from './model/provider.js';
+import { createModelProvider } from '../providers/factory.js';
+import type { ModelProvider } from '../providers/provider.js';
 import type { AgentResult, AgentRun, AgentTextResult, AgentTextRun } from './types.js';
 import type {
   InvestigationRunRequest,

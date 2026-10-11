@@ -1,7 +1,7 @@
 import { expect, it, vi } from 'vitest';
 const state = vi.hoisted(() => ({ run: vi.fn(), replacement: { name: 'next', dispose: vi.fn(async () => {}) } }));
 vi.mock('./harness/run.js', () => ({ runAgent: state.run }));
-vi.mock('./model/factory.js', () => ({ createModelProvider: () => state.replacement }));
+vi.mock('../providers/factory.js', () => ({ createModelProvider: () => state.replacement }));
 import { AgentHarness } from './harness.js';
 import { DEFAULT_AI_PROVIDER } from './settings/config.js';
 it('keeps a retired provider alive until its in-flight run finishes', async () => {

@@ -1,9 +1,9 @@
 import type { ZodType } from 'zod';
-import type { ChatMessage } from './model/chat.js';
-import type { AgentProgressEvent, ModelImageInput, ModelTokenUsage } from './model/provider.js';
+import type { ChatMessage } from '../providers/chat.js';
+import type { AgentProgressEvent, ModelImageInput, ModelTokenUsage } from '../providers/provider.js';
 import type { InvestigateAgentContext } from '../../contracts/investigation-runner.js';
 
-export type { AgentProgressEvent } from './model/provider.js';
+export type { AgentProgressEvent } from '../providers/provider.js';
 export type { InvestigateAgentContext } from '../../contracts/investigation-runner.js';
 
 export type AgentRole = 'command' | 'investigate';

@@ -1,5 +1,5 @@
-import { isCliProviderId } from '../settings/ai-provider-id.js';
-import { resolveAiProviderConfig, type AiProviderConfig } from '../settings/config.js';
+import { isCliProviderId } from '../agent/settings/ai-provider-id.js';
+import { resolveAiProviderConfig, type AiProviderConfig } from '../agent/settings/config.js';
 import { AnthropicApiProvider } from './anthropic-api.js';
 import { createCliModelProvider } from './cli/index.js';
 import { OpenAiApiProvider } from './openai-api.js';

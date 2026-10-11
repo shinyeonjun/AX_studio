@@ -1,4 +1,4 @@
-import type { ModelProvider } from '../model/provider.js';
+import type { ModelProvider } from '../../providers/provider.js';
 import { buildInvestigatePrompt } from '../prompt/index.js';
 import type { AgentContext, AgentTextResult, AgentTextRun } from '../types.js';
 import { invokeAgent } from './invoke.js';

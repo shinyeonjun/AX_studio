@@ -1,5 +1,5 @@
 import { AuthoritativeRequestError, authoritativeRequestClarification, createAuthoritativeRequestAnchor, resolveAuthoritativeRequestAnchor, guardAuthoritativeRequestDecisions } from '../../decision/request-anchor.js';
-import type { ChatMessage } from '../model/chat.js';
+import type { ChatMessage } from '../../providers/chat.js';
 import type { AxCommand, AxCommandResult } from './schema.js';
 import { inputRequestsForResult } from './input-requests.js';
 import { appendAppLog } from '../../../persistence/paths/app-log.js';

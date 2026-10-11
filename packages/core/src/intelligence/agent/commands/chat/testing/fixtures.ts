@@ -1,4 +1,4 @@
-import type { ModelProvider, StructuredGenerateInput, TextGenerateInput } from '../../../model/provider.js';
+import type { ModelProvider, StructuredGenerateInput, TextGenerateInput } from '../../../../providers/provider.js';
 import type { DecisionAnswer, DecisionEvaluationRequest } from '../../../../../contracts/decision.js';
 
 export interface ParallelToolCandidateForTest {

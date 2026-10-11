@@ -1,8 +1,8 @@
 import type { ZodType } from 'zod';
 import type { ChatMessage } from './chat.js';
-import type { AgentProgressEvent, ModelImageInput } from '../../../contracts/investigation-runner.js';
+import type { AgentProgressEvent, ModelImageInput } from '../../contracts/investigation-runner.js';
 
-export type { AgentProgressEvent, ModelImageInput } from '../../../contracts/investigation-runner.js';
+export type { AgentProgressEvent, ModelImageInput } from '../../contracts/investigation-runner.js';
 
 /** Provider-reported counts; an absent field is unknown, not zero. */
 export interface ModelTokenUsage {

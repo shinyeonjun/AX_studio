@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { describe, expect, it, vi } from 'vitest';
 import { AgentHarness } from '../../../harness.js';
-import type { ModelProvider, StructuredGenerateInput, TextGenerateInput } from '../../../model/provider.js';
+import type { ModelProvider, StructuredGenerateInput, TextGenerateInput } from '../../../../providers/provider.js';
 import { ArtifactStore } from '../../../../../persistence/artifact-store.js';
 import { createDatabaseAsync } from '../../../../../persistence/db.js';
 import { WorkflowStore } from '../../../../../persistence/workflow-store.js';

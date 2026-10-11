@@ -1,4 +1,4 @@
-import type { ModelProvider, StructuredGenerateInput } from '../../intelligence/agent/model/provider.js';
+import type { ModelProvider, StructuredGenerateInput } from '../../intelligence/providers/provider.js';
 import type { WorkflowIR } from '../../workflow/schema.js';
 
 export class CloudSpyProvider implements ModelProvider {

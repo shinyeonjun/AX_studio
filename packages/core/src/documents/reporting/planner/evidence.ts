@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { InvestigationRunner } from '../../../intelligence/agent/investigation-runner.js';
 import type { InvestigateAgentContext } from '../../../intelligence/agent/types.js';
-import type { ModelImageInput } from '../../../intelligence/agent/model/provider.js';
+import type { ModelImageInput } from '../../../intelligence/providers/provider.js';
 import type { ReportPlan, ReportSourceSnapshot } from '../plan/schema.js';
 import { ReportSourceReplanRequired } from './schema.js';
 import {

@@ -7,7 +7,7 @@ const cliProcess = vi.hoisted(() => ({
   runCommand: vi.fn(),
 }));
 
-vi.mock('../model/cli-process.js', () => cliProcess);
+vi.mock('../../providers/cli-process.js', () => cliProcess);
 
 import { detectAiCliProviders } from './cli-detect.js';
 import { CLI_PROVIDER_META } from './catalog.js';

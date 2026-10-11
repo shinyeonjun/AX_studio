@@ -1,4 +1,4 @@
-import type { ChatMessage } from '../../../../model/chat.js';
+import type { ChatMessage } from '../../../../../providers/chat.js';
 import type { JevHttpEndpointHint } from '../../shared/http-endpoint.js';
 import { explicitHttpPath, selectHttpEndpointForRead } from '../../shared/http-endpoint.js';
 import { deriveJevRequestFeatures } from '../../shared/request-features.js';

@@ -1,7 +1,7 @@
 import { aiProviderFailureCode } from '../../../contracts/error-messages.js';
 import { appendAppLog } from '../../../persistence/paths/app-log.js';
-import type { ChatMessage } from '../model/chat.js';
-import type { AgentProgressEvent, ModelImageInput, ModelProvider, ModelTokenUsage } from '../model/provider.js';
+import type { ChatMessage } from '../../providers/chat.js';
+import type { AgentProgressEvent, ModelImageInput, ModelProvider, ModelTokenUsage } from '../../providers/provider.js';
 import { composeAgentSystemPrompt } from '../prompt/index.js';
 import { getRoleDefinition } from '../types.js';
 import type { AgentContext, AgentResult, AgentRole } from '../types.js';

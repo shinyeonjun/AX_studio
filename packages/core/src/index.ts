@@ -103,7 +103,7 @@ export * from './connectors/protocols/openapi/index.js';
 
 export * from './persistence/paths/index.js';
 export { createAxStudioCore, type AxStudioCore, type AxStudioCoreOptions } from './application/bootstrap.js';
-export { shutdownCommandProcesses } from './intelligence/agent/model/cli-process/runner/ownership.js';
+export { shutdownCommandProcesses } from './intelligence/providers/cli-process/runner/ownership.js';
 export { aiProviderErrorMessage, connectorErrorMessage, executionErrorReason, slackErrorMessage } from './contracts/error-messages.js';
 export { sourceChoiceFromReply } from './intelligence/agent/commands/chat/routing/read-source-chooser.js';
 export type { SourceChoice } from './contracts/source-choices.js';

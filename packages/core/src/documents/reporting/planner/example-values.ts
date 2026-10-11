@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { ExecutionLogEntry } from '../../../connectors/types.js';
 import type { InvestigationRunner } from '../../../intelligence/agent/investigation-runner.js';
-import type { ModelImageInput } from '../../../intelligence/agent/model/provider.js';
+import type { ModelImageInput } from '../../../intelligence/providers/provider.js';
 import type { PdfReportSpans, PdfReportValueRemoval } from '../../read/types/pdf.js';
 import { boundedJson } from './planning-context.js';
 import { dateMentions } from '../period-mentions.js';

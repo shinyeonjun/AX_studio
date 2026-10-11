@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { InvestigationRunner, InvestigationRunRequest } from '../../../intelligence/agent/investigation-runner.js';
-import { zodToCodexJsonSchema } from '../../../intelligence/agent/model/cli-json.js';
-import { decodeCodexOutput } from '../../../intelligence/agent/model/cli-json/schema/decode-codex.js';
+import { zodToCodexJsonSchema } from '../../../intelligence/providers/cli-json.js';
+import { decodeCodexOutput } from '../../../intelligence/providers/cli-json/schema/decode-codex.js';
 import { ReportEvidence, ReportEvidenceRequestSchema, ReportEvidenceDecisionSchema, inferWithEvidence, REPORT_EVIDENCE_TIMEOUT_MS } from './evidence.js';
 import type { ReportSourceSnapshot } from '../plan/schema.js';
 import { ReportSourceReplanRequired } from './schema.js';

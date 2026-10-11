@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { MAX_DECISION_CHOICE_CRITERIA, type DecisionEngine } from '../../../contracts/decision.js';
 import type { InvestigationRunRequest, InvestigationRunner } from '../../../intelligence/agent/investigation-runner.js';
-import { zodToCodexJsonSchema } from '../../../intelligence/agent/model/cli-json.js';
+import { zodToCodexJsonSchema } from '../../../intelligence/providers/cli-json.js';
 import type { PdfReportPairAnalysis } from '../../read/types/pdf.js';
 import type { ReportPlanResult } from '../plan/execute.js';
 import type { ReportSourceSnapshot } from '../plan/schema.js';

@@ -1,8 +1,8 @@
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { CliProviderId } from '../../settings/ai-provider-id.js';
-import { CLI_PROVIDER_META } from '../../settings/catalog.js';
+import type { CliProviderId } from '../../agent/settings/ai-provider-id.js';
+import { CLI_PROVIDER_META } from '../../agent/settings/catalog.js';
 import { chatMessagesFromInput, flattenChatPrompt } from '../chat.js';
 import { resolveBinaryAsync } from '../cli-process.js';
 
