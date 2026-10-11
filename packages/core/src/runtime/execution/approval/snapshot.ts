@@ -21,7 +21,7 @@ function failResume(
   code: 'invalid_execution_snapshot' | 'invalid_execution_log',
   message: string,
 ): ApprovalResumeSnapshot {
-  host.config.store.failApproval(approvalId);
+  host.approvals.failApproval(approvalId);
   const log = [{
     at: new Date().toISOString(),
     level: 'error' as const,
@@ -29,7 +29,7 @@ function failResume(
     message,
   }];
   // Report the validation failure without replacing the evidence that caused it.
-  host.config.store.finishExecution(executionId, 'failed', code, undefined, { preserveHistory: true });
+  host.approvals.finishExecution(executionId, 'failed', code, undefined, { preserveHistory: true });
   const result: ExecutionResult = {
     executionId,
     status: 'failed',

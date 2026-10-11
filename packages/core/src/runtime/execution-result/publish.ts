@@ -2,6 +2,7 @@ import { labeledTable } from '../../contracts/artifacts/column-labels.js';
 import { displayTable } from '../../contracts/artifacts/table-display.js';
 import { WorkspaceChatGeneratedDocumentSchema, WorkspaceChatGeneratedSpreadsheetSchema, WorkspaceChatReadResultSchema } from '../../persistence/repositories/workspace-chat-repository.js';
 import type { WorkflowStore } from '../../persistence/workflow-store.js';
+
 import { parseWorkflowIR, type WorkflowIR } from '../../workflow/schema.js';
 import { formatApprovalTitle } from '../approval-display.js';
 import type { ExecutionResult } from '../types.js';
@@ -9,6 +10,7 @@ import { formatExecutionResultMessage, safeText } from './format.js';
 import type { WorkspaceChatChangedEvent } from './contracts.js';
 import { generatedPdfFromExecutionLog } from './generated-pdf.js';
 import { editableToolResult, toolResultReference } from '../tool-result-approval.js';
+import type { ApprovalStorePort } from '../execution/approval/store-port.js';
 
 /** The last table a successful run made (its visible part), shown with the result. */
 function resultTableFromLog(result: ExecutionResult) {
@@ -29,8 +31,11 @@ function parseExecutionIr(irJson: string | null | undefined): WorkflowIR | null 
   }
 }
 
+/** Chat publishing reads approvals and writes chat rows; it does not touch workflows or triggers. */
+type PublishStorePort = ApprovalStorePort & Pick<WorkflowStore, 'getColumnLabels' | 'upsertWorkspaceChatExecutionResult'>;
+
 function inlineApprovalForExecution(
-  store: WorkflowStore,
+  store: PublishStorePort,
   result: ExecutionResult,
   execution: { ephemeral: boolean; irJson?: string },
   ir: WorkflowIR | null,
@@ -77,7 +82,7 @@ function inlineApprovalForExecution(
  * executions remain Activity-only.
  */
 export function publishExecutionResultToWorkspaceChat(
-  store: WorkflowStore,
+  store: PublishStorePort,
   result: ExecutionResult,
 ): WorkspaceChatChangedEvent | null {
   const execution = store.getExecution(result.executionId);

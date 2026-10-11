@@ -119,13 +119,13 @@ function prepareConfirmedToolSend(
   approvalId: string,
   confirmation?: ToolResultConfirmation,
 ): { ok: true; prepared?: PreparedToolSend } | { ok: false; result: ExecutionResult } {
-  if (!confirmation && !requiresToolResultReview(host.config.store, approvalId)) return { ok: true };
+  if (!confirmation && !requiresToolResultReview(host.approvals, approvalId)) return { ok: true };
   try {
     if (!confirmation) throw new Error('tool_result_confirmation_required');
     if (!host.toolResults) throw new Error('tool_result_confirmation_required');
     return { ok: true, prepared: host.toolResults.prepare(approvalId, confirmation) };
   } catch (error) {
-    const approval = host.config.store.getApproval(approvalId);
+    const approval = host.approvals.getApproval(approvalId);
     return { ok: false, result: { executionId: approval?.executionId ?? '', status: 'failed',
       pendingApprovalId: approval?.status === 'pending' ? approvalId : undefined,
       errorCode: error instanceof Error ? error.message : 'invalid_tool_result', log: [] } };
@@ -145,14 +145,14 @@ function resolveApprovedActions(
   if (new Set(approval.actionIds).size === approval.actionIds.length && approvedActions.every((step) => step)) {
     return approvedActions.filter((step): step is ActionStep => Boolean(step));
   }
-  host.config.store.failApproval(approvalId);
+  host.approvals.failApproval(approvalId);
   const failureLog = [{
     at: new Date().toISOString(),
     level: 'error' as const,
     code: 'invalid_approval_actions',
     message: '승인 대상 작업이 실행 스냅샷과 일치하지 않습니다.',
   }];
-  host.config.store.finishExecution(execution.id, 'failed', 'invalid_approval_actions', failureLog);
+  host.approvals.finishExecution(execution.id, 'failed', 'invalid_approval_actions', failureLog);
   const result: ExecutionResult = {
     executionId: approval.executionId,
     status: 'failed',
@@ -183,8 +183,8 @@ function createResumeState(
     execution.id,
     execution.workflowId ?? undefined,
     { ...(checkpoint?.variables ?? {}) },
-    host.config.store.getConnections(),
-    createExecutionLogWriter(host.config.store, execution.id, log),
+    host.approvals.getConnections(),
+    createExecutionLogWriter(host.approvals, execution.id, log),
     execution.workspaceSessionId,
     abortSignal,
   );
@@ -276,14 +276,14 @@ function recordProviderReceipt(state: ResumeState, data: unknown): void {
   state.toolSendOutcome = { status: hasReceipt ? 'sent' : 'unknown',
     binding: prepared.review.binding, paramsHash: prepared.review.paramsHash,
     ...(hasReceipt ? { receiptId: receiptId.slice(0, 128) } : {}) };
-  state.host.config.store.updateApprovalPayload(state.approvalId, { toolSendOutcome: state.toolSendOutcome });
+  state.host.approvals.updateApprovalPayload(state.approvalId, { toolSendOutcome: state.toolSendOutcome });
   if (state.toolSendOutcome.status === 'unknown') throw Object.assign(new Error('Missing provider receipt'), { code: 'tool_send_unknown' });
 }
 
 function finishResumeSuccess(state: ResumeState): ExecutionResult {
   const { host, execution, log, toolSendOutcome } = state;
-  host.config.store.resolveApproval(state.approvalId, true);
-  host.config.store.finishExecution(execution.id, 'success', undefined, log);
+  host.approvals.resolveApproval(state.approvalId, true);
+  host.approvals.finishExecution(execution.id, 'success', undefined, log);
   const successResult: ExecutionResult = { executionId: execution.id, status: 'success', log, ...(toolSendOutcome ? { toolSendOutcome } : {}) };
   if (host.notifyExecutionFinished(successResult) === false) successResult.refreshWarning = true;
   return successResult;
@@ -301,11 +301,11 @@ function finishToolSendFailure(state: ResumeState, prepared: PreparedToolSend, e
     message: sent ? 'Provider confirmed sending; result refresh failed.' : 'Send outcome is unknown. Check the provider before creating another request.' });
   let persistenceFailed = false;
   const record = (write: () => void) => { try { write(); } catch { persistenceFailed = true; } };
-  record(() => host.config.store.updateApprovalPayload(approvalId, { toolSendOutcome }));
-  record(() => { if (sent) host.config.store.resolveApproval(approvalId, true); else host.config.store.failApproval(approvalId); });
+  record(() => host.approvals.updateApprovalPayload(approvalId, { toolSendOutcome }));
+  record(() => { if (sent) host.approvals.resolveApproval(approvalId, true); else host.approvals.failApproval(approvalId); });
   if (persistenceFailed && code !== 'database_persistence_failed') log.push({ at: new Date().toISOString(), level: 'warn',
     code: 'database_persistence_failed', message: 'Local outcome persistence failed. The durable claim remains consumed.' });
-  record(() => host.config.store.finishExecution(execution.id, sent && !persistenceFailed ? 'success' : 'failed',
+  record(() => host.approvals.finishExecution(execution.id, sent && !persistenceFailed ? 'success' : 'failed',
     persistenceFailed ? 'database_persistence_failed' : sent ? undefined : code, log));
   const result: ExecutionResult = { executionId: execution.id, status: sent && !persistenceFailed ? 'success' : 'failed',
     ...(sent ? { refreshWarning: true } : {}),
@@ -319,12 +319,12 @@ function finishToolSendFailure(state: ResumeState, prepared: PreparedToolSend, e
 function finishResumePending(state: ResumeState, error: PendingError): ExecutionResult {
   const { host, execution, log } = state;
   if (error.checkpoint) {
-    host.config.store.updateApprovalPayload(error.approvalId!, {
+    host.approvals.updateApprovalPayload(error.approvalId!, {
       checkpoint: error.checkpoint,
     });
   }
-  host.config.store.resolveApproval(state.approvalId, true);
-  host.config.store.markExecutionPending(execution.id, 'pending_approval', log);
+  host.approvals.resolveApproval(state.approvalId, true);
+  host.approvals.markExecutionPending(execution.id, 'pending_approval', log);
   const pendingResult: ExecutionResult = {
     executionId: execution.id,
     status: 'pending_approval',
@@ -344,8 +344,8 @@ function finishResumeCancelled(state: ResumeState): ExecutionResult {
     message: '승인 후 실행이 취소되었습니다. 외부 작업 결과를 확인하세요. 자동으로 다시 실행하지 않습니다.',
   });
   // The approval was consumed by this attempt; it is never re-armed.
-  host.config.store.resolveApproval(state.approvalId, true);
-  host.config.store.finishExecution(execution.id, 'cancelled', 'cancelled', log);
+  host.approvals.resolveApproval(state.approvalId, true);
+  host.approvals.finishExecution(execution.id, 'cancelled', 'cancelled', log);
   const result: ExecutionResult = { executionId: execution.id, status: 'cancelled', errorCode: 'cancelled', log };
   host.notifyExecutionFinished(result);
   return result;
@@ -362,11 +362,11 @@ function finishResumeFailure(state: ResumeState, error: PendingError): Execution
     ...(isContractFailure(error) ? { data: error.data } : {}),
   });
   if (code === 'approval_snapshot_missing' || code === 'approval_target_changed') {
-    host.config.store.failApproval(approvalId);
+    host.approvals.failApproval(approvalId);
   } else {
-    host.config.store.resolveApproval(approvalId, true);
+    host.approvals.resolveApproval(approvalId, true);
   }
-  host.config.store.finishExecution(execution.id, 'failed', code, log);
+  host.approvals.finishExecution(execution.id, 'failed', code, log);
   const failedResult: ExecutionResult = { executionId: execution.id, status: 'failed', errorCode: code, log };
   host.notifyExecutionFinished(failedResult);
   return failedResult;
