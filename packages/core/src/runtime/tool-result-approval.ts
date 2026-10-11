@@ -5,7 +5,7 @@ import { EditableToolResultSchema, isMessageToolField, MESSAGE_TOOL_FIELDS, Mess
   validGmailRecipient, type EditableToolResult, type MessageToolDraft, type ToolResultConfirmation,
   type ToolResultReference, type ToolResultReview } from '../contracts/tool-result.js';
 import type { Connector, ConnectorContext } from '../connectors/types.js';
-import type { WorkflowStore } from '../persistence/workflow-store.js';
+import type { ApprovalStorePort } from './execution/approval/store-port.js';
 import type { ChatHostStateMap } from '../persistence/chat-host-state.js';
 import { parseWorkflowIR } from '../workflow/schema.js';
 import { approvalParamsHash } from './approval-snapshot.js';
@@ -17,7 +17,7 @@ function record(value: unknown): Record<string, unknown> {
 }
 
 /** Reconstruct exact original data from existing execution evidence, never a second stored body. */
-export function editableToolResult(store: WorkflowStore, approvalId: string): EditableToolResult | undefined {
+export function editableToolResult(store: ApprovalStorePort, approvalId: string): EditableToolResult | undefined {
   const approval = store.getApproval(approvalId);
   if (!approval || approval.status !== 'pending' || approval.actionIds.length !== 1) return undefined;
   const execution = store.getExecution(approval.executionId);
@@ -63,7 +63,7 @@ export function toolResultReference(source: EditableToolResult): ToolResultRefer
 }
 
 /** Classify even malformed/unsupported editable approvals so generic approve fails closed. */
-export function requiresToolResultReview(store: WorkflowStore, approvalId: string): boolean {
+export function requiresToolResultReview(store: ApprovalStorePort, approvalId: string): boolean {
   const approval = store.getApproval(approvalId);
   const execution = approval && store.getExecution(approval.executionId);
   if (!execution?.ephemeral || !execution.workspaceSessionId || approval?.actionIds.length !== 1) return false;
@@ -97,7 +97,7 @@ export class ToolResultApprovals {
   private readonly drafts = new Map<string, DraftEntry>();
   private readonly saved: ChatHostStateMap<Record<string, SavedDraft>>;
   private readonly stopObservingDeletion: () => void;
-  constructor(private readonly store: WorkflowStore, private readonly connectors: Record<string, Connector>) {
+  constructor(private readonly store: ApprovalStorePort, private readonly connectors: Record<string, Connector>) {
     this.saved = store.chatHostState<Record<string, SavedDraft>>('tool_draft');
     // Checkpoints pair approval and execution across interrupted durable writes.
     // Recovery changes metadata only. It never resumes a provider send.

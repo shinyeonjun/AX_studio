@@ -1,5 +1,6 @@
 import type { ExecutionLogEntry } from '../connectors/types.js';
 import type { WorkflowStore } from '../persistence/workflow-store.js';
+import type { ApprovalStorePort } from './execution/approval/store-port.js';
 import { isExecutionCheckpoint } from './control-flow.js';
 import type { ExecutionResult } from './types.js';
 
@@ -8,7 +9,7 @@ export const DEFAULT_APPROVAL_TTL_MS = 72 * 60 * 60 * 1_000;
 
 type Approval = NonNullable<ReturnType<WorkflowStore['getApproval']>>;
 
-function previousLog(store: WorkflowStore, executionId: string): { log: unknown[]; rawLog: unknown[]; preserveHistory: boolean } {
+function previousLog(store: ApprovalStorePort, executionId: string): { log: unknown[]; rawLog: unknown[]; preserveHistory: boolean } {
   const execution = store.getExecution(executionId);
   let log: unknown[] = [];
   try {
@@ -23,7 +24,7 @@ function previousLog(store: WorkflowStore, executionId: string): { log: unknown[
 }
 
 function finish(
-  store: WorkflowStore,
+  store: ApprovalStorePort,
   executionId: string,
   status: 'failed' | 'cancelled',
   errorCode: string,
@@ -60,7 +61,7 @@ export function isApprovalExpired(
  * Expires one still-pending approval. The approval becomes `rejected` and its
  * execution is cancelled with `approval_expired`; nothing is executed.
  */
-export function expireApproval(store: WorkflowStore, approval: Approval): ExecutionResult | undefined {
+export function expireApproval(store: ApprovalStorePort, approval: Approval): ExecutionResult | undefined {
   if (!store.rejectPendingApproval(approval.id)) return undefined;
   return finish(store, approval.executionId, 'cancelled', 'approval_expired', {
     level: 'warn',
@@ -71,7 +72,7 @@ export function expireApproval(store: WorkflowStore, approval: Approval): Execut
 }
 
 export function expireStaleApprovals(
-  store: WorkflowStore,
+  store: ApprovalStorePort,
   ttlMs = DEFAULT_APPROVAL_TTL_MS,
   now = Date.now(),
 ): Array<{ approvalId: string; result: ExecutionResult }> {
@@ -94,7 +95,9 @@ export function expireStaleApprovals(
  * metadata: an interrupted external step has an unknown outcome and is never
  * retried automatically.
  */
-export function reconcileInterruptedExecutions(store: WorkflowStore): void {
+export function reconcileInterruptedExecutions(
+  store: ApprovalStorePort & Pick<WorkflowStore, 'listUnfinishedExecutions' | 'deadLetterProcessingTriggerReceipts'>,
+): void {
   const pendingByExecution = new Map<string, Approval[]>();
   for (const approval of store.getPendingApprovals()) {
     const list = pendingByExecution.get(approval.executionId) ?? [];
