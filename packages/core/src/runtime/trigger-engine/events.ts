@@ -223,6 +223,11 @@ export class TriggerEventCoordinator {
     let retry = false;
     try {
       retry = await this.processPushEvent(driver, event);
+    } catch (error) {
+      // The fan-out failed before it could finish. Receipts already settled are not re-run, so keeping
+      // the event for replay is safe and drops nothing.
+      console.error('[trigger-engine] push event fan-out failed; keeping it for replay:', error);
+      retry = true;
     } finally {
       if (journalId) {
         try {
@@ -275,35 +280,41 @@ export class TriggerEventCoordinator {
     let retry = false;
 
     for (const { id: workflowId, workflow: ir } of this.store.listActiveWorkflowDefinitions()) {
-      const trigger = ir?.trigger;
-      if (!ir || !trigger || trigger.type !== driver.triggerType) continue;
-      if (!driver.matchesTrigger(trigger as { type: string; channel?: string }, event)) continue;
-      if (!matchesTriggerFilter(trigger, event)) {
-        this.advancePollCursor(workflowId, event);
-        continue;
-      }
-
-      const dedupeKey = driver.dedupeKey(workflowId, event);
-      if (this.receiptCompleted(workflowId, event, dedupeKey)) {
-        this.advancePollCursor(workflowId, event);
-        continue;
-      }
-      if (this.inFlightEvents.has(dedupeKey)) continue;
-      if (
-        !this.store.claimTriggerReceipt({
-          dedupeKey,
-          workflowId,
-          triggerType: driver.triggerType,
-        })
-      ) {
-        continue;
-      }
-
-      this.inFlightEvents.add(dedupeKey);
+      // One workflow's failure must not skip the others: each is isolated, and a failed one asks for a retry.
       try {
-        if (await this.runClaimedEvent(workflowId, ir, trigger.type, event, dedupeKey) === 'not_started') retry = true;
-      } finally {
-        this.inFlightEvents.delete(dedupeKey);
+        const trigger = ir?.trigger;
+        if (!ir || !trigger || trigger.type !== driver.triggerType) continue;
+        if (!driver.matchesTrigger(trigger as { type: string; channel?: string }, event)) continue;
+        if (!matchesTriggerFilter(trigger, event)) {
+          this.advancePollCursor(workflowId, event);
+          continue;
+        }
+
+        const dedupeKey = driver.dedupeKey(workflowId, event);
+        if (this.receiptCompleted(workflowId, event, dedupeKey)) {
+          this.advancePollCursor(workflowId, event);
+          continue;
+        }
+        if (this.inFlightEvents.has(dedupeKey)) continue;
+        if (
+          !this.store.claimTriggerReceipt({
+            dedupeKey,
+            workflowId,
+            triggerType: driver.triggerType,
+          })
+        ) {
+          continue;
+        }
+
+        this.inFlightEvents.add(dedupeKey);
+        try {
+          if (await this.runClaimedEvent(workflowId, ir, trigger.type, event, dedupeKey) === 'not_started') retry = true;
+        } finally {
+          this.inFlightEvents.delete(dedupeKey);
+        }
+      } catch (error) {
+        console.error(`[trigger-engine] push event failed for skill ${workflowId}; keeping it for replay:`, error);
+        retry = true;
       }
     }
     return retry;
