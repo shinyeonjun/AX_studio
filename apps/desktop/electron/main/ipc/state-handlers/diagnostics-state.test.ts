@@ -32,12 +32,15 @@ describe('state diagnostics', () => {
       ],
       'scheduler.lastOutcome:wf-a': { occurrenceKey: 'k', status: 'failed', reason: 'boom', at: '2026-10-03T00:00:00.000Z' },
       'scheduler.lastOutcome:wf-b': 'garbage',
-    }), ['wf-a', 'wf-b', 'wf-c']);
+      'scheduler.lastOutcome:wf-d': { occurrenceKey: 'k', status: 'running', at: '2026-10-03T00:00:00.000Z' },
+    }), ['wf-a', 'wf-b', 'wf-c', 'wf-d']);
     expect(health.get('wf-a')).toEqual({
       triggerDeadLetters: [{ dedupeKey: 'wf-a:x:1', attempts: 5, reason: 'max_attempts_exceeded', at: '2026-10-01T00:00:00.000Z' }],
       lastOutcome: { occurrenceKey: 'k', status: 'failed', reason: 'boom', at: '2026-10-03T00:00:00.000Z' },
     });
     expect(health.get('wf-b')?.lastOutcome).toBeUndefined();
+    // Only the statuses a scheduled occurrence can end with are accepted; `running` is storage-only.
+    expect(health.get('wf-d')?.lastOutcome).toBeUndefined();
     expect(health.get('wf-c')).toEqual({ triggerDeadLetters: [] });
   });
 });
