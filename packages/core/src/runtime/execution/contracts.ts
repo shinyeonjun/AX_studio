@@ -1,10 +1,13 @@
 import type { Connector } from '../../connectors/types.js';
 import type { ExecutionProgress, ExecutionResult, RuntimeConfig } from '../types.js';
 import type { Step, WorkflowIR } from '../../workflow/schema.js';
+import type { ApprovalStorePort } from './approval/store-port.js';
 
 export interface WorkflowExecutionHost {
   readonly toolResults?: import('../tool-result-approval.js').ToolResultApprovals;
   readonly config: RuntimeConfig;
+  /** The approval flow's storage view; config.store stays for the rest of the run. */
+  readonly approvals: ApprovalStorePort;
   readonly connectors: Record<string, Connector>;
   notifyExecutionStarted(executionId: string): void;
   notifyExecutionProgress(progress: ExecutionProgress): void;
