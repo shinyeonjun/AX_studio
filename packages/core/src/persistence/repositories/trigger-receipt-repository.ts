@@ -1,14 +1,10 @@
 import type { AppDatabase } from '../db.js';
 import { readRow } from '../db/types.js';
+import { decideTriggerClaim, type TriggerReceiptStatus } from '../../domain/trigger-receipt-state.js';
 
-export type TriggerReceiptStatus = 'processing' | 'completed' | 'failed' | 'dead';
+export { DEFAULT_TRIGGER_RECEIPT_PROCESSING_LEASE_MS } from '../../domain/trigger-receipt-state.js';
 
-/**
- * A receipt left in processing beyond this window may belong to a crashed
- * worker. The window is deliberately long enough to avoid reclaiming normal
- * workflow executions while still allowing restart recovery.
- */
-export const DEFAULT_TRIGGER_RECEIPT_PROCESSING_LEASE_MS = 15 * 60 * 1_000;
+export type { TriggerReceiptStatus };
 
 export function claimTriggerReceipt(
   db: AppDatabase,
@@ -34,9 +30,12 @@ export function claimTriggerReceipt(
     params.dedupeKey,
   );
   if (!existing) return false;
-  if (existing.status === 'completed') return false;
-
-  if (existing.status === 'failed') {
+  const decision = decideTriggerClaim({
+    stored: existing.status === undefined ? undefined : { status: existing.status as TriggerReceiptStatus, updatedAt: existing.updated_at },
+    now: Date.now(),
+    leaseMs: params.processingLeaseMs,
+  });
+  if (decision === 'retry_failed') {
     const retried = db
       .prepare(
         `UPDATE trigger_receipts
@@ -46,17 +45,7 @@ export function claimTriggerReceipt(
       .run(now, params.dedupeKey);
     return retried.changes > 0;
   }
-
-  if (existing.status === 'processing') {
-    const updatedAt = Date.parse(String(existing.updated_at ?? ''));
-    const leaseMs =
-      typeof params.processingLeaseMs === 'number' &&
-      Number.isFinite(params.processingLeaseMs) &&
-      params.processingLeaseMs > 0
-        ? params.processingLeaseMs
-        : DEFAULT_TRIGGER_RECEIPT_PROCESSING_LEASE_MS;
-    if (!Number.isFinite(updatedAt) || updatedAt > Date.now() - leaseMs) return false;
-
+  if (decision === 'reclaim_lease') {
     const reclaimed = db
       .prepare(
         `UPDATE trigger_receipts
@@ -66,7 +55,6 @@ export function claimTriggerReceipt(
       .run(now, params.dedupeKey, existing.updated_at ?? null);
     return reclaimed.changes > 0;
   }
-
   return false;
 }
 

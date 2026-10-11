@@ -4,6 +4,12 @@ import { persistDatabase, readRow, readRows } from '../db/types.js';
 import type { ToolSendOutcome } from '../../contracts/tool-result.js';
 import type { ApprovalRow } from '../rows.js';
 import { mapRowsTolerant } from '../tolerant-rows.js';
+import { approvalSources, approvalTarget, type ApprovalTransition } from '../../domain/approval-state.js';
+
+/** `?, ?` placeholders for an IN list, so the SQL is built from the domain's source states. */
+function placeholders(count: number): string {
+  return Array.from({ length: count }, () => '?').join(', ');
+}
 
 function parseApprovalJson<T>(raw: string, field: string, approvalId: string): T {
   try {
@@ -85,9 +91,11 @@ export function updateApprovalPayload(db: AppDatabase, id: string, extra: Record
 }
 
 export function resolveApproval(db: AppDatabase, id: string, approved: boolean) {
+  const transition: ApprovalTransition = approved ? 'approve' : 'reject';
+  const sources = approvalSources(transition);
   db
-    .prepare("UPDATE approvals SET status = ?, resolved_at = ? WHERE id = ? AND status IN ('pending', 'processing')")
-    .run(approved ? 'approved' : 'rejected', new Date().toISOString(), id);
+    .prepare(`UPDATE approvals SET status = ?, resolved_at = ? WHERE id = ? AND status IN (${placeholders(sources.length)})`)
+    .run(approvalTarget(transition), new Date().toISOString(), id, ...sources);
   persistDatabase(db);
 }
 
@@ -95,13 +103,16 @@ export function resolveApproval(db: AppDatabase, id: string, approved: boolean) 
 export function rejectPendingApproval(db: AppDatabase, id: string): boolean {
   const current = readRow<{ status: string; resolved_at: string | null }>(db.prepare('SELECT status, resolved_at FROM approvals WHERE id = ?'), id);
   if (current?.status !== 'pending') return false;
+  const sources = approvalSources('reject_pending');
   const result = db
-    .prepare("UPDATE approvals SET status = 'rejected', resolved_at = ? WHERE id = ? AND status = 'pending'")
-    .run(new Date().toISOString(), id);
+    .prepare(`UPDATE approvals SET status = ?, resolved_at = ? WHERE id = ? AND status IN (${placeholders(sources.length)})`)
+    .run(approvalTarget('reject_pending'), new Date().toISOString(), id, ...sources);
   if (result.changes !== 1) return false;
   try { persistDatabase(db); }
   catch (error) {
-    db.prepare("UPDATE approvals SET status = 'pending', resolved_at = ? WHERE id = ? AND status = 'rejected'").run(current.resolved_at, id);
+    const reopen = approvalSources('reopen');
+    db.prepare(`UPDATE approvals SET status = ?, resolved_at = ? WHERE id = ? AND status IN (${placeholders(reopen.length)})`)
+      .run(approvalTarget('reopen'), current.resolved_at, id, ...reopen);
     throw error;
   }
   return true;
@@ -109,9 +120,10 @@ export function rejectPendingApproval(db: AppDatabase, id: string): boolean {
 
 /** Closes a claimed approval when its execution can no longer be resumed. */
 export function failApproval(db: AppDatabase, id: string): boolean {
+  const sources = approvalSources('fail');
   const result = db
-    .prepare("UPDATE approvals SET status = 'failed', resolved_at = ? WHERE id = ? AND status = 'processing'")
-    .run(new Date().toISOString(), id);
+    .prepare(`UPDATE approvals SET status = ?, resolved_at = ? WHERE id = ? AND status IN (${placeholders(sources.length)})`)
+    .run(approvalTarget('fail'), new Date().toISOString(), id, ...sources);
   if (result.changes === 1) persistDatabase(db);
   return result.changes === 1;
 }
@@ -122,14 +134,17 @@ export function claimApproval(db: AppDatabase, id: string, intent?: Pick<ToolSen
   if (!current || current.status !== 'pending') return false;
   const originalPayload = current.payload === undefined ? null : JSON.stringify(current.payload);
   const payload = intent ? { ...(current.payload && typeof current.payload === 'object' ? current.payload : {}), toolSendIntent: intent } : current.payload;
+  const sources = approvalSources('claim');
   const result = db
-    .prepare("UPDATE approvals SET status = 'processing', payload_json = ? WHERE id = ? AND status = 'pending'")
-    .run(payload === undefined ? null : JSON.stringify(payload), id);
+    .prepare(`UPDATE approvals SET status = ?, payload_json = ? WHERE id = ? AND status IN (${placeholders(sources.length)})`)
+    .run(approvalTarget('claim'), payload === undefined ? null : JSON.stringify(payload), id, ...sources);
   if (result.changes !== 1) return false;
   try { persistDatabase(db); }
   catch (error) {
     // No provider has been called. Restore the editable in-process state; require a new seal.
-    db.prepare("UPDATE approvals SET status = 'pending', payload_json = ? WHERE id = ? AND status = 'processing'").run(originalPayload, id);
+    const release = approvalSources('release');
+    db.prepare(`UPDATE approvals SET status = ?, payload_json = ? WHERE id = ? AND status IN (${placeholders(release.length)})`)
+      .run(approvalTarget('release'), originalPayload, id, ...release);
     throw error;
   }
   return true;
