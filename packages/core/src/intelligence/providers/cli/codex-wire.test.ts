@@ -3,8 +3,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { runCommand } from '../cli-process.js';
 import { CodexCliProvider } from './adapters/codex-cli.js';
-import { ReportBusinessInferenceSchema, ReportCalculationInferenceSchema, ReportCaptureInferenceSchema } from '../../../../documents/reporting/planner/schema.js';
-import { ReportSourceDecisionWireSchema } from '../../../../documents/reporting/planner/source-discovery.js';
+import { ReportBusinessInferenceSchema, ReportCalculationInferenceSchema, ReportCaptureInferenceSchema } from '../../../documents/reporting/planner/schema.js';
+import { ReportSourceDecisionWireSchema } from '../../../documents/reporting/planner/source-discovery.js';
 import { zodToCodexJsonSchema } from '../cli-json.js';
 
 vi.mock('../cli-process.js', () => ({ resolveBinaryAsync: async () => 'codex', runCommand: vi.fn() }));

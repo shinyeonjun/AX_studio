@@ -71,6 +71,14 @@ module.exports = {
       to: { path: '^packages/core/src/runtime' },
     },
     {
+      // Model providers are infrastructure: they call an AI service and return text. They must not
+      // know the harness, the chat/command services, the runtime, or the document features.
+      name: 'providers-no-application',
+      severity: 'error',
+      from: { path: '^packages/core/src/intelligence/providers', pathNot: TEST_SUPPORT },
+      to: { path: '^packages/core/src/(intelligence/agent/(harness|harness-policy|commands|skills|prompt|types)|runtime|documents|workflow|work-discovery|application)' },
+    },
+    {
       // Domain rules are pure: they take their inputs and return decisions, so they can be tested
       // without a database, a clock or a connector.
       name: 'domain-pure',

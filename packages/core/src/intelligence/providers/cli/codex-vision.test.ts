@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { runCommand } from '../cli-process.js';
 import { CodexCliProvider } from './adapters/codex-cli.js';
-import { createAgentHarness } from '../../harness.js';
+import { createAgentHarness } from '../../agent/harness.js';
 
 vi.mock('../cli-process.js', () => ({ resolveBinaryAsync: async () => 'codex', runCommand: vi.fn() }));
 vi.mock('./capabilities.js', () => ({ supportedCliFlags: async () => new Set(['--ignore-user-config']) }));

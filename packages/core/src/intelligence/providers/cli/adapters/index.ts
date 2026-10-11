@@ -1,4 +1,4 @@
-import type { CliProviderId } from '../../../settings/ai-provider-id.js';
+import type { CliProviderId } from '../../../agent/settings/ai-provider-id.js';
 import type { ModelProvider } from '../../provider.js';
 import { ClaudeCliProvider } from './claude-cli.js';
 import { CodexCliProvider } from './codex-cli.js';

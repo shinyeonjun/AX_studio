@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { InvestigationRunner, InvestigationRunRequest } from '../../../intelligence/agent/investigation-runner.js';
-import { zodToCodexJsonSchema } from '../../../intelligence/agent/model/cli-json.js';
+import { zodToCodexJsonSchema } from '../../../intelligence/providers/cli-json.js';
 import { REPORT_SOURCE_DISCOVERY_TIMEOUT_MS, ReportSourceDecisionSchema, ReportSourceDecisionWireSchema, discoverReportSources, type ReportSourceInspection } from './source-discovery.js';
 import type { ReportCaptureInference } from './schema.js';
 

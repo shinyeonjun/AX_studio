@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ollamaApiBaseUrl } from './ollama-api.js';
-import { isCloudProvider } from '../harness/policy.js';
+import { isCloudProvider } from '../agent/harness/policy.js';
 
 describe('Ollama base URL', () => {
   afterEach(() => vi.unstubAllEnvs());

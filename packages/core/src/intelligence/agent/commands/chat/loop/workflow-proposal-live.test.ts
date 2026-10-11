@@ -4,7 +4,7 @@ import { createDatabaseAsync } from '../../../../../persistence/db.js';
 import { WorkflowStore } from '../../../../../persistence/workflow-store.js';
 import type { WorkflowIR } from '../../../../../workflow/schema.js';
 import { AgentHarness } from '../../../harness.js';
-import type { StructuredGenerateInput, TextGenerateInput } from '../../../model/provider.js';
+import type { StructuredGenerateInput, TextGenerateInput } from '../../../../providers/provider.js';
 import type { AxCommand } from '../../schema.js';
 import { runAxCommandChat } from '../../chat.js';
 import { AxCommandService } from '../../service.js';

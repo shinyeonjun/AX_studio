@@ -1,4 +1,4 @@
-import type { ChatMessage } from '../../../model/chat.js';
+import type { ChatMessage } from '../../../../providers/chat.js';
 import type { AxCommandResult } from '../../schema.js';
 import type { AxCommandChatOptions } from './contracts.js';
 import { boundCapabilityEvidence, type CapabilityInvokeEnvelope } from '../../../../design-tools/capability-invoke.js';

@@ -3,7 +3,7 @@ import type { TransformExpr } from '../../../../../workflow/transform-expr/dsl.j
 import { shapingBackground, withDecisionBackground } from '../shaping/decision-background.js';
 import { chatReadRecipe } from '../result/read-recipe.js';
 import { resolveAuthoritativeRequestAnchor, guardAuthoritativeRequestDecisions } from '../../../../decision/request-anchor.js';
-import type { ChatMessage } from '../../../model/chat.js';
+import type { ChatMessage } from '../../../../providers/chat.js';
 import type { TableArtifact } from '../../../../../contracts/artifacts/table.js';
 import { labeledTable, type ColumnLabels } from '../../../../../contracts/artifacts/column-labels.js';
 import { columnLabelsFor } from '../shaping/column-labeler.js';

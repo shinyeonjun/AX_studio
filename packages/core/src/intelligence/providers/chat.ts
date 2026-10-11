@@ -1,6 +1,6 @@
-import type { ChatMessage } from '../../../contracts/chat-message.js';
+import type { ChatMessage } from '../../contracts/chat-message.js';
 
-export type { ChatMessage, ChatRole } from '../../../contracts/chat-message.js';
+export type { ChatMessage, ChatRole } from '../../contracts/chat-message.js';
 
 
 export interface ChatPromptInput {

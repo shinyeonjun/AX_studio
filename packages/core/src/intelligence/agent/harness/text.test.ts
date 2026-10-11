@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { AgentHarness } from '../harness.js';
-import type { ModelProvider, StructuredGenerateInput, TextGenerateInput } from '../model/provider.js';
+import type { ModelProvider, StructuredGenerateInput, TextGenerateInput } from '../../providers/provider.js';
 
 describe('agent text harness', () => {
   it('runs a text-only finalizer through the same bounded harness policy', async () => {

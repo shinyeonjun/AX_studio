@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { LocalSheetConnector } from '../../../connectors/local-sheet/connector.js';
 import type { DecisionEngine } from '../../../contracts/decision.js';
-import type { TextGenerateInput } from '../../agent/model/provider.js';
+import type { TextGenerateInput } from '../../providers/provider.js';
 import { AgentHarness } from '../../agent/harness.js';
 import { runAxCommandChat } from '../../agent/commands/chat.js';
 import { AxCommandService } from '../../agent/commands/service.js';

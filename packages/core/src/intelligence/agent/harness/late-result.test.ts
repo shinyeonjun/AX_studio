@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { AgentHarness } from '../harness.js';
-import type { ModelProvider, StructuredGenerateInput, TextGenerateInput } from '../model/provider.js';
+import type { ModelProvider, StructuredGenerateInput, TextGenerateInput } from '../../providers/provider.js';
 
 const appLog = vi.hoisted(() => ({ appendAppLog: vi.fn() }));
 vi.mock('../../../persistence/paths/app-log.js', () => appLog);

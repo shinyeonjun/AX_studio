@@ -1,11 +1,11 @@
 import { existsSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
-import { runCommand } from '../../../../intelligence/agent/model/cli-process.js';
+import { runCommand } from '../../../../intelligence/providers/cli-process.js';
 import type {
   DocumentEngineRequest,
   DocumentEngineResponse,
 } from '../../types.js';
-import { commandEnv } from '../../../../intelligence/agent/model/cli-process/environment.js';
+import { commandEnv } from '../../../../intelligence/providers/cli-process/environment.js';
 
 export interface DocumentEngineTransportOptions {
   pythonPath: string;

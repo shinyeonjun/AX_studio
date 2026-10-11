@@ -1,4 +1,4 @@
-import type { ModelProvider, StructuredGenerateInput, TextGenerateInput } from '../../../intelligence/agent/model/provider.js';
+import type { ModelProvider, StructuredGenerateInput, TextGenerateInput } from '../../../intelligence/providers/provider.js';
 import type { ConnectorContext } from '../../../connectors/types.js';
 import type { WorkflowIR } from '../../../workflow/schema.js';
 

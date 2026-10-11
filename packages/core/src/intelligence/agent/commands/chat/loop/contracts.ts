@@ -3,7 +3,7 @@ import type { ChatReadRecipe } from '../result/read-recipe.js';
 import type { ColumnLabelMemory } from '../shaping/column-labeler.js';
 import type { AuthoritativeRequestAnchor, AuthoritativeRequestBudget, AuthoritativeRequestFailure } from '../../../../../contracts/request-anchor.js';
 import type { AgentHarness } from '../../../harness.js';
-import type { ChatMessage } from '../../../model/chat.js';
+import type { ChatMessage } from '../../../../providers/chat.js';
 import type { AxCommandReadContext } from '../../read-gateway.js';
 import type { AxCommandService } from '../../service.js';
 import type { WorkspaceSourceRecord } from '../../../../../persistence/workspace-source-service.js';

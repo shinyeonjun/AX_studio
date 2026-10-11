@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { AgentHarness } from '../../../../harness.js';
-import type { StructuredGenerateInput, TextGenerateInput } from '../../../../model/provider.js';
+import type { StructuredGenerateInput, TextGenerateInput } from '../../../../../providers/provider.js';
 import type { DecisionEngine } from '../../../../../../contracts/decision.js';
 import { createDatabaseAsync } from '../../../../../../persistence/db.js';
 import { WorkflowStore } from '../../../../../../persistence/workflow-store.js';

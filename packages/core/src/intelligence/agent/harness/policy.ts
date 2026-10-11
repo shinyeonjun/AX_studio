@@ -1,4 +1,4 @@
-import { ollamaApiBaseUrl } from '../model/ollama-api.js';
+import { ollamaApiBaseUrl } from '../../providers/ollama-api.js';
 import type { AgentContext, InvestigateAgentContext } from '../types.js';
 
 /** Test doubles only; real providers are classified by where their requests go. */

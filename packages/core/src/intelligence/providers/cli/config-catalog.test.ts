@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { parseCodexModelsOutput } from '../../settings/catalog.js';
-import { normalizeAiProviderConfig } from '../../settings/config.js';
+import { parseCodexModelsOutput } from '../../agent/settings/catalog.js';
+import { normalizeAiProviderConfig } from '../../agent/settings/config.js';
 
 describe('normalizeAiProviderConfig', () => {
   it('migrates gpt-cli to codex-cli', () => {

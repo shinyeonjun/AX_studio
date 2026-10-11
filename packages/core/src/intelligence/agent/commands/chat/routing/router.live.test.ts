@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { DecisionAnswer, DecisionEngine } from '../../../../../contracts/decision.js';
 import { clearDynamicCatalogForTests, registerDynamicCapabilities } from '../../../../../catalog/dynamic-catalog.js';
 import type { ConnectorCapability } from '../../../../../catalog/capability-types.js';
-import type { TextGenerateInput } from '../../../model/provider.js';
+import type { TextGenerateInput } from '../../../../providers/provider.js';
 import { createDatabaseAsync } from '../../../../../persistence/db.js';
 import { WorkflowStore } from '../../../../../persistence/workflow-store.js';
 import type { WorkflowIR } from '../../../../../workflow/schema.js';

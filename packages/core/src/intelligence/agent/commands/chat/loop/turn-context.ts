@@ -1,6 +1,6 @@
 import type { DecisionServiceFailure } from '../../../../decision/jev/errors.js';
 import { readValueNames } from '../shared/read-value-names.js';
-import type { ChatMessage } from '../../../model/chat.js';
+import type { ChatMessage } from '../../../../providers/chat.js';
 import { isRecoverableConnectorFailure } from '../../../../../connectors/failure-kind.js';
 import type { AxCommandChatOptions } from './contracts.js';
 import type { AxCommand, AxCommandResult } from '../../schema.js';
