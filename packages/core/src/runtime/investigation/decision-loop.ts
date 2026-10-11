@@ -2,7 +2,7 @@ import type { Connector, ConnectorContext, ConnectorFailureKind } from '../../co
 import { isRecoverableConnectorFailure } from '../../connectors/failure-kind.js';
 import type { DecisionEngine, DecisionQuestion } from '../../contracts/decision.js';
 import { boundDecisionString, DECISION_CONTEXT_UNTRUSTED_DATA_POLICY } from '../../contracts/decision-context.js';
-import { buildJevReadOperationIndex } from '../../intelligence/decision/read-operation-catalog.js';
+import { buildJevReadOperationIndex } from '../../catalog/read-operations/operation-index.js';
 import { untrustedEvidencePreview } from './input.js';
 import type { Step, WorkflowIR } from '../../workflow/schema.js';
 import { assertDecisionOutputContract } from '../../workflow/ai-output-contract.js';

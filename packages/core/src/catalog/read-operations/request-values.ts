@@ -1,4 +1,4 @@
-import type { OpenApiParameter } from '../../../connectors/protocols/openapi/index.js';
+import type { OpenApiParameter } from '../../connectors/protocols/openapi/index.js';
 import { requestLimitCandidates } from '../request-limit.js';
 import type { JevReadParameterHint } from './types.js';
 

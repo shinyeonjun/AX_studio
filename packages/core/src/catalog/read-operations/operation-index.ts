@@ -1,5 +1,5 @@
-import type { SourceListingConnection } from '../../../connectors/types.js';
-import { MAX_DECISION_CHOICE_CRITERIA } from '../../../contracts/decision.js';
+import type { SourceListingConnection } from '../../connectors/types.js';
+import { MAX_DECISION_CHOICE_CRITERIA } from '../../contracts/decision.js';
 import { addHttpOperations, addOpenApiOperations } from './http-operations.js';
 import { operationQueryTokens, type IndexedReadOperation } from './indexed-operation.js';
 import { addLocalFolderOperations } from './local-folder-operations.js';

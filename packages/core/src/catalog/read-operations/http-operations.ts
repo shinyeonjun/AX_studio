@@ -1,10 +1,10 @@
-import type { SourceListingConnection } from '../../../connectors/types.js';
-import { parseHttpEndpoints } from '../../../connectors/http/connection.js';
+import type { SourceListingConnection } from '../../connectors/types.js';
+import { parseHttpEndpoints } from '../../connectors/http/connection.js';
 import {
   parseOpenApiConnectionConfig,
   parseOpenApiSpec,
   type OpenApiOperation,
-} from '../../../connectors/protocols/openapi/index.js';
+} from '../../connectors/protocols/openapi/index.js';
 import { addIndexedOperation, type IndexedReadOperation } from './indexed-operation.js';
 import {
   explicitSearchQuery,

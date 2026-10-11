@@ -1,7 +1,7 @@
-import type { SourceListingConnection } from '../../../connectors/types.js';
+import type { SourceListingConnection } from '../../connectors/types.js';
 import { addIndexedOperation, type IndexedReadOperation } from './indexed-operation.js';
 import { asRecord, limitParameterHint, text } from './request-values.js';
-import { DEFAULT_RDB_DATABASE_ID, rdbDatabaseEntries, rdbDatabaseName, type RdbDatabaseEntry } from '../../../connectors/rdb/config/databases.js';
+import { DEFAULT_RDB_DATABASE_ID, rdbDatabaseEntries, rdbDatabaseName, type RdbDatabaseEntry } from '../../connectors/rdb/config/databases.js';
 
 /** Columns named in an operation's description; enough for Jev to see where a field lives. */
 const DESCRIBED_COLUMNS = 30;
