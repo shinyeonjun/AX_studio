@@ -29,3 +29,19 @@ describe('a read that meets a passing fault', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });
+
+describe('a write that meets the same passing fault', () => {
+  it('is sent once: a repeated POST could send the same message or charge twice', async () => {
+    const fetchMock = vi.fn(async () => new Response('busy', { status: 503 }));
+    vi.stubGlobal('fetch', fetchMock);
+    expect(await connector().execute('post', { path: '/messages', body: { text: 'hi' } }, context())).toMatchObject({ ok: false });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('is not repeated after a dropped connection either', async () => {
+    const fetchMock = vi.fn(async () => { throw Object.assign(new TypeError('fetch failed'), { cause: { code: 'ECONNRESET' } }); });
+    vi.stubGlobal('fetch', fetchMock);
+    expect(await connector().execute('post', { path: '/messages', body: {} }, context())).toMatchObject({ ok: false });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
