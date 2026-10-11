@@ -1,6 +1,6 @@
 # Work Discovery 전환 구현 계획
 
-Status: Proposed  
+Status: Superseded by the implemented work-discovery (2026-10-12) — kept as the record of the starting point  
 Scale: Large  
 Research: `docs/research/work-discovery-transition.md`  
 North star: `docs/AX_STUDIO_WORK_DISCOVERY_MASTER_PLAN.md`
@@ -26,6 +26,8 @@ North star: `docs/AX_STUDIO_WORK_DISCOVERY_MASTER_PLAN.md`
 ---
 
 ## Current Facts
+
+> 이 목록은 구현 시작 전 기준이다. 2026-10-12 기준으로 제어면은 `packages/core/src/intelligence/commands/`, discovery 구현은 `packages/core/src/work-discovery/`에 있다. 현재 상태는 마스터 플랜과 `docs/reports/`의 Phase 보고서를 본다.
 
 - 제어면: `packages/core/src/agent/commands/` (`AxCommandService`)
 - 실행면: `WorkflowIR` + `packages/core/src/runtime/engine.ts`
