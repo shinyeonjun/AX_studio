@@ -1,7 +1,6 @@
 import type { Connector, ConnectorContext } from '../../connectors/types.js';
 import type { DecisionEngine } from '../../contracts/decision.js';
-import type { InvestigationRunner } from '../../intelligence/agent/investigation-runner.js';
-import { isCloudProvider } from '../../intelligence/agent/harness.js';
+import type { InvestigationRunner } from '../../contracts/investigation-runner.js';
 import type { WorkflowIR, Step } from '../../workflow/schema.js';
 import { resolveAiDecisionBindings } from '../../workflow/bindings.js';
 import {
@@ -78,7 +77,7 @@ export async function runAiDecision(
     emailBody: emailBodyRequired,
     boundInputPorts,
   });
-  const cloudProvider = investigationRunner ? isCloudProvider(investigationRunner.providerName) : true;
+  const cloudProvider = investigationRunner?.isCloud ?? true;
   const includeSensitiveData = cloudAllowed || Boolean(investigationRunner && !cloudProvider);
   if (restrictedBoundInputPorts.length > 0 && cloudProvider) {
     throw Object.assign(

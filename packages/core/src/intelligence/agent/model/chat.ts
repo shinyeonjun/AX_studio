@@ -1,9 +1,7 @@
-export type ChatRole = 'user' | 'assistant';
+import type { ChatMessage } from '../../../contracts/chat-message.js';
 
-export interface ChatMessage {
-  role: ChatRole;
-  content: string;
-}
+export type { ChatMessage, ChatRole } from '../../../contracts/chat-message.js';
+
 
 export interface ChatPromptInput {
   system: string;

@@ -1,7 +1,7 @@
 import type { Connector, ConnectorContext, ConnectorFailureKind } from '../../connectors/types.js';
 import { isRecoverableConnectorFailure } from '../../connectors/failure-kind.js';
 import type { DecisionEngine, DecisionQuestion } from '../../contracts/decision.js';
-import { boundDecisionString, DECISION_CONTEXT_UNTRUSTED_DATA_POLICY } from '../../intelligence/decision/context.js';
+import { boundDecisionString, DECISION_CONTEXT_UNTRUSTED_DATA_POLICY } from '../../contracts/decision-context.js';
 import { buildJevReadOperationIndex } from '../../intelligence/decision/read-operation-catalog.js';
 import { untrustedEvidencePreview } from './input.js';
 import type { Step, WorkflowIR } from '../../workflow/schema.js';

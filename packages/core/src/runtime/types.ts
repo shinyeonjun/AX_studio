@@ -1,4 +1,4 @@
-import type { InvestigationRunner } from '../intelligence/agent/investigation-runner.js';
+import type { InvestigationRunner } from '../contracts/investigation-runner.js';
 import type { DecisionEngine } from '../contracts/decision.js';
 import type { WorkflowStore } from '../persistence/workflow-store.js';
 import type { Connector } from '../connectors/types.js';

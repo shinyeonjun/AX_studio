@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { InvestigationRunner } from '../intelligence/agent/investigation-runner.js';
+import type { InvestigationRunner } from '../contracts/investigation-runner.js';
 import type { DecisionEngine } from '../contracts/decision.js';
 import type { Connector } from '../connectors/types.js';
 import type {

@@ -2,7 +2,7 @@ import { readFile, realpath } from 'node:fs/promises';
 import { basename, extname, isAbsolute, relative } from 'node:path';
 import { defaultArtifactRoot } from '../../../../documents/read/paths.js';
 import { getAxDataPaths } from '../../../../persistence/paths/ax-data.js';
-import type { ModelImageInput } from '../../../../intelligence/agent/model/provider.js';
+import type { ModelImageInput } from '../../../../contracts/investigation-runner.js';
 import { documentVisualReferencesFromRun } from './references.js';
 
 function imageMimeType(path: string): string | undefined {

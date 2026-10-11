@@ -6,7 +6,7 @@ import type {
 import {
   boundDecisionString,
   DECISION_CONTEXT_UNTRUSTED_DATA_POLICY,
-} from '../../intelligence/decision/context.js';
+} from '../../contracts/decision-context.js';
 import type { DiscoveryObservationRef } from '../../contracts/discovery-source.js';
 import type { SourceDescriptor } from '../schema.js';
 import { rankSources } from './adapters.js';
