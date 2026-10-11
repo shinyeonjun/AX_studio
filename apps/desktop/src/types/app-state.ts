@@ -1,6 +1,6 @@
 import type { AiBrand, AiConnectionMode } from './ai-provider';
 import type { ConnectionEntry } from './connection-entry';
-import type { ExecutionHistoryDiagnostic, LocalFolderEntry } from '@ax-studio/core';
+import type { ExecutionHistoryDiagnostic, LocalFolderEntry, TriggerDeadLetter } from '@ax-studio/core';
 import type { Recurrence } from '@ax-studio/core/schedule';
 
 export interface AiProviderState {
@@ -30,14 +30,8 @@ export interface WorkSummary {
   triggerPollFailure?: { code: string; message: string; firstFailedAt: string; lastFailedAt: string };
 }
 
-/** Mirrors core `TriggerDeadLetter` without `workflowId` (see diagnostics-state.ts). */
-export interface TriggerDeadLetterSummary {
-  dedupeKey: string;
-  attempts: number;
-  reason: string;
-  executionId?: string;
-  at: string;
-}
+/** The core dead-letter record without `workflowId`: the part the screen shows. */
+export type TriggerDeadLetterSummary = Omit<TriggerDeadLetter, 'workflowId'>;
 
 /** Mirrors core `SchedulerOccurrenceOutcome`. */
 export interface SchedulerOccurrenceOutcomeSummary {
