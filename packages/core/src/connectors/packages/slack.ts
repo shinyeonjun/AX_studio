@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type { ModulePackage } from '../module-package.js';
 import { SlackConnector } from '../slack/index.js';
 import { getSlackConnectionStatus } from '../slack/connection.js';
@@ -66,7 +67,12 @@ export const slackModulePackage: ModulePackage = {
     dedupeKey(workflowId, event) {
       // Must match the poll receipt key (runtime/trigger-engine/helpers.ts eventDedupeKey)
       // so a message delivered by Socket Mode is never re-run by the poll fallback.
-      return `${workflowId}:slack.new_message:${String(event.payload.messageId ?? event.payload.ts ?? '')}`;
+      const id = event.payload.messageId ?? event.payload.ts;
+      if (typeof id === 'string' && id.length > 0) return `${workflowId}:slack.new_message:${id}`;
+      // Without a Slack id, key the content: an empty id would let every such message share one
+      // receipt, so the second one would be treated as already handled and dropped.
+      const content = createHash('sha256').update(JSON.stringify(event.payload)).digest('hex');
+      return `${workflowId}:slack.new_message:content:${content}`;
     },
   },
 };
