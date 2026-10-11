@@ -42,9 +42,9 @@
 | K02 | 제품 전체가 Jev 전용으로 보이는 과장 | 경로별 상태를 구분. 기존 PDF LLM 경계 유지 표시 | 개발·검증 담당이 문서·UI·FigJam 상태 일치 확인 |
 | K03 | LLM 문안이 제어 결정으로 사용됨 | strict 흐름의 인수 차단 | 명시적 출력 계약·바인딩 제한과 negative 회귀 |
 | K04 | 설치 파일 생성이 사용 가능성으로 오해됨 | OS별 실제 사용 증거 부족 | Linux 설치·실행은 개발·검증 담당, Windows 사용은 제품 책임자 |
-| K05 | PDF 엔진 Python suite 4실패·4오류 | 배포 후보 검증 차단 | 기준·수정 소스를 같은 의존성으로 비교하고 원인 해결 |
+| K05 | PDF 엔진 Python suite 4실패·4오류 (2026-10-12 재확인: 실패 없음) | 해소 | 전용 venv(`packages/document-engine/.venv`)에서 118개 통과, CI `Document engine tests` 통과. 기본 `python`에는 의존성이 없어 로컬 실행 시 ImportError가 난다 |
 | K06 | feature 소스·번들의 라이선스와 notices 미정합 | 공개 배포 차단 | 제품 책임자의 라이선스 선택과 개발·검증 담당의 의존성·번들 점검 |
-| K07 | npm audit 20 affected packages·25 advisory URL, 번들 pypdf의 77 vulnerability records, 기존 Knip 항목 | 영향 검토·조치 미완료 | 개발·검증 담당이 도달 경로·runtime 영향·수정·번들 재생성·재검증 기록 |
+| K07 | npm audit 2026-10-12 기준 프로덕션 critical 0건(handlebars 수정, PR #289), 개발 전용 high 2·moderate 9. 번들 pypdf 취약점 77건은 재확인 전 | 프로덕션 critical 해소, 나머지 분류 필요 | 개발 전용 취약점은 Dependabot으로 분류, pypdf는 번들 재생성 후 재측정 |
 | K08 | 분류·미해결 예외·금액 정책 미확정 | 구현 전 정책 검토 필요 | 제품 책임자와 [열린 정책](requirements.md#구현-전에-확정할-정책) 결정 |
 | K09 | 여러 작업트리의 green 결과를 통합 완료로 오해 | 단일 후보 검증 없음 | 통합 SHA 고정 후 필수 전체 suite와 CI 재실행 |
 | K10 | 새 Git Flow와 기존 main 중심 CI 불일치 | 개발 브랜치의 필수 check 확인 필요 | CI 이벤트·branch 보호 정책 조정, 실제 브랜치 실행 확인 |
