@@ -9,6 +9,7 @@ import type {
 } from './investigation-runner.js';
 import { runAgent } from './harness/run.js';
 import { runTextAgent } from './harness/run-text.js';
+import { isCloudProvider } from './harness/policy.js';
 
 export { isCloudProvider } from './harness/policy.js';
 
@@ -75,6 +76,9 @@ export function createInvestigationRunner(harness: AgentHarness): InvestigationR
   return {
     get providerName() {
       return harness.providerName;
+    },
+    get isCloud() {
+      return isCloudProvider(harness.providerName);
     },
     run<T>(request: InvestigationRunRequest<T>) {
       return harness.run({ role: 'investigate', ...request });

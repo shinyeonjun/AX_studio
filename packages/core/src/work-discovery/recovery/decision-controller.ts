@@ -2,7 +2,7 @@ import type { DecisionEngine, DecisionQuestion } from '../../contracts/decision.
 import {
   boundDecisionString,
   DECISION_CONTEXT_UNTRUSTED_DATA_POLICY,
-} from '../../intelligence/decision/context.js';
+} from '../../contracts/decision-context.js';
 import type { DiscoveryRecoveryCheckpoint, DiscoverySessionState } from '../schema.js';
 
 export type DiscoveryRecoveryAction =

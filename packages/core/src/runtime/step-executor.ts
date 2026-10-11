@@ -2,7 +2,7 @@ import type { WorkflowIR, Step } from '../workflow/schema.js';
 import { requiresApproval } from '../workflow/approval.js';
 import type { Connector, ConnectorContext } from '../connectors/types.js';
 import type { WorkflowStore } from '../persistence/workflow-store.js';
-import type { InvestigationRunner } from '../intelligence/agent/investigation-runner.js';
+import type { InvestigationRunner } from '../contracts/investigation-runner.js';
 import type { DecisionEngine } from '../contracts/decision.js';
 import { runAiDecision, evaluateCondition } from './ai-investigation.js';
 import { KEEP_CONTENT_LOCAL_SETTING, withContentKeptLocal } from './investigation/evidence.js';

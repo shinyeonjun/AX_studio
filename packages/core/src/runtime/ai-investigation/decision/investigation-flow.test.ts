@@ -868,6 +868,7 @@ describe('runAiDecision investigation flow', () => {
     let receivedCloudPolicy: boolean | undefined;
     const runner = {
       providerName: 'ollama-local',
+      isCloud: false,
       async run<T>(request: InvestigationRunRequest<T>) {
         receivedEvidence = request.context.evidence;
         receivedCloudPolicy = request.cloudAllowed;

@@ -1,9 +1,8 @@
 import type { ZodType } from 'zod';
 import type { ChatMessage } from './chat.js';
+import type { AgentProgressEvent, ModelImageInput } from '../../../contracts/investigation-runner.js';
 
-export interface AgentProgressEvent {
-  message: string;
-}
+export type { AgentProgressEvent, ModelImageInput } from '../../../contracts/investigation-runner.js';
 
 /** Provider-reported counts; an absent field is unknown, not zero. */
 export interface ModelTokenUsage {
@@ -28,12 +27,6 @@ export function reportModelTokenUsage(
   try { input.onUsage?.(normalized); } catch { /* Telemetry must not fail model work. */ }
 }
 
-export interface ModelImageInput {
-  data: Uint8Array;
-  mimeType: string;
-  pageIndex?: number;
-  filename?: string;
-}
 
 export interface StructuredGenerateInput<T> {
   schema: ZodType<T>;

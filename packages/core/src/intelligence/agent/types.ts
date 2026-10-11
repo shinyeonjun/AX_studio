@@ -1,8 +1,10 @@
 import type { ZodType } from 'zod';
 import type { ChatMessage } from './model/chat.js';
 import type { AgentProgressEvent, ModelImageInput, ModelTokenUsage } from './model/provider.js';
+import type { InvestigateAgentContext } from '../../contracts/investigation-runner.js';
 
 export type { AgentProgressEvent } from './model/provider.js';
+export type { InvestigateAgentContext } from '../../contracts/investigation-runner.js';
 
 export type AgentRole = 'command' | 'investigate';
 
@@ -20,14 +22,6 @@ export interface AgentRoleDefinition {
   policy: AgentExecutionPolicy;
 }
 
-export interface InvestigateAgentContext {
-  skillGoal: string;
-  taskGoal: string;
-  taskMemo?: string;
-  evidence: Array<{ source: string; detail: string }>;
-  untrustedData?: string;
-  connectedConnectors: string[];
-}
 
 export interface CommandAgentContext {
   connectedConnectors: string[];

@@ -1,9 +1,9 @@
 import { executionErrorReason } from '../../contracts/error-messages.js';
-import { decisionServiceFailure } from '../../intelligence/decision/jev/errors.js';
+import { decisionServiceFailure } from '../../contracts/decision-errors.js';
 import type { ConnectorContext } from '../../connectors/types.js';
 import type { DecisionAnswer, DecisionEngine, DecisionInstruction, DecisionQuestion } from '../../contracts/decision.js';
 import { classifyDecisionOutput, MAX_DECISION_CHOICE_CRITERIA } from '../../contracts/decision.js';
-import { boundDecisionString, DECISION_CONTEXT_UNTRUSTED_DATA_POLICY } from '../../intelligence/decision/context.js';
+import { boundDecisionString, DECISION_CONTEXT_UNTRUSTED_DATA_POLICY } from '../../contracts/decision-context.js';
 import type { Step } from '../../workflow/schema.js';
 import { decisionOutputProperties } from '../../workflow/ai-output-contract.js';
 
