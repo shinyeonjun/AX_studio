@@ -1,5 +1,5 @@
 import { RUN_NOT_STARTED_CODES } from '../run-refusals.js';
-import type { WorkflowStore } from '../../persistence/workflow-store.js';
+import type { TriggerEngineStore } from './store-port.js';
 import type { WorkflowIR } from '../../workflow/schema.js';
 import { isExternalAction } from '../execution/contracts.js';
 import type { ExecutionResult } from '../types.js';
@@ -29,7 +29,7 @@ function attemptKey(dedupeKey: string): string {
   return `${ATTEMPT_SETTING_PREFIX}${encodeURIComponent(dedupeKey)}`;
 }
 
-function readAttempts(store: WorkflowStore, dedupeKey: string): AttemptState | undefined {
+function readAttempts(store: TriggerEngineStore, dedupeKey: string): AttemptState | undefined {
   const value = store.getSetting<unknown>(attemptKey(dedupeKey), undefined);
   if (!value || typeof value !== 'object') return undefined;
   const { attempts, nextAttemptAt } = value as Record<string, unknown>;
@@ -43,12 +43,12 @@ export function triggerErrorNotStarted(error: unknown): boolean {
 }
 
 /** True while a failed event is waiting for its exponential backoff window. */
-export function triggerRetryBlocked(store: WorkflowStore, dedupeKey: string, now = Date.now()): boolean {
+export function triggerRetryBlocked(store: TriggerEngineStore, dedupeKey: string, now = Date.now()): boolean {
   const state = readAttempts(store, dedupeKey);
   return Boolean(state && state.nextAttemptAt > now);
 }
 
-export function clearTriggerAttempts(store: WorkflowStore, dedupeKey: string): void {
+export function clearTriggerAttempts(store: TriggerEngineStore, dedupeKey: string): void {
   store.deleteSetting(attemptKey(dedupeKey));
 }
 
@@ -69,7 +69,7 @@ export function externalEffectPossible(result: Partial<ExecutionResult> | undefi
   });
 }
 
-function recordDeadLetter(store: WorkflowStore, letter: TriggerDeadLetter): void {
+function recordDeadLetter(store: TriggerEngineStore, letter: TriggerDeadLetter): void {
   try {
     const stored = store.getSetting<unknown>(DEAD_LETTER_SETTING, []);
     const letters = Array.isArray(stored) ? stored : [];
@@ -86,7 +86,7 @@ function recordDeadLetter(store: WorkflowStore, letter: TriggerDeadLetter): void
  * receipt is released for a retry after exponential backoff.
  */
 export function recordTriggerFailure(
-  store: WorkflowStore,
+  store: TriggerEngineStore,
   params: { dedupeKey: string; workflowId: string; workflow: WorkflowIR; result?: Partial<ExecutionResult>; reason: string },
   now = Date.now(),
 ): 'retry' | 'dead' {

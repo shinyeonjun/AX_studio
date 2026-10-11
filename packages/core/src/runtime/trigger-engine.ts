@@ -1,4 +1,4 @@
-import type { WorkflowStore } from '../persistence/workflow-store.js';
+import type { TriggerEngineStore } from './trigger-engine/store-port.js';
 import type { WorkflowRuntime } from './engine.js';
 import type { PushTransportState } from '../triggers/push-state.js';
 import type { PushTriggerEvent } from '../connectors/module-package.js';
@@ -17,7 +17,7 @@ export class TriggerEngine {
   private readonly poller: TriggerPoller;
 
   constructor(
-    store: WorkflowStore,
+    store: TriggerEngineStore,
     runtime: WorkflowRuntime,
     onTriggeredRun?: (workflowId: string, result: unknown) => void,
     onPushTransportStateChanged?: (triggerType: string, state: PushTransportState) => void,

@@ -1,4 +1,4 @@
-import type { WorkflowStore } from '../../persistence/workflow-store.js';
+import type { TriggerEngineStore } from './store-port.js';
 import { PUSH_TRIGGER_DRIVERS } from '../../connectors/packages/catalog.js';
 import type { PushTriggerEvent } from '../../connectors/module-package.js';
 import type { PushTransportState } from '../../triggers/push-state.js';
@@ -18,7 +18,7 @@ export class PushTransportManager {
   private refreshQueue: Promise<void> = Promise.resolve();
 
   constructor(
-    private readonly store: WorkflowStore,
+    private readonly store: TriggerEngineStore,
     private readonly isAcceptingEvents: () => boolean,
     private readonly onEvent: (driver: PushTriggerDriver, event: PushTriggerEvent) => void | boolean | Promise<void | boolean>,
     private readonly onStateChanged?: (triggerType: string, state: PushTransportState) => void,

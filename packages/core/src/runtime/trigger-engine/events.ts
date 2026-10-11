@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { WorkflowStore } from '../../persistence/workflow-store.js';
+import type { TriggerEngineStore } from './store-port.js';
 import type { WorkflowRuntime } from '../engine.js';
 import { PUSH_TRIGGER_DRIVERS } from '../../connectors/packages/catalog.js';
 import type { PushTriggerEvent } from '../../connectors/module-package.js';
@@ -74,7 +74,7 @@ export class TriggerEventCoordinator {
   private readonly drainWaiters = new Set<() => void>();
 
   constructor(
-    private readonly store: WorkflowStore,
+    private readonly store: TriggerEngineStore,
     private readonly runtime: WorkflowRuntime,
     private readonly isAcceptingEvents: () => boolean,
     private readonly onTriggeredRun?: (workflowId: string, result: unknown) => void,
