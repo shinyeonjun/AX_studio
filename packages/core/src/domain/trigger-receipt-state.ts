@@ -36,5 +36,22 @@ export function decideTriggerClaim(input: {
   return 'reclaim_lease';
 }
 
-// Finishing a receipt (completed, failed, dead) is not checked against its status here. The
-// writes are unconditional today; tightening them is a separate change with its own tests.
+/** The terminal or release move a finished run makes on its receipt. */
+export type TriggerReceiptFinish = 'completed' | 'failed' | 'dead';
+
+/**
+ * Which stored statuses each finish may start from. Only the run that owns a processing
+ * receipt may finish it. completed and dead are terminal, so a late finish cannot overwrite them.
+ */
+export const TRIGGER_RECEIPT_FINISH_FROM: Readonly<Record<TriggerReceiptFinish, readonly TriggerReceiptStatus[]>> = {
+  completed: ['processing'],
+  failed: ['processing'],
+  dead: ['processing'],
+};
+
+export function canFinishTriggerReceipt(
+  stored: TriggerReceiptStatus | undefined,
+  finish: TriggerReceiptFinish,
+): boolean {
+  return stored !== undefined && TRIGGER_RECEIPT_FINISH_FROM[finish].includes(stored);
+}
