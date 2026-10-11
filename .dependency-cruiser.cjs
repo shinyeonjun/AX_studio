@@ -16,6 +16,7 @@ const CONNECTOR_IDS = [
 const CHAT = '^packages/core/src/intelligence/agent/commands/chat';
 const CHAT_LAYERS = [['shared'], ['shaping', 'result'], ['planning'], ['routing'], ['loop']];
 const CHAT_NOT_TEST = '[.](test|live[.]test)[.]ts$|[.]fixture[.]ts$';
+const TEST_SUPPORT = '[.]test[.]ts$|(^|/)fixtures?[.]ts$|[.]fixture[.]ts$';
 
 /** @type {import('dependency-cruiser').IConfiguration} */
 module.exports = {
@@ -52,6 +53,22 @@ module.exports = {
       severity: 'error',
       from: { path: '^packages/core/src/runtime' },
       to: { path: '^packages/core/src/work-discovery' },
+    },
+    {
+      // Runtime executes what the host validated; it asks an investigation runner for decisions
+      // through contracts/investigation-runner, never by importing the intelligence module.
+      // Test doubles and fixtures may use intelligence types.
+      name: 'runtime-no-intelligence',
+      severity: 'error',
+      from: { path: '^packages/core/src/runtime', pathNot: TEST_SUPPORT },
+      to: { path: '^packages/core/src/intelligence' },
+    },
+    {
+      name: 'workflow-no-runtime',
+      severity: 'error',
+      comment: 'Workflow IR, validation and repair are below Runtime; the shared helpers live in contracts.',
+      from: { path: '^packages/core/src/workflow', pathNot: TEST_SUPPORT },
+      to: { path: '^packages/core/src/runtime' },
     },
     {
       name: 'connectors-no-work-discovery',

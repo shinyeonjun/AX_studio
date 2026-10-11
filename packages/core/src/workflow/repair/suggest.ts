@@ -7,7 +7,7 @@ import {
 import {
   describeInputColumns,
   inputColumnTypesCompatible,
-} from '../../runtime/output-contract.js';
+} from '../../contracts/output-check/input.js';
 import type { RepairCandidateOperation } from './contract.js';
 
 function normalizedName(value: string): string {
