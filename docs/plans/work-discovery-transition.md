@@ -1,6 +1,7 @@
 # Work Discovery 전환 구현 계획
 
-Status: Superseded by the implemented work-discovery (2026-10-12) — kept as the record of the starting point  
+Status: Superseded by the implemented work-discovery (2026-10-12) — kept as the record of the starting point
+
 Scale: Large  
 Research: `docs/research/work-discovery-transition.md`  
 North star: `docs/AX_STUDIO_WORK_DISCOVERY_MASTER_PLAN.md`
