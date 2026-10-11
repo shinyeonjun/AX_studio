@@ -34,7 +34,7 @@ jobs:
       - uses: actions/setup-node@v4
         if: env.TYPESAFE_API_KEY != ''
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: npm
 
       - name: Install dependencies
