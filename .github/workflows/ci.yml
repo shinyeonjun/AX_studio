@@ -6,6 +6,8 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  # Release calls this so a tag cannot ship from a commit that fails verification.
+  workflow_call:
 
 permissions:
   contents: read
