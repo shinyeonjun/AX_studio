@@ -16,7 +16,7 @@ export function prepareApprovalResume(
   approvalId: string,
   intent?: Pick<ToolSendOutcome, 'binding' | 'paramsHash'>,
 ): ApprovalResumeGuard {
-  const approval = host.config.store.getApproval(approvalId);
+  const approval = host.approvals.getApproval(approvalId);
   if (!approval) {
     return {
       ok: false,
@@ -37,7 +37,7 @@ export function prepareApprovalResume(
   // An expired approval can never be approved; expire it now if the periodic sweep has not.
   const ttlMs = host.config.approvalTtlMs;
   if (ttlMs !== undefined && isApprovalExpired(approval, ttlMs)) {
-    const expired = expireApproval(host.config.store, approval);
+    const expired = expireApproval(host.approvals, approval);
     if (expired) {
       host.toolResults?.discard(approvalId);
       host.notifyExecutionFinished(expired);
@@ -64,7 +64,7 @@ export function prepareApprovalResume(
     };
   }
   let claimed: boolean;
-  try { claimed = host.config.store.claimApproval(approvalId, intent); }
+  try { claimed = host.approvals.claimApproval(approvalId, intent); }
   catch {
     return { ok: false, result: { executionId: approval.executionId, status: 'failed',
       pendingApprovalId: approvalId, errorCode: 'database_persistence_failed', log: [] } };
@@ -76,9 +76,9 @@ export function prepareApprovalResume(
     };
   }
 
-  const execution = host.config.store.getExecution(approval.executionId);
+  const execution = host.approvals.getExecution(approval.executionId);
   if (!execution) {
-    host.config.store.failApproval(approvalId);
+    host.approvals.failApproval(approvalId);
     return {
       ok: false,
       result: { executionId: approval.executionId, status: 'failed', errorCode: 'execution_not_found', log: [] },
