@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { buildInvestigatePrompt, setAgentSkillsDir } from './index.js';
-import type { AxJobProposeArgs } from './index.js';
+import type { AxJobProposeArgs } from '../index.js';
 
 describe('Agent public API', () => {
   it('uses the configured skill directory when building a prompt', () => {

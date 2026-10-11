@@ -2,9 +2,9 @@ import { describe, expect, it, vi } from 'vitest';
 import { MetadataCatalogSchema, type MetadataCatalog, type RequestUnderstanding } from '../../../contracts/request-understanding.js';
 import { createDatabaseAsync } from '../../../persistence/db.js';
 import { WorkflowStore } from '../../../persistence/workflow-store.js';
-import { AxCommandService } from '../../agent/commands/service.js';
-import type { AxCommandReadGateway } from '../../agent/commands/read-gateway.js';
-import { AGENT_COMMAND_CONTEXT } from '../../agent/commands/access.js';
+import { AxCommandService } from '../../commands/service.js';
+import type { AxCommandReadGateway } from '../../commands/read-gateway.js';
+import { AGENT_COMMAND_CONTEXT } from '../../commands/access.js';
 import { RequestUnderstandingSession } from './session.js';
 
 function catalog(): MetadataCatalog {

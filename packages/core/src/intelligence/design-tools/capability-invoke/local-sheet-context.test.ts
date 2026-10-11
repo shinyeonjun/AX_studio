@@ -6,9 +6,9 @@ import { LocalSheetConnector } from '../../../connectors/local-sheet/connector.j
 import type { DecisionEngine } from '../../../contracts/decision.js';
 import type { TextGenerateInput } from '../../providers/provider.js';
 import { AgentHarness } from '../../agent/harness.js';
-import { runAxCommandChat } from '../../agent/commands/chat.js';
-import { AxCommandService } from '../../agent/commands/service.js';
-import { parallelToolAnswersForTest, scriptedModel } from '../../agent/commands/chat/testing/fixtures.js';
+import { runAxCommandChat } from '../../commands/chat.js';
+import { AxCommandService } from '../../commands/service.js';
+import { parallelToolAnswersForTest, scriptedModel } from '../../commands/chat/testing/fixtures.js';
 
 import { createDatabaseAsync } from '../../../persistence/db.js';
 import { WorkflowStore } from '../../../persistence/workflow-store.js';

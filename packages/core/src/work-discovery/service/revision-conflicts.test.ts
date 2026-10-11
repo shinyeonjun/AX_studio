@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { describe, expect, it } from 'vitest';
-import { createDiscoveryCommandGateway } from '../../intelligence/agent/commands/discovery-gateway.js';
+import { createDiscoveryCommandGateway } from '../../intelligence/commands/discovery-gateway.js';
 import { createDatabaseAsync } from '../../persistence/db.js';
 import { WorkflowStore } from '../../persistence/workflow-store.js';
 import { buildDiscoveryBlueprint } from '../compile/blueprint.js';

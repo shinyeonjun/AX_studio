@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { buildDesignToolContext, executeDesignToolCalls } from './index.js';
 import { createDatabaseAsync } from '../../persistence/db.js';
 import { WorkflowStore } from '../../persistence/workflow-store.js';
-import { AxCommandService } from '../agent/commands/service.js';
+import { AxCommandService } from '../commands/service.js';
 
 describe('design-tools inventory', () => {
   it('overlaps independent read calls while preserving result order', async () => {

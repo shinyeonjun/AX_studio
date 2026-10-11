@@ -1,4 +1,4 @@
-import type { AxCommand } from '../../agent/commands/schema.js';
+import type { AxCommand } from '../../commands/schema.js';
 import {
   MetadataCatalogSchema,
   REQUEST_UNDERSTANDING_FIELDS, type RequestUnderstandingField, type RequestFieldAuthority,

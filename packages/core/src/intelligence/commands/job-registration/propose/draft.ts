@@ -1,0 +1,174 @@
+import type { SessionStateMap } from '../../service/contracts.js';
+import { httpEndpointsFromConnections } from '../../../../connectors/http/connection.js';
+import { parseLocalFolderConnectionConfig } from '../../../../platform/local-folder-config.js';
+import {
+  validateWorkflowContracts,
+  type ContractValidationIssue,
+} from '../../../../workflow/contract-validator.js';
+import {
+  validateWorkflowIR,
+  type WorkflowIR,
+} from '../../../../workflow/schema.js';
+import { randomUUID } from 'node:crypto';
+import type { WorkflowStore } from '../../../../persistence/workflow-store.js';
+import { AxWorkflowCreateArgsSchema } from '../../schema/workflow-args.js';
+import type { AxCommand } from '../../schema.js';
+import { candidateFromCreateCommand } from '../../workflow-gateway/steps.js';
+import {
+  confirmationPresentation,
+  workflowConfirmationPresentation,
+  workflowHasExternalSteps,
+} from '../presentation.js';
+import {
+  compileScheduledHttpSlackJob,
+} from '../compile.js';
+import {
+  mapContractIssue,
+  issue,
+} from '../shared.js';
+import type { PendingJobDraft } from '../contract.js';
+import type { ProposeResponse, ValidatedProposeInput } from './contracts.js';
+import type { SelectedJobTargets } from './target-selection.js';
+
+export function createPendingJob(options: {
+  store: WorkflowStore;
+  pending: SessionStateMap<PendingJobDraft>;
+  input: ValidatedProposeInput;
+  targets?: SelectedJobTargets;
+  /** Slack channel id -> '#name', for the confirmation card. */
+  channelLabels?: Readonly<Record<string, string>>;
+}): ProposeResponse {
+  const { store, pending, input, targets } = options;
+  const channelLabels = options.channelLabels ?? {};
+  if (input.genericWorkflow) return createPendingGenericJob(store, pending, input, channelLabels);
+  if (!targets) return ['invalid', undefined, [issue('job_targets_required', '업무에서 쓸 연결이 정해지지 않았습니다. 연결을 골라 주세요.')]];
+  const { data, sessionId, path, cron, timezone } = input;
+  const connected = store.getConnections().filter((entry) => entry.connected).map((entry) => entry.connector);
+  const spec = {
+    name: data.name,
+    goal: data.goal,
+    ...(data.requestAnchor ? { requestAnchor: data.requestAnchor } : {}),
+    cron,
+    timezone,
+    path,
+    connectionId: targets.endpoint.id,
+    httpLabel: targets.endpoint.label || targets.endpoint.baseUrl,
+    headers: data.fetch?.headers,
+    interpretGoal: data.interpret?.goal?.trim() || data.goal,
+    channel: targets.channel,
+    skipIfEmpty: data.notify?.skipIfEmpty ?? true,
+    // HTTP→Slack jobs always end in an external send, so running now is explicit opt-in only.
+    runOnceNow: data.runOnceNow ?? false,
+    allowExternalAuto: data.allowExternalAuto,
+  };
+
+  let ir: WorkflowIR;
+  try {
+    ir = compileScheduledHttpSlackJob(spec);
+  } catch {
+    return ['invalid', undefined, [issue('invalid_workflow_schema', '업무로 만들지 못했습니다. 요청 내용을 확인해 주세요.')]];
+  }
+
+  const schema = validateWorkflowIR(ir);
+  if (!schema.ok) {
+    return ['invalid', undefined, [issue('invalid_workflow_schema', '업무로 만들지 못했습니다. 요청 내용을 확인해 주세요.')]];
+  }
+  const contractIssues: ContractValidationIssue[] = validateWorkflowContracts(schema.value, { connectedConnectors: connected });
+  if (contractIssues.length > 0) {
+    return ['invalid', { saved: false }, contractIssues.map(mapContractIssue)];
+  }
+
+  const confirmationToken = randomUUID();
+  pending.set(sessionId, { spec, ir, confirmationToken });
+  const presentation = confirmationPresentation(spec, ir, spec.httpLabel, confirmationToken, channelLabels, store.getColumnLabels());
+  return ['ok', {
+    saved: false,
+    pending: true,
+    presentation,
+    message: spec.name + ' 초안을 확인한 뒤 저장할 수 있습니다.',
+    summary: {
+      name: spec.name,
+      schedule: spec.cron,
+      timezone: spec.timezone,
+      path: spec.path,
+      connectionId: spec.connectionId,
+      httpLabel: spec.httpLabel,
+      channel: spec.channel,
+      runOnceNow: spec.runOnceNow,
+      allowExternalAuto: spec.allowExternalAuto,
+    },
+  }];
+}
+
+function createPendingGenericJob(
+  store: WorkflowStore,
+  pending: SessionStateMap<PendingJobDraft>,
+  input: ValidatedProposeInput,
+  channelLabels: Readonly<Record<string, string>>,
+): ProposeResponse {
+  const { data, sessionId } = input;
+  if (!data.trigger || !data.steps) {
+    return ['invalid', undefined, [issue('workflow_payload_required', '언제 시작할지와 무엇을 할지 알려 주세요.')]];
+  }
+
+  const candidate = candidateFromCreateCommand({
+    name: 'workflow.create',
+    args: {
+      name: data.name,
+      goal: data.goal,
+    ...(data.requestAnchor ? { requestAnchor: data.requestAnchor } : {}),
+      trigger: data.trigger,
+      steps: data.steps,
+      success: data.success,
+      assumptions: data.assumptions ?? [],
+    },
+  } as AxCommand, AxWorkflowCreateArgsSchema);
+  if (!candidate.ok) return candidate.result as ProposeResponse;
+
+  const parsed = validateWorkflowIR({
+    ...candidate.value,
+    allowExternalAuto: data.allowExternalAuto,
+  });
+  if (!parsed.ok) {
+    return ['invalid', undefined, [issue('invalid_workflow_schema', parsed.error)]];
+  }
+  const connected = store.getConnections().filter((entry) => entry.connected).map((entry) => entry.connector);
+  const contractIssues: ContractValidationIssue[] = validateWorkflowContracts(parsed.value, { connectedConnectors: connected });
+  if (contractIssues.length > 0) {
+    return ['invalid', { saved: false }, contractIssues.map(mapContractIssue)];
+  }
+
+  const runOnceNow = data.runOnceNow ?? !workflowHasExternalSteps(parsed.value);
+  const confirmationToken = randomUUID();
+  pending.set(sessionId, {
+    spec: { name: data.name, runOnceNow },
+    ir: parsed.value,
+    confirmationToken,
+  });
+  return ['ok', {
+    saved: false,
+    pending: true,
+    presentation: workflowConfirmationPresentation(
+      parsed.value,
+      runOnceNow,
+      data.allowExternalAuto,
+      confirmationToken,
+      {
+        connectionId: Object.fromEntries(httpEndpointsFromConnections(store.getConnections()).map((endpoint) => [endpoint.id, endpoint.label ?? endpoint.id])),
+        channel: channelLabels,
+        column: store.getColumnLabels(),
+        folderId: Object.fromEntries((parseLocalFolderConnectionConfig(store.getConnections()
+          .find((entry) => entry.connector === 'local_folder')?.config)?.folders ?? [])
+          .map((folder) => [folder.id, folder.label])),
+      },
+    ),
+    message: data.name + ' 초안을 확인한 뒤 저장할 수 있습니다.',
+    summary: {
+      name: data.name,
+      trigger: parsed.value.trigger,
+      steps: parsed.value.steps.map((step) => step.id),
+      runOnceNow,
+      allowExternalAuto: data.allowExternalAuto,
+    },
+  }];
+}

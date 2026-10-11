@@ -71,6 +71,14 @@ module.exports = {
       to: { path: '^packages/core/src/runtime' },
     },
     {
+      // The harness and its settings are below the application: they run a model call and know
+      // nothing of the chat or job services that call them.
+      name: 'harness-no-commands',
+      severity: 'error',
+      from: { path: '^packages/core/src/intelligence/agent', pathNot: TEST_SUPPORT },
+      to: { path: '^packages/core/src/intelligence/commands' },
+    },
+    {
       // Model providers are infrastructure: they call an AI service and return text. They must not
       // know the harness, the chat/command services, the runtime, or the document features.
       name: 'providers-no-application',
