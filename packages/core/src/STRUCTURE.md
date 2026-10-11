@@ -27,7 +27,7 @@ documents/write/     HTML, PDF, and DOCX generation contracts and writers
 documents/reporting/ Report planning, source capture, and report assembly
 
 persistence/         SQLite stores, repositories, credentials, paths, and artifacts
-intelligence/        Agent boundary, design tools, and retrieval
+intelligence/        Package barrel; agent/ (harness, settings, skills), commands/ (chat and job services), design-tools/, retrieval/
 providers/           AI model providers and CLI adapters (infrastructure; no harness or runtime imports)
 platform/             Host/platform integration primitives
 application/         Application composition and bootstrap entry point

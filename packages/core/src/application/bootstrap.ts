@@ -8,7 +8,7 @@ import { buildConnectorsFromStore } from '../connectors/registry.js';
 import { DocumentConnector } from '../connectors/document/index.js';
 import { registerAllModules } from '../connectors/packages/register.js';
 import { createAgentHarness, createInvestigationRunner, type AgentHarness } from '../intelligence/agent/harness.js';
-import { AxCommandService } from '../intelligence/agent/commands/service.js';
+import { AxCommandService } from '../intelligence/commands/service.js';
 import type { DecisionEngine } from '../contracts/decision.js';
 import type { ArtifactReference, ArtifactSink } from '../connectors/types.js';
 import { ArtifactStore } from '../persistence/artifact-store.js';

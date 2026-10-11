@@ -1,0 +1,149 @@
+import {
+  designCapabilities,
+  getCapability,
+  isConnectorAlwaysOn,
+} from '../../../catalog/index.js';
+import {
+  CONNECTOR_CATALOG,
+  CONNECTOR_IDS,
+  getConnectorLabel,
+} from '../../../catalog/connectors.js';
+import {
+  httpEndpointsFromConnections,
+  parseHttpEndpoints,
+} from '../../../connectors/http/connection.js';
+import type {
+  AxCommand,
+  AxCommandIssue,
+  AxCommandResult,
+} from '../schema.js';
+import {
+  issue,
+  safeHttpBaseUrl,
+  summarizeCapability,
+  textArg,
+} from '../contract.js';
+import type { AxCommandServiceState } from './contracts.js';
+import { metadataPage } from '../../../catalog/metadata-page.js';
+
+export function listResources(state: AxCommandServiceState) {
+  const connectionList = state.store.getConnections();
+  const connections = new Map(connectionList.map((connection) => [connection.connector, connection]));
+  return {
+    resources: CONNECTOR_IDS.map((id) => {
+      const catalog = CONNECTOR_CATALOG[id];
+      const connection = connections.get(id);
+      const httpEndpoints = id === 'http' ? httpEndpointsFromConnections(connectionList) : undefined;
+      const endpoints = httpEndpoints
+        ? httpEndpoints.slice(0, 20).map((endpoint) => ({
+          id: endpoint.id,
+          label: endpoint.label,
+          baseUrl: safeHttpBaseUrl(endpoint.baseUrl),
+        }))
+        : undefined;
+      return {
+        id,
+        label: getConnectorLabel(id),
+        description: catalog.description,
+        connected: isConnectorAlwaysOn(id) || Boolean(connection?.connected),
+        // Built-in tools (documents, sheets, transforms) are always usable but are not services
+        // the user connected; answers about "connected services" must not list them as such.
+        ...(isConnectorAlwaysOn(id) ? { availability: 'built_in' as const } : {}),
+        connectable: catalog.connectable,
+        connectionKind: catalog.connectionKind,
+        ...(endpoints ? { endpoints, endpointCount: httpEndpoints!.length,
+          truncated: httpEndpoints!.length > endpoints.length,
+          ...(httpEndpoints!.length > endpoints.length ? { next: 'http.list', nextOffset: endpoints.length } : {}) } : {}),
+      };
+    }),
+  };
+}
+
+export function listHttpConnections(state: AxCommandServiceState, command: AxCommand) {
+  const connection = state.store.getConnections().find((entry) => entry.connector === 'http');
+  const endpoints = parseHttpEndpoints(connection?.config);
+  const connected = connection?.connected === true;
+  const { items, total, ...pagination } = metadataPage(endpoints, command.args, endpoint => [endpoint.id, endpoint.label]);
+
+  return {
+    connections: items.map((endpoint) => {
+      const authType = endpoint.auth?.type ?? 'none';
+      const authStored = endpoint.authStored === true;
+      const authReady = authType === 'none' || authStored;
+      return {
+        id: endpoint.id,
+        label: endpoint.label ?? endpoint.id,
+        baseUrl: safeHttpBaseUrl(endpoint.baseUrl),
+        authType,
+        authStored,
+        authReady,
+        connected,
+        usable: connected && authReady,
+      };
+    }),
+    count: endpoints.length,
+    totalMatches: total,
+    ...pagination,
+    requiresExplicitConnectionId: endpoints.length > 1,
+  };
+}
+
+export function listCapabilities(state: AxCommandServiceState, command: AxCommand) {
+  const connector = textArg(command, 'connector');
+  const kind = textArg(command, 'kind');
+  const connected = state.store
+    .getConnections()
+    .filter((entry) => entry.connected)
+    .map((entry) => entry.connector);
+  // Keep disconnected capabilities visible so the agent can distinguish
+  // "this action does not exist" from "this connection is not ready".
+  let capabilities = designCapabilities();
+  if (connector) capabilities = capabilities.filter((entry) => entry.connector === connector);
+  if (kind === 'read' || kind === 'write' || kind === 'trigger') {
+    capabilities = capabilities.filter((entry) => entry.kind === kind);
+  }
+  const { items, total, ...pagination } = metadataPage(capabilities, command.args, capability => [
+    capability.id, capability.label, capability.description,
+  ]);
+  return {
+    capabilities: items.map((entry) => summarizeCapability(entry, connected, 'summary')),
+    count: capabilities.length,
+    totalMatches: total,
+    ...pagination,
+  };
+}
+
+export function describeCapability(
+  state: AxCommandServiceState,
+  command: AxCommand,
+): [AxCommandResult['status'], unknown, AxCommandIssue[]?] {
+  const id = textArg(command, 'id');
+  if (!id) {
+    return ['invalid', undefined, [issue(
+      'missing_argument',
+      '어떤 작업을 확인할지 알려 주세요.',
+      'args.id',
+      undefined,
+      [{
+        id: 'ax-input-capability-id',
+        label: '확인할 작업',
+        type: 'text',
+        required: true,
+        reason: '확인할 작업 이름을 입력해 주세요.',
+      }],
+    )]];
+  }
+  const capability = getCapability(id);
+  if (!capability) {
+    return ['not_found', undefined, [issue(
+      'capability_not_found',
+      '해당 작업을 찾지 못했어요.',
+      'args.id',
+    )]];
+  }
+  const connected = state.store
+    .getConnections()
+    .filter((entry) => entry.connected)
+    .map((entry) => entry.connector);
+  return ['ok', summarizeCapability(capability, connected)];
+}

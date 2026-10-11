@@ -4,7 +4,7 @@ import {
   AxUiPresentationSchema,
   type AxInputRequest,
   type AxUiPresentation,
-} from '../../../intelligence/agent/commands/schema.js';
+} from '../../../intelligence/commands/schema.js';
 import {
   ExecutionResultStatusSchema,
   type ExecutionResultStatus,
