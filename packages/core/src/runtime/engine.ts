@@ -54,6 +54,7 @@ export class WorkflowRuntime {
     this.toolResults = new ToolResultApprovals(config.store, this.connectors);
     this.executionRunner = new WorkflowExecutionRunner({
       config: this.config,
+      approvals: config.store,
       connectors: this.connectors,
       toolResults: this.toolResults,
       notifyExecutionStarted: (executionId) => this.notifyExecutionStarted(executionId),
