@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { readProgressMessage, ROUTE_SLOW_NOTICE_MS, routeProgress } from './progress.js';
+import { readProgressMessage, ROUTE_SLOW_NOTICE_MS, routeProgress, WRITING_SLOW_NOTICE_MS, writingProgress } from './progress.js';
 
 afterEach(() => { vi.useRealTimers(); });
 
@@ -29,5 +29,22 @@ describe('chat progress while a request is handled', () => {
     expect(readProgressMessage({ name: 'capability.invoke', args: { id: 'slack.messages.read', params: {} } }))
       .toBe('가져오고 있어요: Slack 채널 읽기');
     expect(readProgressMessage({ name: 'capability.invoke', args: { id: 'slack.message.send', params: {} } })).toBeUndefined();
+  });
+});
+
+describe('chat progress while the model writes', () => {
+  it('says it is writing, and adds a wait note only when the model is slow', () => {
+    vi.useFakeTimers();
+    const messages: string[] = [];
+    const stop = writingProgress(({ message }) => { messages.push(message); });
+    expect(messages).toEqual(['답변을 쓰고 있어요.']);
+    vi.advanceTimersByTime(WRITING_SLOW_NOTICE_MS);
+    expect(messages[1]).toContain('AI 답변을 기다리고 있어요');
+    stop();
+
+    const quick: string[] = [];
+    writingProgress(({ message }) => { quick.push(message); })();
+    vi.advanceTimersByTime(WRITING_SLOW_NOTICE_MS * 2);
+    expect(quick).toEqual(['답변을 쓰고 있어요.']);
   });
 });

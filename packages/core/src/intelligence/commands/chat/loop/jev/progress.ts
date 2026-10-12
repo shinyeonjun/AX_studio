@@ -17,6 +17,21 @@ export function routeProgress(onProgress: Progress): () => void {
   return () => clearTimeout(slow);
 }
 
+/** A written reply through a CLI model takes 4-7 seconds; past this it says it is still working. */
+export const WRITING_SLOW_NOTICE_MS = 12_000;
+
+/**
+ * "답변을 쓰고 있어요" while the model writes, the slowest step of a turn, which used to leave the
+ * previous step's text on screen. Returns the stop.
+ */
+export function writingProgress(onProgress: Progress): () => void {
+  try { onProgress?.({ message: '답변을 쓰고 있어요.' }); } catch { /* turn over */ }
+  const slow = setTimeout(() => {
+    try { onProgress?.({ message: 'AI 답변을 기다리고 있어요. 연결한 AI에 따라 조금 더 걸릴 수 있어요.' }); } catch { /* turn over */ }
+  }, WRITING_SLOW_NOTICE_MS);
+  return () => clearTimeout(slow);
+}
+
 /** What the screen says while a chosen read runs: "가져오고 있어요: Slack 채널 읽기". */
 export function readProgressMessage(command: AxCommand): string | undefined {
   if (command.name !== 'capability.invoke' || typeof command.args.id !== 'string') return undefined;

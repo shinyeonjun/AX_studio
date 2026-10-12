@@ -31,6 +31,7 @@ import { statusBreakdownNote } from '../result/status-breakdown.js';
 import { applyJevTableTransform, type JevTableTransformRequest } from '../shaping/table-transform/index.js';
 import { appendAppLog } from '../../../../persistence/paths/app-log.js';
 import { chatRequestContext, type CommandChatLoopContext } from './turn-context.js';
+import { writingProgress } from './jev/progress.js';
 
 interface SuccessfulCommandReplyInput {
   command: AxCommand;
@@ -68,6 +69,7 @@ export function createChatReplies(context: CommandChatLoopContext): ChatReplies 
     replyMessages = messages,
     requiredUserMessage = options.userMessage,
   ) => {
+    const stopProgress = writingProgress(options.onProgress);
     try {
       const reply = await options.harness.runText({
         requestId: options.requestId,
@@ -104,6 +106,8 @@ export function createChatReplies(context: CommandChatLoopContext): ChatReplies 
         return '현재 요청이 너무 길어 내용을 온전히 답변에 반영할 수 없습니다. 요청을 나눠 보내거나 긴 자료를 파일로 첨부해 주세요.';
       }
       return undefined;
+    } finally {
+      stopProgress();
     }
   };
 
