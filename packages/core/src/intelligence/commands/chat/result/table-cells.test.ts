@@ -15,4 +15,9 @@ describe('table cells in the chat', () => {
     const lines = tableToMarkdown(table({ tags: ['beauty', 'mascara'], sizes: [1200, 3], meta: [{ a: 1 }] })).split('\n');
     expect(lines[2]).toBe('| beauty, mascara | 1200, 3 | [{"a":1}] |');
   });
+
+  it('writes yes/no for a true/false value', () => {
+    const lines = tableToMarkdown(table({ private: false, archived: true })).split('\n');
+    expect(lines[2]).toBe('| 아니요 | 예 |');
+  });
 });

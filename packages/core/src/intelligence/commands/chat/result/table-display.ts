@@ -10,6 +10,8 @@ function markdownCell(value: unknown): string {
   const plainList = Array.isArray(value) && value.every((item) => ['string', 'number', 'boolean'].includes(typeof item));
   const text = typeof value === 'string' ? value
     : typeof value === 'number' ? formatTableNumber(value)
+      // "비공개 | false" read as code; people read 예/아니요.
+      : typeof value === 'boolean' ? (value ? '예' : '아니요')
       : plainList ? (value as unknown[]).map(String).join(', ')
         : JSON.stringify(value) ?? String(value);
   const bounded = text.length > MAX_CHAT_CELL_CHARS ? `${text.slice(0, MAX_CHAT_CELL_CHARS)}…` : text;

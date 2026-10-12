@@ -33,7 +33,7 @@ export const LOCAL_FOLDER_CAPABILITIES: ConnectorCapability[] = [
     ],
     outputColumnLabels: { key: '파일 키', filePath: '경로', fileName: '파일 이름', extension: '형식', size: '크기(바이트)',
       modifiedAt: '수정 시각(원본)', modified: '수정 시각' },
-    hiddenColumns: ['key', 'modifiedAt'],
+    hiddenColumns: ['key', 'filePath', 'modifiedAt'],
   },
   {
     id: 'local_folder.read',
