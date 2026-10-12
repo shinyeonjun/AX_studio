@@ -2,7 +2,7 @@
 # Pin the parser and independent renderer used by the PDF regression corpus.
 pypdf==6.19.0
 pypdfium2==5.13.0
-reportlab>=4.0,<5
+reportlab>=5.0.1,<6
 Pillow>=10,<13
 opencv-python-headless>=5.0.0.93,<6
 
