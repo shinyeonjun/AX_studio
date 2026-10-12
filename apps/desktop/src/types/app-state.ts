@@ -89,7 +89,8 @@ export interface AppState {
   credentialStorageWarning?: 'basic_text_backend';
   /** The native SQLite backend failed to load; the in-memory sql.js fallback persists less safely. */
   databaseBackendFallback?: boolean;
-  localFolders?: LocalFolderEntry[];
+  /** `missing`: the folder cannot be opened now (moved, deleted, drive gone). */
+  localFolders?: Array<LocalFolderEntry & { missing?: boolean }>;
   works: WorkSummary[];
   connections: ConnectionEntry[];
   pendingApprovals: number;
