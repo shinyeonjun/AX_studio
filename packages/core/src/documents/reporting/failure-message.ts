@@ -41,10 +41,10 @@ export function reportFailureMessage(log: ExecutionLogEntry[], code: string): st
   else if (code === 'report_source_discovery_needs_input') lines.push('어디서 숫자를 가져올지 정하지 못해 보고서를 만들지 않았습니다. 쓸 자료를 함께 적어 다시 요청해 주세요. 예: 어느 폴더의 어떤 파일, 어느 데이터베이스 표, 어느 API.');
   else if (code === 'report_source_discovery_unsupported') lines.push('필요한 자료를 가져오는 방법을 아직 지원하지 않습니다. 결과를 임의로 만들지 않았습니다.');
   else if (code === 'report_capture_refinement_jev_unavailable' || code === 'report_capture_refinement_jev_failed') {
-    lines.push('판단 엔진(Jev)이 가져올 자료를 고르지 못했습니다. 설정 > 판단 엔진에서 연결 상태를 확인한 뒤 다시 시도해 주세요. 확실하지 않은 짐작으로 대신 실행하지 않았습니다.');
+    lines.push('요청 판단 기능이 가져올 자료를 고르지 못했습니다. 설정 > 요청 판단 기능에서 연결 상태를 확인한 뒤 다시 시도해 주세요. 확실하지 않은 짐작으로 대신 실행하지 않았습니다.');
   }
   else if (code === 'report_capture_refinement_jev_answer_invalid') {
-    lines.push('판단 엔진(Jev)이 가져올 자료를 하나로 정하지 못했습니다. 잘못된 자료로 보고서를 만들지 않았습니다.');
+    lines.push('요청 판단 기능이 가져올 자료를 하나로 정하지 못했습니다. 잘못된 자료로 보고서를 만들지 않았습니다.');
   }
   else if (sourceNeedsNewPlan) lines.push('필요한 원본 데이터를 모두 가져올 방법을 정하지 못했습니다. 연결된 서비스에 필요한 자료가 있는지 확인한 뒤 새 요청으로 실행해 주세요. 불완전한 데이터로 보고서를 생성하지 않았습니다.');
   else if (code === 'report_evidence_deadline_exceeded') lines.push('계산 근거를 확인하는 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요.');
