@@ -139,8 +139,8 @@ export function jevFallbackMessage(reason: JevChatRouterFallbackReason, serviceF
   }
 }
 
-export function missingReadValuesMessage(paths: readonly string[]): string {
-  return `조회에 필요한 값(${readValueNames(paths)})을 요청에서 찾지 못했습니다. 이 값을 넣어 다시 요청해 주세요.`;
+export function missingReadValuesMessage(paths: readonly string[], capabilityId?: string): string {
+  return `조회에 필요한 값(${readValueNames(paths, capabilityId)})을 요청에서 찾지 못했습니다. 이 값을 넣어 다시 요청해 주세요.`;
 }
 
 export async function presentHttpEndpointSelection({ options, signal, publishResult }: CommandChatLoopContext): Promise<string> {

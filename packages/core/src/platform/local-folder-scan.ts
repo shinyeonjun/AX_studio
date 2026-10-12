@@ -32,8 +32,9 @@ function walkDirectory(
   currentPath: string,
   allowed: Set<string> | null,
   out: ScannedFile[],
+  limit = MAX_FILES_PER_SCAN,
 ): boolean {
-  if (out.length >= MAX_FILES_PER_SCAN) return true;
+  if (out.length >= limit) return true;
 
   let entries: string[];
   try {
@@ -44,7 +45,7 @@ function walkDirectory(
 
   let available = true;
   for (const name of entries) {
-    if (out.length >= MAX_FILES_PER_SCAN) break;
+    if (out.length >= limit) break;
     const filePath = join(currentPath, name);
     let stat;
     try {
@@ -58,7 +59,7 @@ function walkDirectory(
 
     if (stat.isDirectory()) {
       if (!isPathContainedInRoot(rootReal, filePath)) continue;
-      if (!walkDirectory(rootReal, filePath, allowed, out)) available = false;
+      if (!walkDirectory(rootReal, filePath, allowed, out, limit)) available = false;
       continue;
     }
     if (!stat.isFile()) continue;
@@ -79,13 +80,14 @@ function walkDirectory(
   return available;
 }
 
-export function scanFolder(rootPath: string, extensions?: string[]): ScannedFile[] {
+/** `limit` stops the walk once that many matching files are found. */
+export function scanFolder(rootPath: string, extensions?: string[], limit = MAX_FILES_PER_SCAN): ScannedFile[] {
   const root = resolveFolderRoot(rootPath);
   if (!root.ok) return [];
 
   const allowed = normalizeExtensions(extensions);
   const files: ScannedFile[] = [];
-  walkDirectory(root.rootReal, root.rootReal, allowed, files);
+  walkDirectory(root.rootReal, root.rootReal, allowed, files, limit);
   return files;
 }
 
