@@ -27,6 +27,7 @@ import {
   selectedColumnsFromHttpPath,
   tableForJevTransform,
 } from '../result/index.js';
+import { statusBreakdownNote } from '../result/status-breakdown.js';
 import { applyJevTableTransform, type JevTableTransformRequest } from '../shaping/table-transform/index.js';
 import { appendAppLog } from '../../../../persistence/paths/app-log.js';
 import { chatRequestContext, type CommandChatLoopContext } from './turn-context.js';
@@ -254,7 +255,11 @@ export function createChatReplies(context: CommandChatLoopContext): ChatReplies 
     publishReadTable(labels);
     if (transformOutcome && 'reply' in transformOutcome) return transformOutcome.reply;
     if (transformOutcome && 'table' in transformOutcome) {
-      return formatTableArtifact(labeledTable(transformOutcome.table, labels), sourceCapability?.hiddenColumns);
+      const shown = formatTableArtifact(labeledTable(transformOutcome.table, labels), sourceCapability?.hiddenColumns);
+      const note = readTable && transformOutcome.expression
+        ? statusBreakdownNote(labeledTable(readTable, labels), transformOutcome.expression)
+        : undefined;
+      return note ? `${shown}\n\n${note}` : shown;
     }
 
     const jevConfirmedNoTransform = tableTransform === 'none' || transformOutcome?.confirmedNoTransform === true;
