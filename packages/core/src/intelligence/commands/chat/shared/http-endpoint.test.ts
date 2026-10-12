@@ -71,4 +71,17 @@ describe('requestMentionsHttp', () => {
   ])('%s -> %s', (message, expected) => {
     expect(requestMentionsHttp(message, endpoints)).toBe(expected);
   });
+
+  // Real use: one of the person's HTTP connections is called "테스트".
+  const realEndpoints = [{ id: 'default', label: '깃허브' }, { id: 'test-id', label: '테스트' }];
+
+  it.each([
+    ["ax테스트 채널에 'AX Studio 실사용 테스트 메시지입니다' 라고 보내줘", false],
+    ['#ax테스트에 테스트 메시지 보내줘', false],
+    ['me@example.invalid로 테스트 결과 보내줘', false],
+    ['테스트에 주문 등록해줘', true],
+    ['깃허브로 이슈 올려줘', true],
+  ])('with an endpoint named like a common word: %s -> %s', (message, expected) => {
+    expect(requestMentionsHttp(message, realEndpoints)).toBe(expected);
+  });
 });

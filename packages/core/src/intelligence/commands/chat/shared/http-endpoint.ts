@@ -68,15 +68,28 @@ function endpointMentioned(message: string, value: string | undefined): boolean 
 }
 
 const HTTP_WORDS = /https?:\/\/|\b(?:https?|api|rest|post|put|patch|webhook|endpoint|url)\b|웹훅|엔드포인트/iu;
+// A Slack channel ("#ops", "운영 채널") or a mail address: the request already names where it goes.
+const OTHER_DESTINATION = /(?:^|[\s(])#[\p{L}\p{N}_.-]+|[\p{L}\p{N}_.-]+\s*채널|[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/iu;
+const PARTICLE = '(?:에서|에게|으로|로|에|을|를|은|는|이|가|의|와|과)?';
+
+/** An endpoint name used as a word of its own: "테스트에 등록해줘" names "테스트", "ax테스트" does not. */
+function endpointNamedAsWord(message: string, value: string | undefined): boolean {
+  const needle = value?.trim();
+  if (!needle || needle.length < 2) return false;
+  const escaped = needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`(?<![\\p{L}\\p{N}_])${escaped}${PARTICLE}(?![\\p{L}\\p{N}_])`, 'iu').test(message);
+}
 
 /**
- * Whether the request is about an HTTP call at all: it says HTTP/API/URL-like words or names a
- * connected endpoint. An HTTP write sends data to whatever address a connection points at, so it
- * is offered only then; "#ops에 안녕하세요 보내줘" must not become a POST.
+ * Whether the request is about an HTTP call at all: it says HTTP/API/URL-like words, or names a
+ * connected endpoint while naming no other destination. An HTTP write sends data to whatever
+ * address a connection points at, so it is offered only then. Real use: an endpoint called
+ * "테스트" turned "ax테스트 채널에 '… 테스트 메시지' 보내줘" into a Slack send plus an HTTP POST.
  */
 export function requestMentionsHttp(message: string, endpoints: readonly JevHttpEndpointHint[] = []): boolean {
   if (HTTP_WORDS.test(message) || hasExplicitHttpEndpointCue(message)) return true;
-  return endpoints.some((endpoint) => endpointMentioned(message, endpoint.label) || endpointMentioned(message, endpoint.id));
+  if (OTHER_DESTINATION.test(message)) return false;
+  return endpoints.some((endpoint) => endpointNamedAsWord(message, endpoint.label) || endpointNamedAsWord(message, endpoint.id));
 }
 
 export function hasExplicitHttpEndpointCue(message: string): boolean {
