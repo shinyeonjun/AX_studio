@@ -28,7 +28,7 @@ jobs:
         if: env.TYPESAFE_API_KEY == ''
         run: echo "::notice::TYPESAFE_API_KEY secret is not set; Jev routing eval skipped."
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         if: env.TYPESAFE_API_KEY != ''
 
       - uses: actions/setup-node@v7
