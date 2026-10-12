@@ -58,8 +58,8 @@
     "@playwright/test": "^1.64.0",
     "dependency-cruiser": "^18.5.0",
     "knip": "^6.41.0",
-    "node-gyp": "12.1.0",
-    "undici": "7.29.1"
+    "node-gyp": "12.4.0",
+    "undici": "7.30.0"
   },
   "license": "MIT"
 }
