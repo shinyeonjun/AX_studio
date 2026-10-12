@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { AxCommand } from '../../schema.js';
-import { applyJevCommandInputValuesToCommand, compileJevActionParams, jevActionQuotedInputMapping } from './action-catalog.js';
+import { applyJevCommandInputValuesToCommand, compileJevActionParams, jevActionQuotedInputMapping, selectJevActionHints } from './action-catalog.js';
+import { SLACK_CAPABILITIES } from '../../../../connectors/slack/catalog.js';
+import { HTTP_CAPABILITIES } from '../../../../connectors/http/catalog.js';
 import { GMAIL_CAPABILITIES } from '../../../../connectors/gmail/catalog.js';
 import { encodeScheduleInputValue } from '../../../../workflow/schedule/input-value.js';
 
@@ -94,5 +96,25 @@ describe('fields a request names', () => {
 
   it('never takes an unquoted word after a bare label as its value', () => {
     expect(compileJevActionParams(send, 'me@example.com 에게 제목 없이 본문 보내줘')).toEqual({ to: 'me@example.com' });
+  });
+});
+
+describe('action candidates offered to Jev', () => {
+  const connected = ['slack', 'http'];
+  const capabilities = [...SLACK_CAPABILITIES, ...HTTP_CAPABILITIES];
+  const ids = (message: string) => selectJevActionHints(connected, capabilities, { userMessage: message })
+    .hints.map((hint) => hint.capability.id);
+
+  it('leaves HTTP writes out of a request that is not about HTTP', () => {
+    expect(ids('#ax테스트에 안녕하세요 보내줘')).toContain('slack.message.send');
+    expect(ids('#ax테스트에 안녕하세요 보내줘')).not.toContain('http.post');
+  });
+
+  it('offers HTTP writes when the request asks for an API call', () => {
+    expect(ids('주문 API로 POST 보내줘')).toContain('http.post');
+  });
+
+  it('keeps every write when no request is given', () => {
+    expect(selectJevActionHints(connected, capabilities).hints.map((hint) => hint.capability.id)).toContain('http.post');
   });
 });
