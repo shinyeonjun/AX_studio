@@ -10,12 +10,14 @@ const KNOWN_VALUE_NAMES: Record<string, string> = {
 };
 
 /** A missing read value named for people: "검색어", or the raw name quoted when it is not a common one. */
-export function readValueName(path: string): string {
+export function readValueName(path: string, capabilityId?: string): string {
   const last = path.slice(path.lastIndexOf('.') + 1);
+  // `path` is a URL path for HTTP reads but a file inside the folder for local reads.
+  if (last === 'path' && capabilityId?.startsWith('local_')) return '파일 이름';
   return KNOWN_VALUE_NAMES[last.toLowerCase().replace(/[-\s]/gu, '')] ?? `'${last}'`;
 }
 
 /** "검색어, 가져올 개수": each value once, in the order asked. */
-export function readValueNames(paths: readonly string[]): string {
-  return [...new Set(paths.map(readValueName))].join(', ');
+export function readValueNames(paths: readonly string[], capabilityId?: string): string {
+  return [...new Set(paths.map((path) => readValueName(path, capabilityId)))].join(', ');
 }

@@ -1,5 +1,7 @@
+import { relative } from 'node:path';
 import type { SourceListingConnection } from '../../connectors/types.js';
 import { parseLocalFolderConnectionConfig } from '../../platform/local-folder-config.js';
+import { scanFolder } from '../../platform/local-folder-scan.js';
 import { addIndexedOperation, type IndexedReadOperation } from './indexed-operation.js';
 import { explicitLimit, explicitParameterValue, limitParameterHint, naturalLimitChoices, text } from './request-values.js';
 
@@ -19,6 +21,19 @@ function explicitSheetPath(message: string): string | undefined {
     .map((match) => match[1]);
   const unique = [...new Set(bare)];
   return unique.length === 1 ? unique[0] : undefined;
+}
+
+/** More spreadsheets than this and a pick from names alone is guesswork; ask for the file instead. */
+const MAX_SHEET_FILE_CHOICES = 50;
+
+/**
+ * The folder's spreadsheets, as paths relative to the folder, so Jev can pick the one a person
+ * named loosely ("8월 주문내역"). Undefined when there are none or too many to choose from.
+ */
+function sheetFileChoices(folderPath: string): string[] | undefined {
+  const files = scanFolder(folderPath, ['.csv', '.xlsx', '.xls'], MAX_SHEET_FILE_CHOICES + 1);
+  if (files.length === 0 || files.length > MAX_SHEET_FILE_CHOICES) return undefined;
+  return files.map((file) => relative(folderPath, file.filePath)).sort();
 }
 
 function explicitSheetName(message: string): string | undefined {
@@ -64,6 +79,7 @@ export function addLocalFolderOperations(
     }, (userMessage) => {
       const path = explicitSheetPath(userMessage);
       const sheet = explicitSheetName(userMessage);
+      const choices = path ? undefined : sheetFileChoices(folder.path);
       return {
         params: {
           folderId: folder.id,
@@ -71,7 +87,12 @@ export function addLocalFolderOperations(
           ...(sheet ? { sheet } : {}),
         },
         parameterHints: [
-          { path: 'path', type: 'string', required: true },
+          {
+            path: 'path',
+            type: 'string',
+            required: true,
+            ...(choices ? { description: 'The spreadsheet file in the folder the user means.', choices } : {}),
+          },
           { path: 'sheet', type: 'string', required: false },
         ],
         missingParameterPaths: path ? [] : ['path'],

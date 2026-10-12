@@ -148,5 +148,5 @@ export async function runAxCommandChat(options: AxCommandChatOptions): Promise<s
   }
 
   appendAppLog('warn', 'Jev chat route returned no result.', { ...requestContext, event: 'jev_chat_empty_result' });
-  return '요청을 처리하지 못해 아무것도 실행하지 않았습니다. 잠시 후 다시 요청해 주세요. 계속되면 설정 > 판단 엔진에서 연결 상태를 확인해 주세요.';
+  return '요청을 처리하지 못해 아무것도 실행하지 않았습니다. 잠시 후 다시 요청해 주세요. 계속되면 설정 > 요청 판단 기능에서 연결 상태를 확인해 주세요.';
 }

@@ -69,7 +69,7 @@ describe('why a run failed, in the chat', () => {
   });
 
   it('says the specific reason when the code has one', () => {
-    expect(formatExecutionResultMessage(failed('jev_busy'), { workflowName: '메일 요약' })).toContain('원인: 판단 엔진(Jev) 서버가 잠시 응답하지 않았습니다');
+    expect(formatExecutionResultMessage(failed('jev_busy'), { workflowName: '메일 요약' })).toContain('원인: 요청 판단 기능 서버가 잠시 응답하지 않았습니다');
     expect(formatExecutionResultMessage(failed('not_in_channel'), {})).toContain('채널에 앱을 추가해 주세요');
   });
 
