@@ -60,7 +60,7 @@ test('the document-engine requirement selects the reviewed pypdf security releas
 
 test('Electron install, package build and allowScripts retain one reviewed runtime pin', () => {
   const version = readJson('apps/desktop/package.json').devDependencies.electron;
-  assert.equal(version, '44.5.1', 'review a different Electron runtime before changing this pin');
+  assert.equal(version, '44.7.0', 'review a different Electron runtime before changing this pin');
   assert.equal(lock.packages['apps/desktop'].devDependencies.electron, version);
   assert.equal(lock.packages['node_modules/electron'].version, version);
   assert.equal(readJson('apps/desktop/electron-builder.yml').electronVersion, version);

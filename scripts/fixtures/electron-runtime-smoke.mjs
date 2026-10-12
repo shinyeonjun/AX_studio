@@ -19,7 +19,7 @@ function floor(actual, minimum) {
 
 test('actual binary matches the npm pin and embedded Node/Undici floors', () => {
   assert.equal(versions.electron, process.env.AX_ELECTRON_RUNTIME_EXPECTED);
-  floor(versions.electron, '44.5.1');
+  floor(versions.electron, '44.7.0');
   floor(versions.node, '24.21.0');
   floor(versions.undici, '7.29.1');
   assert.equal(typeof globalThis.fetch, 'function');
