@@ -1,6 +1,7 @@
 {
   "name": "@ax-studio/desktop",
   "version": "0.1.0",
+  "license": "MIT",
   "private": true,
   "description": "Local AI work execution app",
   "author": "AX Studio",
