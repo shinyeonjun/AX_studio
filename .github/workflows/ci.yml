@@ -129,6 +129,22 @@ jobs:
           path: test/product-qa/runs/
           if-no-files-found: ignore
 
+  secrets:
+    name: secret scan
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Scan commits for committed secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   windows-desktop:
     name: windows desktop
     runs-on: windows-latest
