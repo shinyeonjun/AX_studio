@@ -44,7 +44,7 @@ jobs:
 
       - name: Production dependency audit (critical)
         # Blocks on critical advisories in shipped dependencies only. Lower severities and dev tooling are
-        # triaged through Dependabot instead of failing unrelated PRs.
+        # triaged by hand (npm audit) instead of failing unrelated PRs.
         run: npm audit --omit=dev --audit-level=critical
 
       - name: Read-only Linux sandbox diagnostics
