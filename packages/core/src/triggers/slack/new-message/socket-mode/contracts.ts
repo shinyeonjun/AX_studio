@@ -5,4 +5,6 @@ export type SlackSocketEventHandler = (event: () => Promise<TriggerEvent>) => vo
 
 export interface SlackSocketModeListenerOptions {
   createClient?: (options: SocketModeOptions) => SocketModeClient;
+  /** First watchdog delay after a stalled reconnect; doubles per restart. Tests shorten it. */
+  recoveryWatchdogMs?: number;
 }
