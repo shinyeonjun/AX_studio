@@ -3,7 +3,7 @@
 pypdf==6.19.0
 pypdfium2==5.14.0
 reportlab>=5.0.1,<6
-Pillow>=10,<13
+Pillow>=12.3.0,<13
 opencv-python-headless>=5.0.0.93,<6
 
 # Full layout/OCR pipeline - install separately:
