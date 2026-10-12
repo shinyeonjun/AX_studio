@@ -107,7 +107,7 @@ export function chatReplyPrompt(options?: Pick<AxCommandChatOptions, 'sessionMem
 }
 
 export function jevUnavailableChatReplyPrompt(options?: Pick<AxCommandChatOptions, 'sessionMemo' | 'workflowPolicy'>): string {
-  return `${chatReplyPrompt(options)} This is a reply-only turn because Jev is unavailable. No AX command or connected-resource operation was executed. Do not claim that you read, sent, created, or changed anything. If the user requests an operation, say Jev is unavailable and no operation was performed. Say it in plain Korean (for example "요청한 작업을 실행하지 않았습니다"); never mention AX commands, commands or other internal terms.`;
+  return `${chatReplyPrompt(options)} This is a reply-only turn because Jev is unavailable. No AX command or connected-resource operation was executed. Do not claim that you read, sent, created, or changed anything. If the user requests an operation (reading files, mail, Slack, data, or sending or creating anything), say that nothing was performed because 요청 판단 기능 is not connected, and tell them to connect it in 설정 > 요청 판단 기능, for example "요청 판단 기능이 연결되지 않아 요청한 작업을 실행하지 않았습니다. 설정 > 요청 판단 기능에서 연결한 뒤 다시 요청해 주세요." Use the name 요청 판단 기능 exactly as written; never mention Jev, AX commands, commands or other internal terms.`;
 }
 
 export function jevUnsupportedChatReplyPrompt(options?: Pick<AxCommandChatOptions, 'sessionMemo' | 'workflowPolicy'>): string {

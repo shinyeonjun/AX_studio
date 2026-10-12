@@ -73,7 +73,7 @@ export async function runCommandChatLoop(context: CommandChatLoopContext): Promi
   );
   if (reply) return reply;
   if (jevUnavailable) {
-    return '판단 엔진(Jev)이 연결되지 않아 자료 조회나 외부 작업을 하지 않았습니다. 설정 > 판단 엔진에서 연결한 뒤 다시 요청해 주세요.';
+    return '요청 판단 기능이 연결되지 않아 자료 조회나 외부 작업을 하지 않았습니다. 설정 > 요청 판단 기능에서 연결한 뒤 다시 요청해 주세요.';
   }
   return '요청을 어떻게 처리할지 정하지 못해 아무것도 실행하지 않았습니다. 무엇을(어떤 자료나 업무) 어떻게 하고 싶은지 조금 더 구체적으로 알려 주세요.';
 }

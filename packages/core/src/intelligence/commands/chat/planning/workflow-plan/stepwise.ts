@@ -344,7 +344,7 @@ export async function planJevWorkflow(input: {
       message: authoritativeRequestClarification(error.failure), requestFailure: error.failure });
     return finish({
       kind: 'clarify',
-      message: `판단 엔진(Jev)이 실행 순서를 정하지 못해 멈췄습니다. 설정 > 판단 엔진에서 연결 상태를 확인한 뒤 다시 시도해 주세요. ${noCommitMessage}`,
+      message: `요청 판단 기능이 실행 순서를 정하지 못해 멈췄습니다. 설정 > 요청 판단 기능에서 연결 상태를 확인한 뒤 다시 시도해 주세요. ${noCommitMessage}`,
     });
   }
 }
