@@ -18,6 +18,8 @@ export interface ConnectionEntry {
     authType?: HttpAuthType;
     authHeader?: string;
     username?: string;
+    /** Its saved login is missing from this computer's secure storage. */
+    needsReconnect?: boolean;
   }>;
   port?: number;
   localBaseUrl?: string;

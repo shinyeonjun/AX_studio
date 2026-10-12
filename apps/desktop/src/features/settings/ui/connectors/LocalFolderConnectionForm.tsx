@@ -38,9 +38,15 @@ export function LocalFolderConnectionForm({
               PDF·문서를 매번 업로드하지 않고, 연결한 폴더의 파일을 업무에서 읽을 수 있습니다.
             </p>
           </div>
-          <span className={`connection-badge ${connected ? 'connected' : ''}`}>
-            {connected ? `${folders.length}개 연결됨` : '미연결'}
-          </span>
+          {folders.some((folder) => folder.missing) ? (
+            <span className="connection-badge warning">
+              {`${folders.filter((folder) => folder.missing).length}개 찾을 수 없음`}
+            </span>
+          ) : (
+            <span className={`connection-badge ${connected ? 'connected' : ''}`}>
+              {connected ? `${folders.length}개 연결됨` : '미연결'}
+            </span>
+          )}
         </div>
 
         <div className="form-field">
@@ -82,8 +88,16 @@ export function LocalFolderConnectionForm({
               {folders.map((folder) => (
                 <li key={folder.id} className="local-folder-item">
                   <div className="local-folder-item-body">
-                    <div className="local-folder-item-title">{folder.label}</div>
+                    <div className="local-folder-item-title">
+                      {folder.label}
+                      {folder.missing && <span className="connection-badge warning" style={{ marginLeft: 8 }}>찾을 수 없음</span>}
+                    </div>
                     <div className="local-folder-item-path">{folder.path}</div>
+                    {folder.missing && (
+                      <div className="muted" role="note">
+                        폴더가 옮겨졌거나 삭제됐어요. 제거한 뒤 새 위치를 다시 연결해 주세요.
+                      </div>
+                    )}
                   </div>
                   <button
                     type="button"

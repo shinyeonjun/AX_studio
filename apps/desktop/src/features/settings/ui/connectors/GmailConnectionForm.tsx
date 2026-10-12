@@ -29,7 +29,10 @@ function hasAnyGmailScope(granted: string[] | undefined, accepted: readonly stri
 
 export function GmailConnectionForm({ state, embedded = false, onConnect, onDisconnect }: GmailConnectionFormProps) {
   const { busy, signingIn, message, messageIsError, handleConnect, handleDisconnect } = useGmailConnectionForm({ onConnect, onDisconnect });
-  const connected = state?.connections?.find((c) => c.connector === 'gmail')?.connected;
+  const gmail = state?.connections?.find((c) => c.connector === 'gmail');
+  const connected = gmail?.connected;
+  // Set when Google rejected the saved sign-in (expired or revoked); cleared by the next call that works.
+  const signInProblem = connected ? gmail?.lastError : undefined;
   const oauthReady = state?.gmailOAuthConfigured ?? false;
   const email = state?.gmailEmail;
   const scopes = state?.gmailScopes;
@@ -47,11 +50,16 @@ export function GmailConnectionForm({ state, embedded = false, onConnect, onDisc
                 : '메일 읽기 · 검색 · 초안 · 발송'}
             </p>
           </div>
-          {connected && <span className="connection-badge connected">연결됨 ✓</span>}
+          {connected && (signInProblem
+            ? <span className="connection-badge warning">다시 연결 필요</span>
+            : <span className="connection-badge connected">연결됨 ✓</span>)}
         </div>
 
         {connected ? (
           <>
+            {signInProblem && (
+              <p className="connection-form-message error" role="alert">{signInProblem}</p>
+            )}
             {email && (
               <p className="connection-account" title={email}>
                 연결 계정: {maskEmail(email)}
@@ -80,6 +88,16 @@ export function GmailConnectionForm({ state, embedded = false, onConnect, onDisc
               >
                 {busy ? '처리 중…' : '연결 해제'}
               </button>
+              {signInProblem && (
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleConnect}
+                  disabled={busy || !oauthReady}
+                >
+                  {signingIn ? 'Google 로그인 다시 열기' : '다시 연결하기'}
+                </button>
+              )}
             </div>
           </>
         ) : (

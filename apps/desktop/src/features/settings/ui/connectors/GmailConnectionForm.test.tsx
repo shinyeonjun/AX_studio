@@ -53,4 +53,18 @@ describe('GmailConnectionForm capabilities', () => {
     const markup = renderToStaticMarkup(<GmailConnectionForm state={state} onConnect={noop} onDisconnect={noop} />);
     expect(markup).toContain('Gmail 연결 기능이 이 설치본에 준비되지 않았어요. 관리자에게 문의해 주세요.');
   });
+
+  it('says the sign-in expired and offers to reconnect instead of claiming it is connected', () => {
+    const reason = 'Google 로그인이 만료됐어요. 이 Gmail을 다시 연결해 주세요.';
+    const state = {
+      ...stateWithScopes([]),
+      gmailOAuthConfigured: true,
+      connections: [{ connector: 'gmail', connected: true, lastError: reason }],
+    };
+    const markup = renderToStaticMarkup(<GmailConnectionForm state={state} onConnect={noop} onDisconnect={noop} />);
+    expect(markup).toContain('다시 연결 필요');
+    expect(markup).toContain(reason);
+    expect(markup).toContain('다시 연결하기');
+    expect(markup).not.toContain('연결됨 ✓');
+  });
 });

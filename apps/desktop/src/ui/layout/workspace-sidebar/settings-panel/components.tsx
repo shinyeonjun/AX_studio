@@ -6,6 +6,7 @@ import { settingsScreenForBrand } from '../../../constants/settings';
 import type { AiBrand } from '../../../../types/ai-provider';
 import { IconSettings } from '../../../icons';
 import {
+  connectorAttention,
   connectorCount,
   isConnectorConnected,
   type SidebarSettingsLink,
@@ -15,21 +16,28 @@ export function SidebarConnectorStatus({
   connected,
   label,
   count,
+  attention,
 }: {
   connected: boolean;
   label: string;
   count?: number;
+  /** Connected but not usable now; the reason is the tooltip. */
+  attention?: string;
 }) {
   const countLabel = count && count > 0 ? count + '개 연결' : undefined;
-  const statusLabel = connected ? label + ' 연결됨' : label + ' 미연결';
+  const needsAttention = connected && Boolean(attention);
+  const state = needsAttention ? '다시 연결 필요' : connected ? '연결됨' : '미연결';
+  const statusLabel = label + ' ' + state;
+  const className = 'sidebar-connector-status'
+    + (needsAttention ? ' needs-attention' : connected ? ' is-connected' : '');
   return (
     <div className="sidebar-connector-meta">
       {countLabel && <span className="sidebar-connector-count">{count}개</span>}
       <span
-        className={'sidebar-connector-status' + (connected ? ' is-connected' : '')}
+        className={className}
         role="img"
         aria-label={countLabel ? statusLabel + ', ' + countLabel : statusLabel}
-        title={countLabel ? statusLabel + ' · ' + countLabel : connected ? '연결됨' : '미연결'}
+        title={needsAttention ? attention : countLabel ? statusLabel + ' · ' + countLabel : state}
       />
     </div>
   );
@@ -110,5 +118,6 @@ export function connectorStatusFor(state: AppState | null, link: SidebarSettings
   return {
     connected: isConnectorConnected(state, link.screen),
     count: connectorCount(state, link.screen),
+    attention: connectorAttention(state, link.screen),
   };
 }

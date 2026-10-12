@@ -37,7 +37,9 @@ export function addGmailOperations(operations: IndexedReadOperation[]): void {
  * without one is asked for it, never given a guessed channel.
  */
 export function explicitSlackChannel(message: string): string | undefined {
-  const hashed = [...new Set([...message.matchAll(/(?:^|[\s(])#([\p{L}\p{N}_.-]{1,80})/gu)].map((match) => match[1]!))];
+  // "#ax테스트에 보내줘": the particle is Korean grammar, not part of the channel name.
+  const hashed = [...new Set([...message.matchAll(/(?:^|[\s(])#([\p{L}\p{N}_.-]{1,80})/gu)]
+    .map((match) => match[1]!.replace(/(?<=.)(?:에서|에게|한테|으로|까지|부터|에|로|을|를|은|는|이|가|의|와|과|도|만)$/u, '')))];
   // Two channels named: which one is meant is not the host's guess to make.
   if (hashed.length > 1) return undefined;
   if (hashed.length === 1) return `#${hashed[0]}`;

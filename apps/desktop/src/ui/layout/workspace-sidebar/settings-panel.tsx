@@ -64,7 +64,7 @@ export function SidebarSettingsPanel({
             >
               <SidebarSettingsLinkIcon link={link} />
               <span className="sidebar-settings-link-label">{link.label}</span>
-              <SidebarConnectorStatus connected={status.connected} label={link.label} count={status.count} />
+              <SidebarConnectorStatus connected={status.connected} label={link.label} count={status.count} attention={status.attention} />
             </button>
           );
         })}
