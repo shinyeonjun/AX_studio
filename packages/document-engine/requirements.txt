@@ -1,6 +1,6 @@
 # Minimal runtime for document-engine sidecar (dev + fallback parsing).
 # Pin the parser and independent renderer used by the PDF regression corpus.
-pypdf==6.19.0
+pypdf==6.20.0
 pypdfium2==5.14.0
 reportlab>=5.0.1,<6
 Pillow>=12.3.0,<13
