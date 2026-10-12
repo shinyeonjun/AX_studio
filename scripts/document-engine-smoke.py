@@ -28,7 +28,7 @@ for distribution in importlib.metadata.distributions():
     name = distribution.metadata.get("Name", "").lower().replace("_", "-")
     assert name not in {"pymupdf", "pymupdfb", "mupdf", "fitz"}, f"Forbidden packaged distribution: {name}"
 assert importlib.metadata.version("pypdf") == "6.19.0"
-assert importlib.metadata.version("pypdfium2") == "5.13.0"
+assert importlib.metadata.version("pypdfium2") == "5.14.0"
 
 source_root = runtime.parent / "src"
 sys.path.insert(0, str(source_root))
