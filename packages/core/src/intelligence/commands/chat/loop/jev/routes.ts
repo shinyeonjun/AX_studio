@@ -113,5 +113,5 @@ export async function parameterizedRoute(turn: JevTurn, route: JevRoute<'paramet
     capabilityId: route.plan.capabilityId,
     requiredParameterCount: route.plan.requiredParameterPaths.length,
   });
-  return missingReadValuesMessage(route.plan.requiredParameterPaths);
+  return missingReadValuesMessage(route.plan.requiredParameterPaths, route.plan.capabilityId);
 }
