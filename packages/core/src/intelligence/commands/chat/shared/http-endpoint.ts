@@ -67,6 +67,18 @@ function endpointMentioned(message: string, value: string | undefined): boolean 
   return new RegExp(`(?:^|[^A-Za-z0-9_])${escaped}(?:$|[^A-Za-z0-9_])`, 'iu').test(message);
 }
 
+const HTTP_WORDS = /https?:\/\/|\b(?:https?|api|rest|post|put|patch|webhook|endpoint|url)\b|웹훅|엔드포인트/iu;
+
+/**
+ * Whether the request is about an HTTP call at all: it says HTTP/API/URL-like words or names a
+ * connected endpoint. An HTTP write sends data to whatever address a connection points at, so it
+ * is offered only then; "#ops에 안녕하세요 보내줘" must not become a POST.
+ */
+export function requestMentionsHttp(message: string, endpoints: readonly JevHttpEndpointHint[] = []): boolean {
+  if (HTTP_WORDS.test(message) || hasExplicitHttpEndpointCue(message)) return true;
+  return endpoints.some((endpoint) => endpointMentioned(message, endpoint.label) || endpointMentioned(message, endpoint.id));
+}
+
 export function hasExplicitHttpEndpointCue(message: string): boolean {
   const patterns = [
     /^\s*([A-Za-z][A-Za-z0-9._-]{1,80})\s+(?:GET|HEAD)\b/iu,

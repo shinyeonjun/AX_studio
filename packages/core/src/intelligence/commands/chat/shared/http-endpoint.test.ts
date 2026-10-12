@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { explicitHttpPath, selectHttpEndpointForRead } from './http-endpoint.js';
+import { explicitHttpPath, requestMentionsHttp, selectHttpEndpointForRead } from './http-endpoint.js';
 
 describe('explicitHttpPath', () => {
   it('separates a Korean object particle attached to a query value', () => {
@@ -55,5 +55,20 @@ describe('selectHttpEndpointForRead', () => {
   it('uses the only usable endpoint when the request does not name one', () => {
     expect(selectHttpEndpointForRead('GET products', [endpoints[0], { ...endpoints[1], usable: false }])?.id)
       .toBe('inventory');
+  });
+});
+
+describe('requestMentionsHttp', () => {
+  const endpoints = [{ id: 'acme-ops', label: 'Acme Operations' }];
+
+  it.each([
+    ['#ax테스트에 안녕하세요 보내줘', false],
+    ['메일로 보고서 보내줘', false],
+    ['Acme Operations에 결제 등록해줘', true],
+    ['결제 API로 주문 보내줘', true],
+    ['https://example.invalid/hook 로 POST 해줘', true],
+    ['웹훅으로 알려줘', true],
+  ])('%s -> %s', (message, expected) => {
+    expect(requestMentionsHttp(message, endpoints)).toBe(expected);
   });
 });

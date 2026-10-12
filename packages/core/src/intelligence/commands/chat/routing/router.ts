@@ -18,6 +18,7 @@ import { JEV_CHAT_ROUTE_CRITERIA, type JevChatRouteName } from './route-criteria
 import { deriveJevRequestFeatures, type JevRequestFeatures } from '../shared/request-features.js';
 import {
   parseParallelToolSelection,
+  requestNamedToolIds,
   type JevParallelToolSelection,
 } from './parallel-tool-selection.js';
 import type { JevChatRequestPlan } from '../shared/request-plan.js';
@@ -150,7 +151,10 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
   const capabilitySnapshot = readRecovery ? [] : availableCapabilities([...connectedConnectors]);
   const actionSelection = readRecovery
     ? { hints: [], catalogSize: 0, catalogMayBeBounded: false }
-    : selectJevActionHints(connectedConnectors, capabilitySnapshot);
+    : selectJevActionHints(connectedConnectors, capabilitySnapshot, {
+      userMessage: input.userMessage,
+      httpEndpoints: input.httpEndpoints,
+    });
   const workflowTriggerHints = readRecovery
     ? []
     : selectJevWorkflowTriggerHints(connectedConnectors, capabilitySnapshot);
@@ -249,6 +253,7 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
       toolSelection = parseParallelToolSelection({
         candidates: parallelToolCandidates,
         answers: evaluation.answers,
+        requestNamed: requestNamedToolIds(parallelToolCandidates, input.userMessage),
         telemetry: {
           evaluationCalls: 1,
           providerRequestCount: evaluation.providerRequestCount ?? 1,

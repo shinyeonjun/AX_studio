@@ -7,7 +7,7 @@ import type {
 import { clearDynamicCatalogForTests, registerDynamicCapabilities } from '../../../../catalog/dynamic-catalog.js';
 import type { ConnectorCapability } from '../../../../catalog/capability-types.js';
 import { routeChatWithJev } from './router.js';
-import { parseParallelToolSelection, selectParallelTools } from './parallel-tool-selection.js';
+import { parseParallelToolSelection, requestNamedToolIds, selectParallelTools } from './parallel-tool-selection.js';
 
 const candidates = [
   { id: 'db.read', kind: 'read', connector: 'rdb', label: 'DB 조회', description: '조건에 맞는 행 조회' },
@@ -234,5 +234,34 @@ describe('an undecided answer for one candidate tool', () => {
       },
       telemetry,
     })).toMatchObject({ kind: 'selected', operationDecisions: [{ id: 'write:slack', selected: true }, { id: 'read:gmail', selected: false }] });
+  });
+});
+
+describe('tools the request names outright', () => {
+  const candidates = [
+    { id: 'write:action_0', kind: 'write' as const, connector: 'slack', capabilityId: 'slack.message.send', label: 'Slack 메시지', description: '' },
+    { id: 'write:action_1', kind: 'write' as const, connector: 'gmail', capabilityId: 'gmail.message.send', label: '메일 발송', description: '' },
+  ];
+  const answers = (slack: number) => ({
+    needs_natural_language_answer: { type: 'boolean' as const, probability: 0.2 },
+    tool_0: { type: 'boolean' as const, probability: slack },
+    tool_1: { type: 'boolean' as const, probability: 0.24 },
+  });
+  const telemetry = { evaluationCalls: 1, providerRequestCount: 1, estimatedRequestBytes: 0, candidateCount: 2 };
+
+  it('names Slack send only when a channel and a send verb are both in the request', () => {
+    expect([...requestNamedToolIds(candidates, '#ax테스트에 안녕하세요 보내줘')]).toEqual(['write:action_0']);
+    expect([...requestNamedToolIds(candidates, '#ax테스트 최근 메시지 보여줘')]).toEqual([]);
+    expect([...requestNamedToolIds(candidates, '안녕하세요 보내줘')]).toEqual([]);
+  });
+
+  it('selects a named tool just under 0.5, but not one Jev rejects or one the request does not name', () => {
+    const requestNamed = requestNamedToolIds(candidates, '#ax테스트에 안녕하세요 보내줘');
+    expect(parseParallelToolSelection({ candidates, answers: answers(0.49), telemetry, requestNamed }))
+      .toMatchObject({ kind: 'selected', operationDecisions: [{ selected: true }, { selected: false }] });
+    expect(parseParallelToolSelection({ candidates, answers: answers(0.1), telemetry, requestNamed }))
+      .toMatchObject({ kind: 'clarify' });
+    expect(parseParallelToolSelection({ candidates, answers: answers(0.49), telemetry }))
+      .toMatchObject({ kind: 'clarify' });
   });
 });
