@@ -10,6 +10,9 @@ describe('the Slack channel a request names', () => {
     ['슬랙 채널 최근 메시지', undefined],
     ['최근 메시지 보여줘', undefined],
     ['#ops 에서 #dev 로 옮겨줘', undefined],
+    ['#ax테스트에 안녕하세요 보내줘', '#ax테스트'],
+    ['#운영팀으로 공유해줘', '#운영팀'],
+    ['#ops에서 최근 메시지', '#ops'],
   ])('%s -> %s', (message, expected) => {
     expect(explicitSlackChannel(message)).toBe(expected);
   });

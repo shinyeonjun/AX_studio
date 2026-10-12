@@ -14,6 +14,7 @@ import {
   boundDecisionString,
   DECISION_CONTEXT_UNTRUSTED_DATA_POLICY,
 } from '../../../decision/context.js';
+import { explicitSlackChannel } from '../../../decision/read-operation-catalog.js';
 
 export interface JevParallelToolCandidate {
   id: string;
@@ -124,10 +125,33 @@ export function parallelToolSelectionQuestions(
   return questions;
 }
 
+/** Below 0.5 but not a "no": enough for a tool the request itself names. */
+const REQUEST_NAMED_TOOL_FLOOR = 0.3;
+const SEND_VERB = /보내|전송|올려|공유|알려|남겨|게시|send|post/iu;
+
+/**
+ * Candidates the request names outright, so Jev's own probability is not the only signal. Real
+ * use: "#ax테스트에 안녕하세요 보내줘" scored Slack send at 0.49 and nothing ran.
+ */
+export function requestNamedToolIds(
+  candidates: readonly JevParallelToolCandidate[],
+  userMessage: string,
+): Set<string> {
+  const named = new Set<string>();
+  if (explicitSlackChannel(userMessage) && SEND_VERB.test(userMessage)) {
+    for (const candidate of candidates) {
+      if (candidate.capabilityId === 'slack.message.send') named.add(candidate.id);
+    }
+  }
+  return named;
+}
+
 export function parseParallelToolSelection(input: {
   candidates: readonly JevParallelToolCandidate[];
   answers: Record<string, DecisionAnswer>;
   telemetry: JevParallelToolSelectionTelemetry;
+  /** From `requestNamedToolIds`: chosen at a lower probability floor. */
+  requestNamed?: ReadonlySet<string>;
 }): JevParallelToolSelection {
   const { answers, candidates, telemetry } = input;
   const naturalAnswer = answers.needs_natural_language_answer;
@@ -150,7 +174,8 @@ export function parseParallelToolSelection(input: {
     // An undecided tool is not chosen: one unsure answer among two dozen candidates used to fail
     // a clear request. Leaving a tool out only does less, and the plan review still checks that
     // the plan covers the request.
-    operationDecisions.push({ id: candidate.id, selected: answer.probability > 0.5 });
+    const floor = input.requestNamed?.has(candidate.id) ? REQUEST_NAMED_TOOL_FLOOR : 0.5;
+    operationDecisions.push({ id: candidate.id, selected: answer.probability > floor });
   }
 
   const anyTool = operationDecisions.some(({ selected }) => selected);

@@ -8,6 +8,7 @@ import { AxWorkflowCreateArgsSchema, AxWorkflowUpdateArgsSchema } from '../../sc
 import { AxJobProposeArgsSchema, type AxJobProposeArgs } from '../../job-registration/contract.js';
 import { decodeScheduleInputValue } from '../../../../workflow/schedule/input-value.js';
 import { explicitSlackChannel } from '../../../decision/read-operation-catalog.js';
+import { requestMentionsHttp, type JevHttpEndpointHint } from './http-endpoint.js';
 
 const JEV_ACTION_MAX_CHOICES = MAX_JEV_CHOICE_CANDIDATES;
 const SENSITIVE_PARAM = /(?:api[_-]?key|authorization|cookie|password|secret|token)/iu;
@@ -33,10 +34,15 @@ export interface JevActionInputValue {
 export function selectJevActionHints(
   connectedConnectors: readonly string[],
   capabilities: readonly ConnectorCapability[] = availableCapabilities([...connectedConnectors]),
+  request?: { userMessage: string; httpEndpoints?: readonly JevHttpEndpointHint[] },
 ): { hints: JevActionHint[]; catalogSize: number; catalogMayBeBounded: boolean } {
+  // An HTTP write can reach any address a connection points at; offer it only to a request
+  // that is about HTTP. Real use routed "#ax테스트에 안녕하세요 보내줘" to HTTP POST.
+  const httpWriteAllowed = !request || requestMentionsHttp(request.userMessage, request.httpEndpoints);
   const actions = capabilities
     .filter((capability) => connectedConnectors.includes(capability.connector))
     .filter((capability) => capability.kind === 'write')
+    .filter((capability) => httpWriteAllowed || capability.connector !== 'http')
     .filter((capability) => !capability.params.some((param) => param.required && SENSITIVE_PARAM.test(param.name)));
   return {
     hints: actions.map((capability, index) => ({ key: `action_${index}`, capability })),
