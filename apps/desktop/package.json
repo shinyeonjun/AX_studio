@@ -1,6 +1,7 @@
 {
   "name": "@ax-studio/desktop",
   "version": "0.1.0",
+  "license": "MIT",
   "private": true,
   "description": "Local AI work execution app",
   "author": "AX Studio",
@@ -33,7 +34,7 @@
     "@googleapis/gmail": "^22.0.0",
     "@slack/socket-mode": "^3.0.0",
     "@slack/web-api": "^7.8.0",
-    "@xyflow/react": "^12.11.3",
+    "@xyflow/react": "^12.12.0",
     "better-sqlite3": "^13.0.3",
     "electron-updater": "6.8.9",
     "google-auth-library": "^11.0.0",

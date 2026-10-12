@@ -1,0 +1,10 @@
+# Secret scanning policy. The redaction test deliberately contains fake tokens to prove
+# that log output masks them; they are not credentials.
+title = "AX Studio secret scan"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Known fake fixtures used by the log redaction tests"
+paths = ['''packages/core/src/persistence/paths/app-log\.test\.ts''']

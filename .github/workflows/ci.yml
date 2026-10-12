@@ -42,6 +42,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Production dependency audit (critical)
+        # Blocks on critical advisories in shipped dependencies only. Lower severities and dev tooling are
+        # triaged through Dependabot instead of failing unrelated PRs.
+        run: npm audit --omit=dev --audit-level=critical
+
       - name: Read-only Linux sandbox diagnostics
         shell: bash
         run: |
@@ -123,6 +128,22 @@ jobs:
           name: product-qa-runs
           path: test/product-qa/runs/
           if-no-files-found: ignore
+
+  secrets:
+    name: secret scan
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Scan commits for committed secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   windows-desktop:
     name: windows desktop

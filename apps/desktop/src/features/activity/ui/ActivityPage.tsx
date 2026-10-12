@@ -62,6 +62,7 @@ export function ActivityPage({ state, onRefresh }: ActivityPageProps) {
             onChange={(e) => setExplainQ(e.target.value)}
             placeholder="실행 기록에 대해 물어보세요. 예: 어제 실패한 업무는 왜 멈췄어?"
             disabled={!canExplain || explaining}
+            aria-describedby={canExplain ? undefined : 'activity-ask-hint'}
             onKeyDown={(e) => {
               // Korean IME commits the composition with Enter; only a real Enter submits.
               if (e.key === 'Enter' && !e.nativeEvent.isComposing) void askExplain();
@@ -77,7 +78,7 @@ export function ActivityPage({ state, onRefresh }: ActivityPageProps) {
           </button>
         </div>
         {!canExplain && (
-          <p className="muted activity-hint">실행 기록이 생기면 AI에게 실행 결과를 물어볼 수 있습니다.</p>
+          <p id="activity-ask-hint" className="muted activity-hint">실행 기록이 생기면 AI에게 실행 결과를 물어볼 수 있습니다.</p>
         )}
         {explainError && (
           <div className="approval-error" role="alert">

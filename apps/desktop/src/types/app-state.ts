@@ -1,6 +1,6 @@
 import type { AiBrand, AiConnectionMode } from './ai-provider';
 import type { ConnectionEntry } from './connection-entry';
-import type { ExecutionHistoryDiagnostic, LocalFolderEntry, TriggerDeadLetter } from '@ax-studio/core';
+import type { ExecutionHistoryDiagnostic, LocalFolderEntry, SchedulerOccurrenceOutcome, TriggerDeadLetter } from '@ax-studio/core';
 import type { Recurrence } from '@ax-studio/core/schedule';
 
 export interface AiProviderState {
@@ -33,15 +33,8 @@ export interface WorkSummary {
 /** The core dead-letter record without `workflowId`: the part the screen shows. */
 export type TriggerDeadLetterSummary = Omit<TriggerDeadLetter, 'workflowId'>;
 
-/** Mirrors core `SchedulerOccurrenceOutcome`. */
-export interface SchedulerOccurrenceOutcomeSummary {
-  occurrenceKey: string;
-  /** An execution status (`success`, `failed`, ...) or `skipped`. */
-  status: string;
-  reason?: string;
-  executionId?: string;
-  at: string;
-}
+/** The core outcome as the screen shows it; `status` is an execution status (`success`, `failed`, ...) or `skipped`. */
+export type SchedulerOccurrenceOutcomeSummary = SchedulerOccurrenceOutcome;
 
 /** Mirrors core `CorruptRowReport`: identifiers and error codes only, never row payloads. */
 export interface CorruptRowEntry {
