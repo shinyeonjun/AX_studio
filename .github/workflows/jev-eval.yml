@@ -28,10 +28,10 @@ jobs:
         if: env.TYPESAFE_API_KEY == ''
         run: echo "::notice::TYPESAFE_API_KEY secret is not set; Jev routing eval skipped."
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         if: env.TYPESAFE_API_KEY != ''
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         if: env.TYPESAFE_API_KEY != ''
         with:
           node-version-file: .nvmrc
@@ -63,7 +63,7 @@ jobs:
 
       - name: Keep the report
         if: always() && env.TYPESAFE_API_KEY != ''
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: jev-eval-report
           path: "*jev-eval-report.json"
