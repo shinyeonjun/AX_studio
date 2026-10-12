@@ -159,7 +159,7 @@ export async function evaluateDecisionOutputs(input: {
     if (input.ctx.abortSignal?.aborted) throw error;
     input.ctx.log({
       at: new Date().toISOString(), level: 'warn', code: 'ai_decision_jev_failed',
-      message: '판단 엔진(Jev)이 판단 결과를 만들지 못했습니다.',
+      message: '요청 판단 기능이 판단 결과를 만들지 못했습니다.',
       data: { stepId: input.step.id, fieldCount: input.plan.bindings.size, errorCode: error instanceof Error ? error.name : 'unknown' },
     });
     // Settings only help when the key was rejected; a busy or unreachable server needs a retry.
@@ -177,7 +177,7 @@ export async function evaluateDecisionOutputs(input: {
       if (error && typeof error === 'object' && 'code' in error && error.code === 'ai_decision_uncertain') {
         input.ctx.log({
           at: new Date().toISOString(), level: 'warn', code: 'ai_decision_output_unclear',
-          message: '판단 엔진(Jev)이 결과 항목을 확실하게 정하지 못해 업무 실행을 멈췄습니다.',
+          message: '요청 판단 기능이 결과 항목을 확실하게 정하지 못해 업무 실행을 멈췄습니다.',
           data: {
             stepId: input.step.id,
             field: binding.field,

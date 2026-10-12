@@ -25,7 +25,7 @@ const CREDENTIAL_DISPLAY_NAMES: Record<string, string> = {
   anthropic: 'Claude',
   openai: 'OpenAI',
   ollama: 'Ollama',
-  typesafe: '판단 엔진(Jev)',
+  typesafe: '요청 판단 기능',
 };
 
 /** A connector or secret name as a person would say it, quoted with a trailing space (or empty); never the raw id. */

@@ -122,10 +122,10 @@ export function jevFallbackMessage(reason: JevChatRouterFallbackReason, serviceF
   switch (reason) {
     case 'service_error':
       // Settings are only the answer when the key itself was rejected.
-      if (serviceFailure === 'busy') return '판단 엔진(Jev) 서버가 잠시 응답하지 않아 이번 요청은 처리하지 못했어요. 설정은 바꿀 필요 없어요. 잠시 뒤 다시 보내 주세요.';
-      if (serviceFailure === 'unreachable') return '판단 엔진(Jev) 서버에 닿지 못해 이번 요청은 처리하지 못했어요. 인터넷 연결을 확인한 뒤 다시 보내 주세요.';
-      if (serviceFailure === 'key_rejected') return '판단 엔진(Jev)이 API 키를 거부해 요청을 처리하지 못했어요. 설정 > 판단 엔진에서 키를 다시 확인해 주세요.';
-      return '판단 엔진(Jev)에 연결하지 못해 작업을 실행하지 않았습니다. 설정 > 판단 엔진에서 연결 상태를 확인한 뒤 다시 시도해 주세요.';
+      if (serviceFailure === 'busy') return '요청 판단 기능 서버가 잠시 응답하지 않아 이번 요청은 처리하지 못했어요. 설정은 바꿀 필요 없어요. 잠시 뒤 다시 보내 주세요.';
+      if (serviceFailure === 'unreachable') return '요청 판단 기능 서버에 닿지 못해 이번 요청은 처리하지 못했어요. 인터넷 연결을 확인한 뒤 다시 보내 주세요.';
+      if (serviceFailure === 'key_rejected') return '요청 판단 기능이 API 키를 거부해 요청을 처리하지 못했어요. 설정 > 요청 판단 기능에서 키를 다시 확인해 주세요.';
+      return '요청 판단 기능에 연결하지 못해 작업을 실행하지 않았습니다. 설정 > 요청 판단 기능에서 연결 상태를 확인한 뒤 다시 시도해 주세요.';
     case 'missing_context':
       return '요청을 처리할 연결·자료·대상이 부족합니다. 사용할 연결이나 대상을 지정해 주세요.';
     case 'http_endpoint_required':
@@ -139,8 +139,8 @@ export function jevFallbackMessage(reason: JevChatRouterFallbackReason, serviceF
   }
 }
 
-export function missingReadValuesMessage(paths: readonly string[]): string {
-  return `조회에 필요한 값(${readValueNames(paths)})을 요청에서 찾지 못했습니다. 이 값을 넣어 다시 요청해 주세요.`;
+export function missingReadValuesMessage(paths: readonly string[], capabilityId?: string): string {
+  return `조회에 필요한 값(${readValueNames(paths, capabilityId)})을 요청에서 찾지 못했습니다. 이 값을 넣어 다시 요청해 주세요.`;
 }
 
 export async function presentHttpEndpointSelection({ options, signal, publishResult }: CommandChatLoopContext): Promise<string> {

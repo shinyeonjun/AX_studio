@@ -1,3 +1,6 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, sep } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   buildJevReadOperationHints,
@@ -465,6 +468,48 @@ describe('buildJevReadOperationHints', () => {
       missingParameterPaths: [],
     });
     expect(JSON.stringify(selected)).not.toContain('C:/private');
+  });
+
+  it('offers the folder spreadsheets as Jev choices when the request names a file loosely', () => {
+    const root = mkdtempSync(join(tmpdir(), 'ax-sheet-choices-'));
+    try {
+      mkdirSync(join(root, '보고서'));
+      for (const name of ['주문내역_2026-09.xlsx', '주문내역_2026-08.xlsx', '메모.txt', join('보고서', '월간매출요약_2026-08.xlsx')]) {
+        writeFileSync(join(root, name), '');
+      }
+      const index = buildJevReadOperationIndex([{
+        connector: 'local_folder',
+        connected: true,
+        config: { folders: [{ id: 'sales-folder', label: '매출 자료', path: root, addedAt: '' }] },
+      }]);
+
+      const [hint] = index.select('8월 주문내역에서 총 매출이 얼마야?').hints
+        .filter((entry) => entry.capabilityId === 'local_sheet.read');
+      expect(hint).toMatchObject({ params: { folderId: 'sales-folder' }, missingParameterPaths: ['path'] });
+      // Folder-relative names only: Jev picks among them and the absolute folder path stays out.
+      expect(hint!.parameterHints?.find((parameter) => parameter.path === 'path')?.choices).toEqual([
+        '보고서' + sep + '월간매출요약_2026-08.xlsx', '주문내역_2026-08.xlsx', '주문내역_2026-09.xlsx',
+      ]);
+      expect(JSON.stringify(hint)).not.toContain(root);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('asks for the file instead of offering choices when the folder holds too many spreadsheets', () => {
+    const root = mkdtempSync(join(tmpdir(), 'ax-sheet-many-'));
+    try {
+      for (let index = 0; index < 51; index += 1) writeFileSync(join(root, `sheet-${index}.csv`), '');
+      const [hint] = buildJevReadOperationIndex([{
+        connector: 'local_folder',
+        connected: true,
+        config: { folders: [{ id: 'many', label: '많은 자료', path: root, addedAt: '' }] },
+      }]).select('시트 데이터를 읽어줘').hints.filter((entry) => entry.capabilityId === 'local_sheet.read');
+      expect(hint!.parameterHints?.find((parameter) => parameter.path === 'path')?.choices).toBeUndefined();
+      expect(hint!.missingParameterPaths).toEqual(['path']);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 
   it('extracts a bounded search term from ordinary Korean relevance wording', () => {

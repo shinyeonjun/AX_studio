@@ -112,7 +112,7 @@ async function recoverFailedRead(
       options.onRequestRejected?.(recovery.failure);
       return authoritativeRequestClarification(recovery.failure);
     }
-    if (recovery.kind === 'parameterized') return missingReadValuesMessage(recovery.plan.requiredParameterPaths);
+    if (recovery.kind === 'parameterized') return missingReadValuesMessage(recovery.plan.requiredParameterPaths, recovery.plan.capabilityId);
     if (recovery.kind !== 'command' || recovery.route !== 'capability_read' || !recoveryAuthorization) break;
 
     const identity = readOperationIdentity(recoveryAuthorization.capabilityId, recoveryAuthorization.params);
