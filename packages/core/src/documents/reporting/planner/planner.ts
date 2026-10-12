@@ -464,6 +464,8 @@ export class ReportPlanner {
       user: input.goal,
       // A revision carries forward its image-grounded layout, so the same PDF pages add no new evidence.
       ...(previousLayout ? {} : { images: imagesForPair(input.pair, this.readImage) }),
+      // Binding computed outputs to detected slots; at Codex's default "high" this step alone took 18s.
+      codexReasoningEffort: 'medium',
       logContext,
     });
     let finalReportPlan = reportPlan;
