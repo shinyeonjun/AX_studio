@@ -28,7 +28,20 @@ export interface CodexExecOptions {
   reasoningEffort?: 'low' | 'medium' | 'high';
   /** Skips `$CODEX_HOME/config.toml` (MCP servers, profiles) while keeping its auth. */
   ignoreUserConfig?: boolean;
+  /** Replaces Codex's own coding-agent instructions; older CLIs ignore the unknown key. */
+  instructionsPath?: string;
 }
+
+/**
+ * Codex otherwise prepends its coding-agent base instructions to every call: measured on
+ * codex-cli 0.159, a one-word prompt cost 13,604 input tokens with them and 10,060 with this.
+ * AX Studio's own prompt already carries the rules; this only states the call's shape.
+ */
+export const CODEX_BASE_INSTRUCTIONS = [
+  'You are the language model behind AX Studio, called once for a single request.',
+  'Follow the instructions in the prompt exactly. You have no tools: do not run commands, read files or browse.',
+  'Answer in the language and format the prompt asks for. When an output schema is given, return only JSON that matches it.',
+].join('\n');
 
 /**
  * Codex CLI 0.147+ removed --ask-for-approval. Prompts carry untrusted mail/document text,
@@ -48,6 +61,10 @@ export function codexExecArgs(model: string, extras: string[] = [], options: Cod
     'never',
     '-c',
     `model_reasoning_effort=${options.reasoningEffort ?? 'high'}`,
+    // A TOML string; forward slashes keep a Windows path free of escapes.
+    ...(options.instructionsPath
+      ? ['-c', `model_instructions_file=${JSON.stringify(options.instructionsPath.replace(/\\/g, '/'))}`]
+      : []),
     ...DISABLED_CODEX_FEATURES.flatMap((feature) => ['-c', `features.${feature}=false`]),
     '-m',
     model,
@@ -81,6 +98,13 @@ function reportCodexUsage(line: string, input: Pick<TextGenerateInput, 'onUsage'
     cacheWriteInputTokens: count(usage.cache_write_input_tokens),
     reasoningTokens: count(usage.reasoning_output_tokens),
   });
+}
+
+/** Writes the short base instructions into the run's own directory and returns the path. */
+async function writeBaseInstructions(dir: string): Promise<string> {
+  const path = join(dir, 'instructions.md');
+  await writeFile(path, CODEX_BASE_INSTRUCTIONS, 'utf8');
+  return path;
 }
 
 async function imageArgs(dir: string, images: ModelImageInput[] = []): Promise<string[]> {
@@ -119,6 +143,7 @@ export class CodexCliProvider implements ModelProvider {
         command,
         codexExecArgs(this.model, [...await imageArgs(dir, input.images), '-o', outPath], {
           workDir: dir, reasoningEffort: input.codexReasoningEffort, ignoreUserConfig,
+          instructionsPath: await writeBaseInstructions(dir),
         }),
         {
           input: prompt,
@@ -155,7 +180,7 @@ export class CodexCliProvider implements ModelProvider {
           schemaPath,
           '-o',
           outPath,
-        ], { workDir: dir, reasoningEffort, ignoreUserConfig }),
+        ], { workDir: dir, reasoningEffort, ignoreUserConfig, instructionsPath: await writeBaseInstructions(dir) }),
         {
           input: prompt,
           timeoutMs: input.timeoutMs ?? 180_000,

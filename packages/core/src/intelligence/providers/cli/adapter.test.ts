@@ -26,6 +26,13 @@ describe('codex cli adapter', () => {
     expect(codexExecArgs('gpt-5.4')).not.toContain('--ignore-user-config');
   });
 
+  it('replaces the coding-agent base instructions with a short file when given one', () => {
+    const args = codexExecArgs('gpt-5.4', [], { instructionsPath: 'C:\\Temp\\ax-cli-1\\instructions.md' });
+    expect(args).toContain('model_instructions_file="C:/Temp/ax-cli-1/instructions.md"');
+    expect(args.indexOf('model_instructions_file="C:/Temp/ax-cli-1/instructions.md"')).toBeLessThan(args.indexOf('--'));
+    expect(codexExecArgs('gpt-5.4').some((arg) => arg.startsWith('model_instructions_file'))).toBe(false);
+  });
+
   it('extracts quoted message from truncated codex ERROR json', () => {
     const message = cliFailureMessage(
       {
