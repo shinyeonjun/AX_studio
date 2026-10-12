@@ -322,4 +322,62 @@ describe('SlackSocketModeListener lifecycle', () => {
 
     expect(client.disconnect).toHaveBeenCalledOnce();
   });
+
+  it('opens a fresh socket when the SDK retry chain stalls without reconnecting', async () => {
+    const stalled = Object.assign(new EventEmitter(), {
+      start: vi.fn(async () => undefined),
+      disconnect: vi.fn(async () => undefined),
+      websocket: { isActive: () => false },
+    });
+    const recovered = Object.assign(new EventEmitter(), {
+      start: vi.fn(async () => undefined),
+      disconnect: vi.fn(async () => undefined),
+      websocket: { isActive: () => true },
+    });
+    const clients = [stalled, recovered];
+    const createClient = vi.fn(() => clients.shift() as unknown as SocketModeClient);
+    const states: string[] = [];
+    const listener = new SlackSocketModeListener({ createClient, recoveryWatchdogMs: 10 });
+    try {
+      await listener.start('bot', 'app', () => undefined, (state) => states.push(state.phase));
+      // The SDK's retry timer fired, but its URL request failed without emitting `connecting`.
+      stalled.emit('reconnecting');
+      await vi.waitFor(() => expect(createClient).toHaveBeenCalledTimes(2));
+      recovered.emit('connected');
+      expect(states.at(-1)).toBe('connected');
+      expect(stalled.disconnect).toHaveBeenCalledOnce();
+    } finally {
+      await listener.stop();
+    }
+  });
+
+  it('ignores a replaced client that reports events after it was restarted', async () => {
+    const stalled = Object.assign(new EventEmitter(), {
+      start: vi.fn(async () => undefined),
+      disconnect: vi.fn(async () => undefined),
+      websocket: { isActive: () => false },
+    });
+    const recovered = Object.assign(new EventEmitter(), {
+      start: vi.fn(async () => undefined),
+      disconnect: vi.fn(async () => undefined),
+      websocket: { isActive: () => false },
+    });
+    const clients = [stalled, recovered];
+    const states: string[] = [];
+    const listener = new SlackSocketModeListener({
+      createClient: () => clients.shift() as unknown as SocketModeClient,
+      recoveryWatchdogMs: 10,
+    });
+    try {
+      await listener.start('bot', 'app', () => undefined, (state) => states.push(state.phase));
+      stalled.emit('reconnecting');
+      await vi.waitFor(() => expect(recovered.start).toHaveBeenCalledOnce());
+      const before = states.length;
+      stalled.emit('connected');
+      stalled.emit('disconnected');
+      expect(states.length).toBe(before);
+    } finally {
+      await listener.stop();
+    }
+  });
 });
