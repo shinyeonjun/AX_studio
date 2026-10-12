@@ -88,6 +88,8 @@ export async function inferExampleValues(runner: InvestigationRunner, input: {
     },
     user: input.goal,
     images,
+    // Picking the period-dependent spans from a listed set; "high" reasoning added time, not accuracy.
+    codexReasoningEffort: 'medium',
     logContext: 'report-example-values',
     ...(input.signal ? { abortSignal: input.signal } : {}),
   });

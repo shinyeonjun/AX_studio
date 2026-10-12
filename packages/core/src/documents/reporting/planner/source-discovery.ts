@@ -262,6 +262,8 @@ export async function discoverReportSources(input: {
         outputSchema: ReportSourceDecisionWireSchema,
         context: { ...input.context, untrustedData }, user: input.user,
         ...(visualEvidenceNeeded ? { images: input.images } : {}),
+        // Repeated per inspection round, so its latency multiplies; "medium" instead of Codex's "high".
+        codexReasoningEffort: 'medium',
         logContext: round === 0 ? 'report-source-plan' : evidence.length > 0
           ? `report-source-plan-inspect-${round}` : `report-source-plan-retry-${round}`,
         abortSignal: requestSignal,
