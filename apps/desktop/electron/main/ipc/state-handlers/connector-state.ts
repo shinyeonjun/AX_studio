@@ -1,3 +1,4 @@
+import { statSync } from 'node:fs';
 import { resolveJevModel, slackErrorMessage } from '@ax-studio/core';
 import {
   getAiProviderDisplay,
@@ -15,6 +16,15 @@ import { isGoogleOAuthConfigured } from '../../gmail/oauth.js';
 import { getDesktopAxDataPaths } from '../../data-paths.js';
 import { summarizeConnections } from '../connection-state-summary.js';
 import { getCredentialStorageWarning } from '../../credential-store.js';
+
+/** A connected folder that was moved, deleted or sits on a drive that is gone. */
+function folderMissing(path: string): boolean {
+  try {
+    return !statSync(path).isDirectory();
+  } catch {
+    return true;
+  }
+}
 
 export async function buildConnectorState(core: AxCore) {
   const aiProvider = migrateDesktopAiProvider(core.store.getSetting('aiProvider', undefined));
@@ -64,7 +74,7 @@ export async function buildConnectorState(core: AxCore) {
     slackSocketStatus: slackSocketStatus.phase,
     slackConnectionMode: slackStatus.mode,
     slackLastError: slackErrorMessage(slackSocketStatus.error ?? slackStatus.lastError),
-    localFolders: localFolderStatus.folders,
+    localFolders: localFolderStatus.folders.map((folder) => (folderMissing(folder.path) ? { ...folder, missing: true } : folder)),
     credentialStorageWarning: getCredentialStorageWarning(),
     // sql.js fallback = whole-image, debounced persistence; surface it instead of failing silently.
     databaseBackendFallback: getDatabaseBackendStatus()?.fallback === true,

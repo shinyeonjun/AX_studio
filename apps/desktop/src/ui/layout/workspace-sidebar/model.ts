@@ -62,6 +62,29 @@ export function isConnectorConnected(state: AppState | null, screen: SettingsScr
   return false;
 }
 
+const SCREEN_CONNECTOR: Partial<Record<SettingsScreen, string>> = {
+  slack: 'slack', gmail: 'gmail', http: 'http', webhook: 'webhook', rdb: 'rdb',
+};
+
+/**
+ * Why a connected connector cannot be used right now, or undefined. Real use: Gmail showed
+ * "연결됨" with an expired sign-in, and a folder that no longer existed showed green.
+ */
+export function connectorAttention(state: AppState | null, screen: SettingsScreen): string | undefined {
+  if (!state) return undefined;
+  if (screen === 'local-folder') {
+    const missing = state.localFolders?.filter((folder) => folder.missing).length ?? 0;
+    return missing > 0 ? `연결한 폴더 ${missing}개를 찾을 수 없어요.` : undefined;
+  }
+  const connector = SCREEN_CONNECTOR[screen];
+  const entry = connector ? state.connections?.find((connection) => connection.connector === connector) : undefined;
+  if (!entry?.connected) return undefined;
+  if (entry.lastError) return entry.lastError;
+  if (entry.endpoints?.some((endpoint) => endpoint.needsReconnect)) return '다시 연결해야 하는 API가 있어요.';
+  if (entry.databases?.some((database) => database.needsReconnect)) return '다시 연결해야 하는 데이터베이스가 있어요.';
+  return undefined;
+}
+
 export function connectorCount(
   state: AppState | null,
   screen: SettingsScreen,
