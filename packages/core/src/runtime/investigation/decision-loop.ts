@@ -287,7 +287,7 @@ export async function runAiDecisionLoop({
   );
   if (restrictedEvidence.length > 0 && Object.keys(outputPlan.questions).length > 0) {
     throw Object.assign(
-      new Error('외부 AI로 보내지 않도록 설정된 자료라 판단 엔진(Jev)에 넘기지 않았습니다.'),
+      new Error('외부 AI로 보내지 않도록 설정된 자료라 요청 판단 기능에 넘기지 않았습니다.'),
       {
         code: 'ai_input_unavailable',
         data: { stepId: step.id, sources: restrictedEvidence.map((item) => item.source) },

@@ -19,7 +19,7 @@ interface JevDecisionPrefs {
   apiKey?: string;
 }
 
-const SETTINGS_UNREADABLE = '판단 엔진(Jev) 설정을 읽지 못했어요. 화면을 새로고침한 뒤 다시 저장해 주세요.';
+const SETTINGS_UNREADABLE = '요청 판단 기능 설정을 읽지 못했어요. 화면을 새로고침한 뒤 다시 저장해 주세요.';
 const MALFORMED_KEY = 'API 키 형식이 올바르지 않아요. 띄어쓰기나 줄바꿈 없이 발급받은 그대로 붙여 넣어 주세요.';
 
 function normalizedUrl(value: string | undefined): string {
@@ -28,11 +28,11 @@ function normalizedUrl(value: string | undefined): string {
   try {
     parsed = new URL(candidate);
   } catch {
-    throw new Error(`판단 엔진(Jev) 서버 주소 형식이 올바르지 않아요. 예: ${JEV_DEFAULT_BASE_URL}`);
+    throw new Error(`요청 판단 기능 서버 주소 형식이 올바르지 않아요. 예: ${JEV_DEFAULT_BASE_URL}`);
   }
   const loopback = parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1' || parsed.hostname === '::1';
   if (parsed.protocol !== 'https:' && !(parsed.protocol === 'http:' && loopback)) {
-    throw new Error('판단 엔진(Jev) 서버 주소는 https:// 로 시작해야 해요. http:// 는 내 컴퓨터 주소(localhost)에서만 쓸 수 있어요.');
+    throw new Error('요청 판단 기능 서버 주소는 https:// 로 시작해야 해요. http:// 는 내 컴퓨터 주소(localhost)에서만 쓸 수 있어요.');
   }
   return candidate.replace(/\/+$/, '');
 }
@@ -79,7 +79,7 @@ function storedKeyOrigin(jev: JevDecisionTomlConfig | undefined): string {
 }
 
 const KEY_ORIGIN_MISMATCH =
-  '판단 엔진(Jev) 서버 주소가 API 키를 등록할 때와 달라요. 새 주소에서 쓰려면 API 키를 다시 입력해 주세요.';
+  '요청 판단 기능 서버 주소가 API 키를 등록할 때와 달라요. 새 주소에서 쓰려면 API 키를 다시 입력해 주세요.';
 
 async function snapshot() {
   const config = await readAiToml();
@@ -113,7 +113,7 @@ export function registerDecisionPlaneHandlers(): void {
       secret = stored;
     }
     if (prefs.enabled && !secret) {
-      throw new Error('판단 엔진(Jev)을 쓰려면 API 키를 먼저 입력해 주세요.');
+      throw new Error('요청 판단 기능을 쓰려면 API 키를 먼저 입력해 주세요.');
     }
     if (prefs.apiKey) await setJevSecret(prefs.apiKey);
 
@@ -157,7 +157,7 @@ export function registerDecisionPlaneHandlers(): void {
         throw new Error(KEY_ORIGIN_MISMATCH);
       }
     }
-    if (!secret) throw new Error('판단 엔진(Jev) API 키를 먼저 입력해 주세요.');
+    if (!secret) throw new Error('요청 판단 기능 API 키를 먼저 입력해 주세요.');
 
     const engine = new JevDecisionEngine({
       apiKey: secret,
@@ -187,10 +187,10 @@ export function registerDecisionPlaneHandlers(): void {
       // Busy or briefly down (already retried): not the person's key or address.
       if (failure === 'busy') {
         const status = error instanceof JevDecisionError && error.status !== undefined ? `(오류 ${error.status})` : '';
-        throw new Error(`판단 엔진(Jev) 서버가 지금 응답하지 못하고 있어요${status}. API 키나 주소 문제는 아니니 잠시 뒤 다시 확인해 주세요. 이미 저장된 설정은 그대로 쓰입니다.`, { cause: error });
+        throw new Error(`요청 판단 기능 서버가 지금 응답하지 못하고 있어요${status}. API 키나 주소 문제는 아니니 잠시 뒤 다시 확인해 주세요. 이미 저장된 설정은 그대로 쓰입니다.`, { cause: error });
       }
       if (error instanceof JevDecisionError && error.status !== undefined) {
-        throw new Error(`판단 엔진(Jev) 서버가 연결 확인을 거절했어요(오류 ${error.status}). 서버 주소와 API 키 권한을 확인해 주세요.`, { cause: error });
+        throw new Error(`요청 판단 기능 서버가 연결 확인을 거절했어요(오류 ${error.status}). 서버 주소와 API 키 권한을 확인해 주세요.`, { cause: error });
       }
       throw new Error('서버에 연결할 수 없어요. 인터넷 연결과 서버 주소를 확인해 주세요.', { cause: error });
     }

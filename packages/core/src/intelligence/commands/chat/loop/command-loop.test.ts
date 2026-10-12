@@ -1510,7 +1510,7 @@ describe('runAxCommandChat command loop', () => {
       decisionEngine,
       messages: [],
       userMessage: 'DummyJSON에 상품을 새로 등록해줘.',
-    })).resolves.toContain('판단 엔진(Jev)에 연결하지 못해');
+    })).resolves.toContain('요청 판단 기능에 연결하지 못해');
     expect(evaluations).toBe(1);
     expect(seen).toHaveLength(0);
     expect(textSeen).toHaveLength(0);
@@ -1602,7 +1602,7 @@ describe('runAxCommandChat command loop', () => {
       commandService: service,
       messages: [],
       userMessage: '연결된 자료를 검색해줘',
-    })).resolves.toContain('Jev');
+    })).resolves.toContain('설정 > 요청 판단 기능');
     expect(seen).toHaveLength(0);
     expect(textSeen).toHaveLength(1);
     expect(textSeen[0]?.system).toContain('No AX command or connected-resource operation was executed');
@@ -2044,7 +2044,7 @@ describe('runAxCommandChat command loop', () => {
       decisionEngine,
       messages: [],
       userMessage: '상태를 설명해줘',
-    })).resolves.toContain('판단 엔진(Jev)에 연결하지 못해');
+    })).resolves.toContain('요청 판단 기능에 연결하지 못해');
     expect(seen).toHaveLength(0);
     expect(textSeen).toHaveLength(0);
   });
@@ -2070,7 +2070,7 @@ describe('runAxCommandChat command loop', () => {
       httpEndpoints: [{ id: 'dummyjson', label: 'DummyJSON' }],
       messages: [],
       userMessage: 'DummyJSON에서 상품 목록을 조회해줘',
-    })).resolves.toContain('판단 엔진(Jev)에 연결하지 못해');
+    })).resolves.toContain('요청 판단 기능에 연결하지 못해');
     expect(seen).toHaveLength(0);
   });
 

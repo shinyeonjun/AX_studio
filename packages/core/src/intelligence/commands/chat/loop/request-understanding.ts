@@ -79,7 +79,7 @@ export async function runRequestUnderstandingChat(input: RequestUnderstandingCha
     return reply;
   };
   check();
-  if (!input.decisionEngine) return finish('provider_failure', '판단 엔진(Jev)에 연결하지 못해 확인을 시작하지 않았습니다. 설정 > 판단 엔진에서 연결 상태를 확인해 주세요.');
+  if (!input.decisionEngine) return finish('provider_failure', '요청 판단 기능에 연결하지 못해 확인을 시작하지 않았습니다. 설정 > 요청 판단 기능에서 연결 상태를 확인해 주세요.');
   const engine = guardAuthoritativeRequestDecisions(input.decisionEngine, snapshot.anchor);
   const evaluate = async (state: unknown, questions: Record<string, DecisionQuestion>) => {
     check();
@@ -233,6 +233,6 @@ export async function runRequestUnderstandingChat(input: RequestUnderstandingCha
     check();
     if (error instanceof AuthoritativeRequestError) throw error;
     if (error instanceof Error && error.message.startsWith('invalid_metadata')) throw error;
-    return finish('provider_failure', '판단 엔진(Jev)이나 연결된 서비스에서 응답이 없어 확인을 멈췄습니다. 잠시 후 다시 시도해 주세요.');
+    return finish('provider_failure', '요청 판단 기능이나 연결된 서비스에서 응답이 없어 확인을 멈췄습니다. 잠시 후 다시 시도해 주세요.');
   }
 }
