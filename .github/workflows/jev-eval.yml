@@ -31,7 +31,7 @@ jobs:
       - uses: actions/checkout@v7
         if: env.TYPESAFE_API_KEY != ''
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         if: env.TYPESAFE_API_KEY != ''
         with:
           node-version-file: .nvmrc
