@@ -1,16 +1,30 @@
-# Weekly dependency update PRs. Security advisories are raised as separate PRs as they appear.
+# Weekly dependency updates. Minor and patch versions are grouped into one PR per ecosystem so they
+# merge together; majors stay separate because they need a code or config review.
 version: 2
 updates:
   - package-ecosystem: npm
     directory: /
     schedule:
       interval: weekly
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+    ignore:
+      # Runtime is Node 22 (.nvmrc). Node type packages must match the runtime, not the latest major.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
   - package-ecosystem: pip
     directory: /packages/document-engine
     schedule:
       interval: weekly
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
