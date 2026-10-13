@@ -11,26 +11,40 @@ const PRICES = {
 };
 
 const [dir, outPath] = process.argv.slice(2);
-const files = readdirSync(dir).filter((file) => /-run\d+\.json$/u.test(file));
-const firstAttemptRuns = files.map((file) => JSON.parse(readFileSync(join(dir, file), 'utf8')));
+// One run of an engine may be split in parts run on different days: <engine>-run<n>.json holds the
+// first cases, <engine>-run<n>.<part>.json the ones added later (AX_COMPARE_PART). Each may have a
+// -retry.json beside it.
+const RUN_FILE = /^(.+)-run(\d+)(?:\.([a-z0-9]+))?\.json$/u;
+const files = readdirSync(dir).filter((file) => RUN_FILE.test(file));
+const caseKey = (outcome) => `${outcome.set}/${outcome.workspace}/${outcome.id}`;
 // A call that never completed (the provider's own outage, e.g. "Selected model is at capacity") says
-// nothing about the decision: its case is taken from <run>-retry.json when one was made. The
+// nothing about the decision: its case is taken from the part's -retry.json when one was made. The
 // first-attempt numbers stay in the report as the service reliability.
 const isServiceFailure = (outcome) => outcome.serviceError || String(outcome.miss ?? '').startsWith('threw');
-const runs = files.map((file, index) => {
-  const run = firstAttemptRuns[index];
-  const retryPath = join(dir, file.replace(/\.json$/u, '-retry.json'));
+const parts = files.map((file) => {
+  const run = JSON.parse(readFileSync(join(dir, file), 'utf8'));
+  const [, , runNumber] = RUN_FILE.exec(file);
   let retried;
-  try { retried = JSON.parse(readFileSync(retryPath, 'utf8')); } catch { return run; }
-  const byId = new Map(retried.outcomes.map((outcome) => [`${outcome.set}/${outcome.workspace}/${outcome.id}`, outcome]));
+  try { retried = JSON.parse(readFileSync(join(dir, file.replace(/\.json$/u, '-retry.json')), 'utf8')); } catch { /* none */ }
+  const byId = new Map((retried?.outcomes ?? []).map((outcome) => [caseKey(outcome), outcome]));
   return {
-    ...run,
+    engine: run.engine, runNumber, firstAttempt: run.outcomes,
     outcomes: run.outcomes.map((outcome) => {
-      const replacement = isServiceFailure(outcome) ? byId.get(`${outcome.set}/${outcome.workspace}/${outcome.id}`) : undefined;
+      const replacement = isServiceFailure(outcome) ? byId.get(caseKey(outcome)) : undefined;
       return replacement ? { ...replacement, retried: true, firstAttemptCalls: outcome.calls } : outcome;
     }),
   };
 });
+const runMap = new Map();
+for (const part of parts) {
+  const key = `${part.engine}#${part.runNumber}`;
+  const run = runMap.get(key) ?? { engine: part.engine, runNumber: part.runNumber, outcomes: [], firstAttemptOutcomes: [] };
+  run.outcomes.push(...part.outcomes);
+  run.firstAttemptOutcomes.push(...part.firstAttempt);
+  runMap.set(key, run);
+}
+const runs = [...runMap.values()];
+const firstAttemptRuns = runs.map((run) => ({ engine: run.engine, outcomes: run.firstAttemptOutcomes }));
 const firstAttempt = new Map();
 for (const run of firstAttemptRuns) {
   const entry = firstAttempt.get(run.engine) ?? { cases: 0, passed: 0, serviceFailures: 0, calls: 0, failedCalls: 0, errors: new Set() };
@@ -44,6 +58,31 @@ for (const run of firstAttemptRuns) {
   firstAttempt.set(run.engine, entry);
 }
 const overhead = readdirSync(dir).filter((file) => file.startsWith('overhead-')).map((file) => JSON.parse(readFileSync(join(dir, file), 'utf8')));
+
+/**
+ * 95% Wilson interval for a pass rate over `n` cases. The three runs of a case are not independent
+ * draws, so n is the number of cases, not case-runs (p is the mean over runs).
+ */
+function wilson(p, n) {
+  if (!n) return [0, 0];
+  const z = 1.96;
+  const centre = (p + (z * z) / (2 * n)) / (1 + (z * z) / n);
+  const half = (z * Math.sqrt((p * (1 - p)) / n + (z * z) / (4 * n * n))) / (1 + (z * z) / n);
+  return [Math.max(0, centre - half), Math.min(1, centre + half)];
+}
+
+/** Exact two-sided McNemar test: the chance of a split this lopsided if both engines were equal. */
+function mcnemar(onlyA, onlyB) {
+  const n = onlyA + onlyB;
+  if (n === 0) return 1;
+  let tail = 0;
+  let coefficient = 1;
+  for (let k = 0; k <= Math.min(onlyA, onlyB); k += 1) {
+    if (k > 0) coefficient = (coefficient * (n - k + 1)) / k;
+    tail += coefficient / 2 ** n;
+  }
+  return Math.min(1, 2 * tail);
+}
 
 const sum = (values) => values.reduce((total, value) => total + value, 0);
 const mean = (values) => (values.length ? sum(values) / values.length : 0);
@@ -88,10 +127,14 @@ for (const [engine, engineRuns] of byEngine) {
     'main/scale': (outcome) => outcome.set === 'main' && outcome.workspace === 'scale',
     'holdout/basic': (outcome) => outcome.set === 'holdout' && outcome.workspace === 'basic',
     'holdout/scale': (outcome) => outcome.set === 'holdout' && outcome.workspace === 'scale',
+    // The first 24 held-out cases (2026-10-13) and the 76 added by a blind author (2026-10-14).
+    'holdout-v1': (outcome) => outcome.set === 'holdout' && !outcome.id.startsWith('h2'),
+    'holdout-v2': (outcome) => outcome.set === 'holdout' && outcome.id.startsWith('h2'),
   };
   const accuracyBySet = Object.fromEntries(Object.entries(sets).map(([name, filter]) => {
     const values = accuracy(filter);
-    return [name, { mean: mean(values), min: Math.min(...values), max: Math.max(...values), cases: engineRuns[0].outcomes.filter(filter).length }];
+    const cases = engineRuns[0].outcomes.filter(filter).length;
+    return [name, { mean: mean(values), min: Math.min(...values), max: Math.max(...values), cases, ci95: wilson(mean(values), cases) }];
   }));
 
   // Same case, every run: does the engine come back with the same verdict and the same decision?
@@ -172,13 +215,22 @@ const majority = (engine) => {
 const jev = majority('jev');
 const versusJev = [...byEngine.keys()].filter((engine) => engine !== 'jev').map((engine) => {
   const other = majority(engine);
+  const paired = (keys) => {
+    const onlyJev = keys.filter((key) => jev.get(key) && !other.get(key));
+    const onlyEngine = keys.filter((key) => !jev.get(key) && other.get(key));
+    return {
+      cases: keys.length,
+      bothPass: keys.filter((key) => jev.get(key) && other.get(key)).length,
+      onlyJev, onlyEngine,
+      bothFail: keys.filter((key) => !jev.get(key) && !other.get(key)),
+      mcnemarP: mcnemar(onlyJev.length, onlyEngine.length),
+    };
+  };
   const keys = [...jev.keys()];
   return {
     engine,
-    bothPass: keys.filter((key) => jev.get(key) && other.get(key)).length,
-    onlyJev: keys.filter((key) => jev.get(key) && !other.get(key)),
-    onlyEngine: keys.filter((key) => !jev.get(key) && other.get(key)),
-    bothFail: keys.filter((key) => !jev.get(key) && !other.get(key)),
+    ...paired(keys),
+    holdout: paired(keys.filter((key) => key.startsWith('holdout/'))),
   };
 });
 
@@ -196,11 +248,11 @@ const report = { generatedAt: new Date().toISOString(), prices: PRICES, reasonin
 if (outPath) writeFileSync(outPath, JSON.stringify(report, null, 2));
 
 const f1 = (value) => (value * 100).toFixed(1);
-console.log('| engine | runs | all | main | holdout | main/basic | main/scale | holdout/basic | holdout/scale |');
-console.log('|---|---|---|---|---|---|---|---|---|');
+console.log('| engine | runs | all [95% CI] | main | holdout [95% CI] | main/basic | main/scale | holdout/basic | holdout/scale | holdout-v1 | holdout-v2 |');
+console.log('|---|---|---|---|---|---|---|---|---|---|---|');
 for (const e of engines) {
-  const cell = (name) => `${f1(e.accuracy[name].mean)}% (${f1(e.accuracy[name].min)}–${f1(e.accuracy[name].max)})`;
-  console.log(`| ${e.engine} | ${e.runs} | ${cell('all')} | ${cell('main')} | ${cell('holdout')} | ${cell('main/basic')} | ${cell('main/scale')} | ${cell('holdout/basic')} | ${cell('holdout/scale')} |`);
+  const cell = (name) => e.accuracy[name].cases ? `${f1(e.accuracy[name].mean)}% (${f1(e.accuracy[name].min)}–${f1(e.accuracy[name].max)}) [${f1(e.accuracy[name].ci95[0])}–${f1(e.accuracy[name].ci95[1])}] n=${e.accuracy[name].cases}` : '–';
+  console.log(`| ${e.engine} | ${e.runs} | ${cell('all')} | ${cell('main')} | ${cell('holdout')} | ${cell('main/basic')} | ${cell('main/scale')} | ${cell('holdout/basic')} | ${cell('holdout/scale')} | ${cell('holdout-v1')} | ${cell('holdout-v2')} |`);
 }
 console.log('\n| engine | p50 case ms | p95 case ms | mean case ms | calls/case | in tok/case | cached | out tok/case | reasoning | $/1000 req | same decision 3 runs | wrong cmd | asked/declined | service err |');
 console.log('|---|---|---|---|---|---|---|---|---|---|---|---|---|---|');
@@ -213,4 +265,8 @@ for (const e of engines) {
   console.log(`| ${e.engine} | ${f1(e.firstAttempt.accuracy)}% | ${e.firstAttempt.serviceFailures} (${f1(e.firstAttempt.serviceFailureRate)}%) | ${f1(e.firstAttempt.failedCallRate)}% | ${e.retriedCases} | ${e.stillServiceFailedAfterRetry} |`);
 }
 console.log(`\nreasoning > output in ${reasoningAboveOutput} calls`);
-console.log(JSON.stringify(versusJev.map((v) => ({ engine: v.engine, bothPass: v.bothPass, onlyJev: v.onlyJev.length, onlyEngine: v.onlyEngine.length, bothFail: v.bothFail.length }))));
+console.log('\n| vs Jev | set | cases | both pass | only Jev | only engine | both fail | McNemar p |');
+console.log('|---|---|---|---|---|---|---|---|');
+for (const v of versusJev) {
+  for (const [name, pair] of [['all', v], ['holdout', v.holdout]]) console.log(`| ${v.engine} | ${name} | ${pair.cases} | ${pair.bothPass} | ${pair.onlyJev.length} | ${pair.onlyEngine.length} | ${pair.bothFail.length} | ${pair.mcnemarP.toFixed(4)} |`);
+}
