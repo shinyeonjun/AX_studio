@@ -265,3 +265,42 @@ describe('tools the request names outright', () => {
       .toMatchObject({ kind: 'clarify' });
   });
 });
+
+describe('a spreadsheet the request names by file name', () => {
+  const candidates = [
+    { id: 'read:op_0', kind: 'read' as const, connector: 'rdb', capabilityId: 'rdb.query.read', label: 'DB 조회: public.contracts', description: '' },
+    { id: 'read:op_1', kind: 'read' as const, connector: 'local_sheet', capabilityId: 'local_sheet.read', label: '매출 자료: 스프레드시트 읽기', description: '' },
+  ];
+  const sheetHint = {
+    key: 'op_1', capabilityId: 'local_sheet.read', connector: 'local_sheet' as const, label: '매출 자료: 스프레드시트 읽기', description: '',
+    params: { folderId: 'f1' },
+    parameterHints: [{ path: 'path', type: 'string', required: true, choices: ['월간매출요약_2026-08.xlsx', '주문내역_2026-08.xlsx'] }],
+  };
+  const answers = (db: number, sheet: number) => ({
+    needs_natural_language_answer: { type: 'boolean' as const, probability: 0.2 },
+    tool_0: { type: 'boolean' as const, probability: db },
+    tool_1: { type: 'boolean' as const, probability: sheet },
+  });
+  const telemetry = { evaluationCalls: 1, providerRequestCount: 1, estimatedRequestBytes: 0, candidateCount: 2 };
+
+  it('names the folder read when a word of a file name is in the request', () => {
+    expect([...requestNamedToolIds(candidates, '8월 주문내역에서 카테고리별 매출 보여줘', [sheetHint])]).toEqual(['read:op_1']);
+    expect([...requestNamedToolIds(candidates, '카테고리별 매출 보여줘', [sheetHint])]).toEqual([]);
+    // A generic word of a file name names nothing.
+    expect([...requestNamedToolIds(candidates, '자료 보여줘', [{ ...sheetHint, parameterHints: [{ path: 'path', required: true, choices: ['자료_1.xlsx'] }] }])]).toEqual([]);
+  });
+
+  it('reads the named file just under 0.5 and leaves a merely plausible other source out', () => {
+    const requestNamed = requestNamedToolIds(candidates, '8월 주문내역 요약해줘', [sheetHint]);
+    // Real answers: 카테고리별 매출 (DB 0.21, sheet 0.45) and 요약 (DB 0.55, sheet 0.48).
+    expect(parseParallelToolSelection({ candidates, answers: answers(0.21, 0.45), telemetry, requestNamed }))
+      .toMatchObject({ kind: 'selected', operationDecisions: [{ selected: false }, { selected: true }] });
+    expect(parseParallelToolSelection({ candidates, answers: answers(0.55, 0.48), telemetry, requestNamed }))
+      .toMatchObject({ kind: 'selected', operationDecisions: [{ selected: false }, { selected: true }] });
+    expect(parseParallelToolSelection({ candidates, answers: answers(0.92, 0.48), telemetry, requestNamed }))
+      .toMatchObject({ kind: 'selected', operationDecisions: [{ selected: true }, { selected: true }] });
+    // Without the name, the DB at 0.55 is still chosen as before.
+    expect(parseParallelToolSelection({ candidates, answers: answers(0.55, 0.48), telemetry }))
+      .toMatchObject({ kind: 'selected', operationDecisions: [{ selected: true }, { selected: false }] });
+  });
+});
