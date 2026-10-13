@@ -127,21 +127,50 @@ export function parallelToolSelectionQuestions(
 
 /** Below 0.5 but not a "no": enough for a tool the request itself names. */
 const REQUEST_NAMED_TOOL_FLOOR = 0.3;
+/**
+ * With the source named, another read must be clearly needed, not just plausible: "8월 주문내역
+ * 요약해줘" read a contracts table at 0.55 next to the named 주문내역_2026-08.xlsx at 0.48.
+ */
+const UNNAMED_READ_BESIDE_NAMED_FLOOR = 0.8;
 const SEND_VERB = /보내|전송|올려|공유|알려|남겨|게시|send|post/iu;
+/** File-name words that say nothing about which file it is. */
+const GENERIC_FILE_WORDS = new Set(['data', 'file', 'sheet', 'final', 'copy', 'new', '자료', '파일', '데이터', '시트', '최종', '사본']);
+
+/** "주문내역_2026-08.xlsx" is named by a request that says 주문내역. */
+function requestNamesFile(userMessage: string, path: string): boolean {
+  const message = userMessage.toLocaleLowerCase();
+  const name = (path.split(/[\\/]/u).pop() ?? path).replace(/\.[^.]+$/u, '').toLocaleLowerCase();
+  return name.split(/[^\p{L}]+/u)
+    .some((word) => word.length >= 2 && !GENERIC_FILE_WORDS.has(word) && message.includes(word));
+}
+
+/** The spreadsheets a folder read can open: the one the request spelled out, or the folder's list. */
+function sheetFiles(hint: JevReadOperationHint): string[] {
+  if (typeof hint.params.path === 'string') return [hint.params.path];
+  const choices = hint.parameterHints?.find(({ path }) => path === 'path')?.choices ?? [];
+  return choices.filter((choice): choice is string => typeof choice === 'string');
+}
 
 /**
  * Candidates the request names outright, so Jev's own probability is not the only signal. Real
- * use: "#ax테스트에 안녕하세요 보내줘" scored Slack send at 0.49 and nothing ran.
+ * use: "#ax테스트에 안녕하세요 보내줘" scored Slack send at 0.49 and nothing ran, and "8월
+ * 주문내역에서 카테고리별 매출 보여줘" scored the folder's 주문내역_2026-08.xlsx read at 0.45.
  */
 export function requestNamedToolIds(
   candidates: readonly JevParallelToolCandidate[],
   userMessage: string,
+  readHints: readonly JevReadOperationHint[] = [],
 ): Set<string> {
   const named = new Set<string>();
   if (explicitSlackChannel(userMessage) && SEND_VERB.test(userMessage)) {
     for (const candidate of candidates) {
       if (candidate.capabilityId === 'slack.message.send') named.add(candidate.id);
     }
+  }
+  const ids = new Set(candidates.map(({ id }) => id));
+  for (const hint of readHints) {
+    if (hint.capabilityId !== 'local_sheet.read' || !ids.has(`read:${hint.key}`)) continue;
+    if (sheetFiles(hint).some((file) => requestNamesFile(userMessage, file))) named.add(`read:${hint.key}`);
   }
   return named;
 }
@@ -163,6 +192,7 @@ export function parseParallelToolSelection(input: {
   }
 
   const operationDecisions: Array<{ id: string; selected: boolean }> = [];
+  const namedRead = candidates.some(({ id }) => id.startsWith('read:') && input.requestNamed?.has(id));
   for (const [index, candidate] of candidates.entries()) {
     const answer = answers[`tool_${index}`];
     if (answer?.type !== 'boolean') {
@@ -174,7 +204,8 @@ export function parseParallelToolSelection(input: {
     // An undecided tool is not chosen: one unsure answer among two dozen candidates used to fail
     // a clear request. Leaving a tool out only does less, and the plan review still checks that
     // the plan covers the request.
-    const floor = input.requestNamed?.has(candidate.id) ? REQUEST_NAMED_TOOL_FLOOR : 0.5;
+    const floor = input.requestNamed?.has(candidate.id) ? REQUEST_NAMED_TOOL_FLOOR
+      : namedRead && candidate.id.startsWith('read:') ? UNNAMED_READ_BESIDE_NAMED_FLOOR : 0.5;
     operationDecisions.push({ id: candidate.id, selected: answer.probability > floor });
   }
 

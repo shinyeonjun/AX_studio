@@ -8,6 +8,11 @@ const skillsDir = join(harnessDir, 'skills');
 const agentsMdPath = join(harnessDir, 'AGENTS.md');
 const soulMdPath = join(harnessDir, 'soul.md');
 
+// A Windows checkout has CRLF sources; the embedded text is the same on every machine.
+function readMarkdown(path) {
+  return readFileSync(path, 'utf8').replace(/\r\n/g, '\n');
+}
+
 function findSkillFiles(directory, prefix = '') {
   const files = [];
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
@@ -25,12 +30,12 @@ function findSkillFiles(directory, prefix = '') {
 const skillFiles = findSkillFiles(skillsDir).sort((left, right) => left.id.localeCompare(right.id));
 
 const skillEntries = skillFiles.map(({ id, path }) => {
-  const markdown = readFileSync(path, 'utf8');
+  const markdown = readMarkdown(path);
   return `  ${JSON.stringify(id)}: ${JSON.stringify(markdown)}`;
 });
 
-const agentsMd = readFileSync(agentsMdPath, 'utf8');
-const soulMd = readFileSync(soulMdPath, 'utf8');
+const agentsMd = readMarkdown(agentsMdPath);
+const soulMd = readMarkdown(soulMdPath);
 
 const out = `// GENERATED FILE — do not edit. Regenerate with: npm run build -w @ax-studio/core\n// Source: src/intelligence/agent/skills/**/SKILL.md, src/intelligence/agent/AGENTS.md, and src/intelligence/agent/soul.md via scripts/embed-skills.mjs\n\nexport const EMBEDDED_AGENT_SKILLS: Record<string, string> = {\n${skillEntries.join(',\n')}\n};\n\nexport const EMBEDDED_AGENTS_MD = ${JSON.stringify(agentsMd)};\nexport const EMBEDDED_AGENT_SOUL = ${JSON.stringify(soulMd)};\n`;
 

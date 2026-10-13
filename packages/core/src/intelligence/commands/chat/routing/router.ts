@@ -253,7 +253,7 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
       toolSelection = parseParallelToolSelection({
         candidates: parallelToolCandidates,
         answers: evaluation.answers,
-        requestNamed: requestNamedToolIds(parallelToolCandidates, input.userMessage),
+        requestNamed: requestNamedToolIds(parallelToolCandidates, input.userMessage, operationHints),
         telemetry: {
           evaluationCalls: 1,
           providerRequestCount: evaluation.providerRequestCount ?? 1,
