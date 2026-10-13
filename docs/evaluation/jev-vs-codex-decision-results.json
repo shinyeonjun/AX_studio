@@ -1,0 +1,833 @@
+{
+  "generatedAt": "2026-10-13T16:24:23.950Z",
+  "prices": {
+    "jev-1.13.0": {
+      "input": 0.042,
+      "cached": 0.042,
+      "output": 0
+    },
+    "gpt-5.6-luna": {
+      "input": 0.2,
+      "cached": 0.02,
+      "output": 1.2
+    },
+    "gpt-6-luna": {
+      "input": 0.1,
+      "cached": 0.01,
+      "output": 0.5
+    },
+    "gpt-6.1-sol": {
+      "input": 2,
+      "cached": 0.1,
+      "output": 10
+    }
+  },
+  "reasoningAboveOutputCalls": 0,
+  "engines": [
+    {
+      "engine": "codex:gpt-5.6-luna:low",
+      "runs": 3,
+      "models": [
+        "gpt-5.6-luna"
+      ],
+      "accuracy": {
+        "all": {
+          "mean": 0.9406392694063926,
+          "min": 0.9315068493150684,
+          "max": 0.9452054794520548,
+          "cases": 73
+        },
+        "main": {
+          "mean": 0.9523809523809524,
+          "min": 0.9387755102040817,
+          "max": 0.9591836734693877,
+          "cases": 49
+        },
+        "holdout": {
+          "mean": 0.9166666666666666,
+          "min": 0.9166666666666666,
+          "max": 0.9166666666666666,
+          "cases": 24
+        },
+        "main/basic": {
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "cases": 20
+        },
+        "main/scale": {
+          "mean": 0.9195402298850573,
+          "min": 0.896551724137931,
+          "max": 0.9310344827586207,
+          "cases": 29
+        },
+        "holdout/basic": {
+          "mean": 0.9285714285714285,
+          "min": 0.9285714285714286,
+          "max": 0.9285714285714286,
+          "cases": 14
+        },
+        "holdout/scale": {
+          "mean": 0.9,
+          "min": 0.9,
+          "max": 0.9,
+          "cases": 10
+        }
+      },
+      "consistency": {
+        "sameVerdictAllRuns": 0.9863013698630136,
+        "sameDecisionAllRuns": 0.8767123287671232,
+        "flakyCases": [
+          "main/scale/scale-ambiguous-orders"
+        ]
+      },
+      "failures": {
+        "total": 13,
+        "wrongCommand": 9,
+        "askedOrDeclined": 1,
+        "serviceError": 0
+      },
+      "latencyMs": {
+        "perCase": {
+          "mean": 19132.40182648402,
+          "p50": 14220,
+          "p95": 44072,
+          "max": 141166
+        },
+        "perCall": {
+          "mean": 14492.8449515571,
+          "p50": 11439.133799999952,
+          "p95": 42786.75919999997
+        },
+        "perCaseBasic": 10278,
+        "perCaseScale": 16114
+      },
+      "callsPerCase": 1.3196347031963471,
+      "providerRequestsPerCase": 1.3196347031963471,
+      "tokensPerCase": {
+        "input": 26474.890410958906,
+        "cachedInput": 3378.264840182648,
+        "output": 1243.296803652968,
+        "reasoning": 129.986301369863,
+        "requestBytes": 53402.333333333336
+      },
+      "costUsd": {
+        "perCase": 0.0061788465753424655,
+        "per1000Requests": 6.178846575342465,
+        "allRuns": 1.3531674
+      },
+      "firstAttempt": {
+        "accuracy": 0.9406392694063926,
+        "serviceFailureRate": 0,
+        "failedCallRate": 0,
+        "serviceFailures": 0,
+        "errors": []
+      },
+      "retriedCases": 0,
+      "stillServiceFailedAfterRetry": 0,
+      "missedCases": [
+        "main/scale/scale-erp-vendors",
+        "main/scale/scale-remembered-similar",
+        "holdout/basic/h-slack-search",
+        "holdout/scale/hs-ambiguous-customers",
+        "main/scale/scale-ambiguous-orders"
+      ]
+    },
+    {
+      "engine": "codex:gpt-6-luna:low",
+      "runs": 3,
+      "models": [
+        "gpt-6-luna"
+      ],
+      "accuracy": {
+        "all": {
+          "mean": 0.9086757990867579,
+          "min": 0.9041095890410958,
+          "max": 0.9178082191780822,
+          "cases": 73
+        },
+        "main": {
+          "mean": 0.9047619047619048,
+          "min": 0.8979591836734694,
+          "max": 0.9183673469387755,
+          "cases": 49
+        },
+        "holdout": {
+          "mean": 0.9166666666666666,
+          "min": 0.9166666666666666,
+          "max": 0.9166666666666666,
+          "cases": 24
+        },
+        "main/basic": {
+          "mean": 0.9499999999999998,
+          "min": 0.95,
+          "max": 0.95,
+          "cases": 20
+        },
+        "main/scale": {
+          "mean": 0.8735632183908045,
+          "min": 0.8620689655172413,
+          "max": 0.896551724137931,
+          "cases": 29
+        },
+        "holdout/basic": {
+          "mean": 0.9285714285714285,
+          "min": 0.9285714285714286,
+          "max": 0.9285714285714286,
+          "cases": 14
+        },
+        "holdout/scale": {
+          "mean": 0.9,
+          "min": 0.9,
+          "max": 0.9,
+          "cases": 10
+        }
+      },
+      "consistency": {
+        "sameVerdictAllRuns": 0.958904109589041,
+        "sameDecisionAllRuns": 0.8904109589041096,
+        "flakyCases": [
+          "main/scale/scale-logistics-orders",
+          "main/scale/scale-ambiguous-orders",
+          "main/scale/scale-remembered-orders"
+        ]
+      },
+      "failures": {
+        "total": 20,
+        "wrongCommand": 16,
+        "askedOrDeclined": 1,
+        "serviceError": 0
+      },
+      "latencyMs": {
+        "perCase": {
+          "mean": 19237.118721461185,
+          "p50": 16251,
+          "p95": 40000,
+          "max": 141524
+        },
+        "perCall": {
+          "mean": 15315.264545090924,
+          "p50": 12011.168599999975,
+          "p95": 37085.22989999992
+        },
+        "perCaseBasic": 9478,
+        "perCaseScale": 18451
+      },
+      "callsPerCase": 1.2557077625570776,
+      "providerRequestsPerCase": 1.2557077625570776,
+      "tokensPerCase": {
+        "input": 28696.269406392694,
+        "cachedInput": 3332.675799086758,
+        "output": 1044.4977168949772,
+        "reasoning": 0.1461187214611872,
+        "requestBytes": 53251.25570776256
+      },
+      "costUsd": {
+        "perCase": 0.0030919349771689505,
+        "per1000Requests": 3.0919349771689504,
+        "allRuns": 0.6771337600000001
+      },
+      "firstAttempt": {
+        "accuracy": 0.908675799086758,
+        "serviceFailureRate": 0,
+        "failedCallRate": 0,
+        "serviceFailures": 0,
+        "errors": []
+      },
+      "retriedCases": 0,
+      "stillServiceFailedAfterRetry": 0,
+      "missedCases": [
+        "main/basic/two-sources",
+        "main/scale/scale-ambiguous-orders",
+        "main/scale/scale-erp-vendors",
+        "main/scale/scale-remembered-similar",
+        "holdout/basic/h-slack-search",
+        "holdout/scale/hs-ambiguous-customers",
+        "main/scale/scale-logistics-orders",
+        "main/scale/scale-remembered-orders"
+      ]
+    },
+    {
+      "engine": "codex:gpt-6.1-sol:high",
+      "runs": 3,
+      "models": [
+        "gpt-6.1-sol"
+      ],
+      "accuracy": {
+        "all": {
+          "mean": 0.9680365296803654,
+          "min": 0.958904109589041,
+          "max": 0.9726027397260274,
+          "cases": 73
+        },
+        "main": {
+          "mean": 0.9931972789115647,
+          "min": 0.9795918367346939,
+          "max": 1,
+          "cases": 49
+        },
+        "holdout": {
+          "mean": 0.9166666666666666,
+          "min": 0.9166666666666666,
+          "max": 0.9166666666666666,
+          "cases": 24
+        },
+        "main/basic": {
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "cases": 20
+        },
+        "main/scale": {
+          "mean": 0.9885057471264368,
+          "min": 0.9655172413793104,
+          "max": 1,
+          "cases": 29
+        },
+        "holdout/basic": {
+          "mean": 0.8571428571428571,
+          "min": 0.8571428571428571,
+          "max": 0.8571428571428571,
+          "cases": 14
+        },
+        "holdout/scale": {
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "cases": 10
+        }
+      },
+      "consistency": {
+        "sameVerdictAllRuns": 0.9863013698630136,
+        "sameDecisionAllRuns": 0.9041095890410958,
+        "flakyCases": [
+          "main/scale/scale-folder"
+        ]
+      },
+      "failures": {
+        "total": 7,
+        "wrongCommand": 1,
+        "askedOrDeclined": 3,
+        "serviceError": 0
+      },
+      "latencyMs": {
+        "perCase": {
+          "mean": 46294.24657534246,
+          "p50": 48034,
+          "p95": 85038,
+          "max": 134941
+        },
+        "perCall": {
+          "mean": 34833.97380378006,
+          "p50": 22602.8665,
+          "p95": 81808.33070000028
+        },
+        "perCaseBasic": 20349,
+        "perCaseScale": 60190
+      },
+      "callsPerCase": 1.3287671232876712,
+      "providerRequestsPerCase": 1.3287671232876712,
+      "tokensPerCase": {
+        "input": 29372.173515981736,
+        "cachedInput": 1659.324200913242,
+        "output": 1505.1552511415525,
+        "reasoning": 182.70319634703196,
+        "requestBytes": 53673.48401826484
+      },
+      "costUsd": {
+        "perCase": 0.07064318356164384,
+        "per1000Requests": 70.64318356164384,
+        "allRuns": 15.470857200000001
+      },
+      "firstAttempt": {
+        "accuracy": 0.9497716894977168,
+        "serviceFailureRate": 0.0182648401826484,
+        "failedCallRate": 0.01730103806228374,
+        "serviceFailures": 4,
+        "errors": [
+          "Codex CLI 호출에 실패했습니다. (Selected model is at capacity. Please try a different model.)"
+        ]
+      },
+      "retriedCases": 4,
+      "stillServiceFailedAfterRetry": 0,
+      "missedCases": [
+        "main/scale/scale-folder",
+        "holdout/basic/h-slack-search",
+        "holdout/basic/h-follow-sum"
+      ]
+    },
+    {
+      "engine": "codex:gpt-6.1-sol:low",
+      "runs": 3,
+      "models": [
+        "gpt-6.1-sol"
+      ],
+      "accuracy": {
+        "all": {
+          "mean": 0.9726027397260274,
+          "min": 0.9726027397260274,
+          "max": 0.9726027397260274,
+          "cases": 73
+        },
+        "main": {
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "cases": 49
+        },
+        "holdout": {
+          "mean": 0.9166666666666666,
+          "min": 0.9166666666666666,
+          "max": 0.9166666666666666,
+          "cases": 24
+        },
+        "main/basic": {
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "cases": 20
+        },
+        "main/scale": {
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "cases": 29
+        },
+        "holdout/basic": {
+          "mean": 0.8571428571428571,
+          "min": 0.8571428571428571,
+          "max": 0.8571428571428571,
+          "cases": 14
+        },
+        "holdout/scale": {
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "cases": 10
+        }
+      },
+      "consistency": {
+        "sameVerdictAllRuns": 1,
+        "sameDecisionAllRuns": 0.9315068493150684,
+        "flakyCases": []
+      },
+      "failures": {
+        "total": 6,
+        "wrongCommand": 0,
+        "askedOrDeclined": 3,
+        "serviceError": 0
+      },
+      "latencyMs": {
+        "perCase": {
+          "mean": 38014.9497716895,
+          "p50": 39419,
+          "p95": 90841,
+          "max": 143383
+        },
+        "perCall": {
+          "mean": 28602.346696907218,
+          "p50": 17131.36480000004,
+          "p95": 82483.70179999992
+        },
+        "perCaseBasic": 16811,
+        "perCaseScale": 43753
+      },
+      "callsPerCase": 1.3287671232876712,
+      "providerRequestsPerCase": 1.3287671232876712,
+      "tokensPerCase": {
+        "input": 29431.54794520548,
+        "cachedInput": 1569.8995433789955,
+        "output": 1046.5296803652968,
+        "reasoning": 26.465753424657535,
+        "requestBytes": 53697.3196347032
+      },
+      "costUsd": {
+        "perCase": 0.06634558356164383,
+        "per1000Requests": 66.34558356164383,
+        "allRuns": 14.529682799999998
+      },
+      "firstAttempt": {
+        "accuracy": 0.958904109589041,
+        "serviceFailureRate": 0.0182648401826484,
+        "failedCallRate": 0.013745704467353952,
+        "serviceFailures": 4,
+        "errors": [
+          "Codex CLI 호출에 실패했습니다."
+        ]
+      },
+      "retriedCases": 4,
+      "stillServiceFailedAfterRetry": 0,
+      "missedCases": [
+        "holdout/basic/h-slack-search",
+        "holdout/basic/h-follow-sum"
+      ]
+    },
+    {
+      "engine": "codex:gpt-6.1-sol:medium",
+      "runs": 3,
+      "models": [
+        "gpt-6.1-sol"
+      ],
+      "accuracy": {
+        "all": {
+          "mean": 0.9726027397260274,
+          "min": 0.9726027397260274,
+          "max": 0.9726027397260274,
+          "cases": 73
+        },
+        "main": {
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "cases": 49
+        },
+        "holdout": {
+          "mean": 0.9166666666666666,
+          "min": 0.9166666666666666,
+          "max": 0.9166666666666666,
+          "cases": 24
+        },
+        "main/basic": {
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "cases": 20
+        },
+        "main/scale": {
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "cases": 29
+        },
+        "holdout/basic": {
+          "mean": 0.8571428571428571,
+          "min": 0.8571428571428571,
+          "max": 0.8571428571428571,
+          "cases": 14
+        },
+        "holdout/scale": {
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "cases": 10
+        }
+      },
+      "consistency": {
+        "sameVerdictAllRuns": 1,
+        "sameDecisionAllRuns": 0.9315068493150684,
+        "flakyCases": []
+      },
+      "failures": {
+        "total": 6,
+        "wrongCommand": 0,
+        "askedOrDeclined": 3,
+        "serviceError": 0
+      },
+      "latencyMs": {
+        "perCase": {
+          "mean": 37601.46118721461,
+          "p50": 40626,
+          "p95": 87861,
+          "max": 97341
+        },
+        "perCall": {
+          "mean": 28195.01483732877,
+          "p50": 18898.42349999999,
+          "p95": 58318.001000000164
+        },
+        "perCaseBasic": 17654,
+        "perCaseScale": 43603
+      },
+      "callsPerCase": 1.3333333333333333,
+      "providerRequestsPerCase": 1.3333333333333333,
+      "tokensPerCase": {
+        "input": 29492.62100456621,
+        "cachedInput": 1234.9954337899544,
+        "output": 1109.958904109589,
+        "reasoning": 59.397260273972606,
+        "requestBytes": 53742.12785388128
+      },
+      "costUsd": {
+        "perCase": 0.06773833972602737,
+        "per1000Requests": 67.73833972602738,
+        "allRuns": 14.834696399999993
+      },
+      "firstAttempt": {
+        "accuracy": 0.958904109589041,
+        "serviceFailureRate": 0.0136986301369863,
+        "failedCallRate": 0.010309278350515464,
+        "serviceFailures": 3,
+        "errors": [
+          "Codex CLI 호출에 실패했습니다."
+        ]
+      },
+      "retriedCases": 3,
+      "stillServiceFailedAfterRetry": 0,
+      "missedCases": [
+        "holdout/basic/h-slack-search",
+        "holdout/basic/h-follow-sum"
+      ]
+    },
+    {
+      "engine": "jev",
+      "runs": 3,
+      "models": [
+        "jev-1.13.0"
+      ],
+      "accuracy": {
+        "all": {
+          "mean": 0.9406392694063926,
+          "min": 0.9315068493150684,
+          "max": 0.9452054794520548,
+          "cases": 73
+        },
+        "main": {
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "cases": 49
+        },
+        "holdout": {
+          "mean": 0.8194444444444445,
+          "min": 0.7916666666666666,
+          "max": 0.8333333333333334,
+          "cases": 24
+        },
+        "main/basic": {
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "cases": 20
+        },
+        "main/scale": {
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "cases": 29
+        },
+        "holdout/basic": {
+          "mean": 0.7142857142857143,
+          "min": 0.7142857142857143,
+          "max": 0.7142857142857143,
+          "cases": 14
+        },
+        "holdout/scale": {
+          "mean": 0.9666666666666667,
+          "min": 0.9,
+          "max": 1,
+          "cases": 10
+        }
+      },
+      "consistency": {
+        "sameVerdictAllRuns": 0.9863013698630136,
+        "sameDecisionAllRuns": 0.9315068493150684,
+        "flakyCases": [
+          "holdout/scale/hs-unpaid-invoices"
+        ]
+      },
+      "failures": {
+        "total": 13,
+        "wrongCommand": 6,
+        "askedOrDeclined": 4,
+        "serviceError": 0
+      },
+      "latencyMs": {
+        "perCase": {
+          "mean": 428.1187214611872,
+          "p50": 439,
+          "p95": 739,
+          "max": 1370
+        },
+        "perCall": {
+          "mean": 257.43789889196677,
+          "p50": 238.48749999999927,
+          "p95": 339.65110000000277
+        },
+        "perCaseBasic": 241,
+        "perCaseScale": 520
+      },
+      "callsPerCase": 1.6484018264840183,
+      "providerRequestsPerCase": 2.182648401826484,
+      "tokensPerCase": {
+        "input": 20829.429223744293,
+        "cachedInput": 0,
+        "output": 2638.4109589041095,
+        "reasoning": 0,
+        "requestBytes": 62974.50228310502
+      },
+      "costUsd": {
+        "perCase": 0.0008748360273972601,
+        "per1000Requests": 0.8748360273972601,
+        "allRuns": 0.19158908999999996
+      },
+      "firstAttempt": {
+        "accuracy": 0.9406392694063926,
+        "serviceFailureRate": 0,
+        "failedCallRate": 0,
+        "serviceFailures": 0,
+        "errors": []
+      },
+      "retriedCases": 0,
+      "stillServiceFailedAfterRetry": 0,
+      "missedCases": [
+        "holdout/basic/h-db-busan-customers",
+        "holdout/basic/h-db-products",
+        "holdout/basic/h-slack-search",
+        "holdout/basic/h-follow-sum",
+        "holdout/scale/hs-unpaid-invoices"
+      ]
+    }
+  ],
+  "versusJev": [
+    {
+      "engine": "codex:gpt-5.6-luna:low",
+      "bothPass": 66,
+      "onlyJev": [
+        "main/scale/scale-erp-vendors",
+        "main/scale/scale-remembered-similar",
+        "holdout/scale/hs-ambiguous-customers"
+      ],
+      "onlyEngine": [
+        "holdout/basic/h-db-busan-customers",
+        "holdout/basic/h-db-products",
+        "holdout/basic/h-follow-sum"
+      ],
+      "bothFail": [
+        "holdout/basic/h-slack-search"
+      ]
+    },
+    {
+      "engine": "codex:gpt-6-luna:low",
+      "bothPass": 63,
+      "onlyJev": [
+        "main/basic/two-sources",
+        "main/scale/scale-logistics-orders",
+        "main/scale/scale-erp-vendors",
+        "main/scale/scale-remembered-orders",
+        "main/scale/scale-remembered-similar",
+        "holdout/scale/hs-ambiguous-customers"
+      ],
+      "onlyEngine": [
+        "holdout/basic/h-db-busan-customers",
+        "holdout/basic/h-db-products",
+        "holdout/basic/h-follow-sum"
+      ],
+      "bothFail": [
+        "holdout/basic/h-slack-search"
+      ]
+    },
+    {
+      "engine": "codex:gpt-6.1-sol:high",
+      "bothPass": 69,
+      "onlyJev": [],
+      "onlyEngine": [
+        "holdout/basic/h-db-busan-customers",
+        "holdout/basic/h-db-products"
+      ],
+      "bothFail": [
+        "holdout/basic/h-slack-search",
+        "holdout/basic/h-follow-sum"
+      ]
+    },
+    {
+      "engine": "codex:gpt-6.1-sol:low",
+      "bothPass": 69,
+      "onlyJev": [],
+      "onlyEngine": [
+        "holdout/basic/h-db-busan-customers",
+        "holdout/basic/h-db-products"
+      ],
+      "bothFail": [
+        "holdout/basic/h-slack-search",
+        "holdout/basic/h-follow-sum"
+      ]
+    },
+    {
+      "engine": "codex:gpt-6.1-sol:medium",
+      "bothPass": 69,
+      "onlyJev": [],
+      "onlyEngine": [
+        "holdout/basic/h-db-busan-customers",
+        "holdout/basic/h-db-products"
+      ],
+      "bothFail": [
+        "holdout/basic/h-slack-search",
+        "holdout/basic/h-follow-sum"
+      ]
+    }
+  ],
+  "overhead": [
+    {
+      "engine": "codex:gpt-5.6-luna:low",
+      "durationMs": {
+        "mean": 5454.2824200000005,
+        "p50": 5288.125099999999
+      },
+      "inputTokens": 8453.6,
+      "cachedInputTokens": 0,
+      "outputTokens": 39,
+      "reasoningTokens": 18,
+      "costUsd": 0.00173752
+    },
+    {
+      "engine": "codex:gpt-6-luna:low",
+      "durationMs": {
+        "mean": 5956.098,
+        "p50": 6041.429500000002
+      },
+      "inputTokens": 10553.8,
+      "cachedInputTokens": 1996.8,
+      "outputTokens": 19,
+      "reasoningTokens": 0,
+      "costUsd": 0.0008851679999999999
+    },
+    {
+      "engine": "codex:gpt-6.1-sol:high",
+      "durationMs": {
+        "mean": 6966.511959999999,
+        "p50": 6899.523700000002
+      },
+      "inputTokens": 10553.8,
+      "cachedInputTokens": 0,
+      "outputTokens": 34.6,
+      "reasoningTokens": 14,
+      "costUsd": 0.0214536
+    },
+    {
+      "engine": "codex:gpt-6.1-sol:low",
+      "durationMs": {
+        "mean": 6842.916220000001,
+        "p50": 6948.138999999999
+      },
+      "inputTokens": 10554.6,
+      "cachedInputTokens": 0,
+      "outputTokens": 19,
+      "reasoningTokens": 0,
+      "costUsd": 0.021299199999999997
+    },
+    {
+      "engine": "codex:gpt-6.1-sol:medium",
+      "durationMs": {
+        "mean": 6484.493399999999,
+        "p50": 6445.3588
+      },
+      "inputTokens": 10554.6,
+      "cachedInputTokens": 0,
+      "outputTokens": 19,
+      "reasoningTokens": 0,
+      "costUsd": 0.021299199999999997
+    },
+    {
+      "engine": "jev",
+      "durationMs": {
+        "mean": 230.2153,
+        "p50": 209.83199999999988
+      },
+      "inputTokens": 280,
+      "cachedInputTokens": 0,
+      "outputTokens": 22,
+      "reasoningTokens": 0,
+      "costUsd": 0.000011760000000000001
+    }
+  ]
+}

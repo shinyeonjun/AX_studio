@@ -6,44 +6,11 @@ import { JevDecisionEngine } from '../../../../decision/jev.js';
 import { buildJevReadOperationIndex } from '../../../../decision/read-operation-catalog.js';
 import { routeChatWithJev } from '../router.js';
 import { JEV_ROUTING_CASES, JEV_SCALE_ROUTING_CASES, previousOrdersTable, routingMiss, type JevRoutingCase } from './routing-eval.cases.js';
+import { BASIC_CONNECTIONS } from './routing-eval.workspace.js';
 import { SCALE_CONNECTED, SCALE_CONNECTIONS, SCALE_HTTP_ENDPOINTS } from './routing-eval.scale-fixture.js';
 
 const liveEvalEnabled = process.env.AX_LIVE_JEV_EVAL === '1';
 const MIN_ACCURACY = Number(process.env.AX_JEV_EVAL_MIN_ACCURACY ?? '0.85');
-
-/** Synthetic sources shaped like the dogfood workspace: a shop DB, a product API, Gmail and Slack. */
-const CONNECTIONS = [
-  {
-    connector: 'rdb',
-    connected: true,
-    config: {
-      type: 'sqlite',
-      label: '쇼핑몰 DB',
-      allowedTables: ['orders', 'customers', 'products'],
-      schema: {
-        tables: [
-          { table: 'orders', columns: ['id', 'customer_id', 'product_code', 'amount', 'status', 'ordered_at'], uniqueColumns: ['id'] },
-          { table: 'customers', columns: ['id', 'name', 'region'], uniqueColumns: ['id'] },
-          { table: 'products', columns: ['code', 'name', 'category', 'price'], uniqueColumns: ['code'] },
-        ],
-        relations: [
-          { from: { table: 'orders', column: 'customer_id' }, to: { table: 'customers', column: 'id' }, declared: true },
-          { from: { table: 'orders', column: 'product_code' }, to: { table: 'products', column: 'code' }, declared: true },
-        ],
-      },
-    },
-  },
-  {
-    connector: 'http',
-    connected: true,
-    config: { endpoints: [{
-      id: 'dummyjson', baseUrl: 'https://dummyjson.com/', label: 'DummyJSON', authType: 'none',
-      discoveredReadOperations: [{ path: 'products', label: 'Products' }, { path: 'carts', label: 'Carts' }, { path: 'users', label: 'Users' }],
-    }] },
-  },
-  { connector: 'gmail', connected: true, config: {} },
-  { connector: 'slack', connected: true, config: {} },
-];
 
 interface EvalWorkspace {
   name: string;
@@ -54,7 +21,7 @@ interface EvalWorkspace {
 }
 
 const WORKSPACES: readonly EvalWorkspace[] = [
-  { name: 'basic', cases: JEV_ROUTING_CASES, connections: CONNECTIONS, connectedConnectors: ['rdb', 'http', 'gmail', 'slack'],
+  { name: 'basic', cases: JEV_ROUTING_CASES, connections: BASIC_CONNECTIONS, connectedConnectors: ['rdb', 'http', 'gmail', 'slack'],
     httpEndpoints: [{ id: 'dummyjson', label: 'DummyJSON', usable: true }] },
   { name: 'scale', cases: JEV_SCALE_ROUTING_CASES, connections: SCALE_CONNECTIONS as EvalWorkspace['connections'],
     connectedConnectors: SCALE_CONNECTED, httpEndpoints: SCALE_HTTP_ENDPOINTS },

@@ -1,0 +1,50 @@
+{
+  "engine": "codex:gpt-6.1-sol:low",
+  "records": [
+    {
+      "questions": 1,
+      "durationMs": 6948.138999999999,
+      "inputTokens": 10555,
+      "cachedInputTokens": 0,
+      "outputTokens": 19,
+      "reasoningTokens": 0,
+      "model": "gpt-6.1-sol"
+    },
+    {
+      "questions": 1,
+      "durationMs": 6239.385200000001,
+      "inputTokens": 10555,
+      "cachedInputTokens": 0,
+      "outputTokens": 19,
+      "reasoningTokens": 0,
+      "model": "gpt-6.1-sol"
+    },
+    {
+      "questions": 1,
+      "durationMs": 7652.855399999999,
+      "inputTokens": 10553,
+      "cachedInputTokens": 0,
+      "outputTokens": 19,
+      "reasoningTokens": 0,
+      "model": "gpt-6.1-sol"
+    },
+    {
+      "questions": 1,
+      "durationMs": 7060.179800000002,
+      "inputTokens": 10555,
+      "cachedInputTokens": 0,
+      "outputTokens": 19,
+      "reasoningTokens": 0,
+      "model": "gpt-6.1-sol"
+    },
+    {
+      "questions": 1,
+      "durationMs": 6314.021700000001,
+      "inputTokens": 10555,
+      "cachedInputTokens": 0,
+      "outputTokens": 19,
+      "reasoningTokens": 0,
+      "model": "gpt-6.1-sol"
+    }
+  ]
+}

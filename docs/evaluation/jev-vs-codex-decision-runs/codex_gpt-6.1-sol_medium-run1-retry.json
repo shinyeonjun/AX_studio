@@ -1,0 +1,143 @@
+{
+  "engine": "codex:gpt-6.1-sol:medium",
+  "at": "2026-10-13T16:24:16.162Z",
+  "outcomes": [
+    {
+      "set": "main",
+      "workspace": "basic",
+      "id": "gmail-recent",
+      "message": "최근 메일 5개 제목만 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "gmail.messages.search"
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "gmail.messages.search",
+        "params": {
+          "includeMetadata": true,
+          "limit": 5
+        },
+        "tableTransform": "sort"
+      },
+      "durationMs": 21882,
+      "calls": [
+        {
+          "questions": 29,
+          "durationMs": 16199.196899999999,
+          "requestBytes": 21580,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 16109,
+          "cachedInputTokens": 9344,
+          "outputTokens": 363,
+          "reasoningTokens": 58
+        },
+        {
+          "questions": 1,
+          "durationMs": 5660.223900000001,
+          "requestBytes": 2325,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 11192,
+          "cachedInputTokens": 0,
+          "outputTokens": 26,
+          "reasoningTokens": 0
+        }
+      ]
+    },
+    {
+      "set": "main",
+      "workspace": "scale",
+      "id": "scale-jira-issues",
+      "message": "Jira 이슈 목록 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "http.request",
+        "params": {
+          "connectionId": "jira-api",
+          "path": "issues"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "http.request",
+        "params": {
+          "method": "GET",
+          "path": "issues",
+          "connectionId": "jira-api"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 48467,
+      "calls": [
+        {
+          "questions": 175,
+          "durationMs": 48389.106400000004,
+          "requestBytes": 79315,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 33706,
+          "cachedInputTokens": 3328,
+          "outputTokens": 1677,
+          "reasoningTokens": 57
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "hs-ambiguous-customers",
+      "message": "고객 목록 보여줘",
+      "expected": {
+        "kind": [
+          "clarify"
+        ],
+        "sourceChooser": true
+      },
+      "passed": true,
+      "kind": "clarify",
+      "route": "execution_enqueue_once",
+      "serviceError": false,
+      "decided": {
+        "message": "쇼핑몰 DB, CRM DB, ERP DB에 모두 관련 자료가 있어 어느 쪽에서 찾을지 정하지 못했습니다. 한 곳을 골라 주세요. 둘을 함께 비교하려면 \"두 자료를 비교해 줘\"처럼 말씀해 주세요. 아직 아무것도 실행하지 않았습니다.",
+        "chooser": "어디에서 찾을까요?"
+      },
+      "durationMs": 53118,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 46766.494300000006,
+          "requestBytes": 78940,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 33594,
+          "cachedInputTokens": 0,
+          "outputTokens": 1671,
+          "reasoningTokens": 55
+        },
+        {
+          "questions": 2,
+          "durationMs": 6256.036900000006,
+          "requestBytes": 10042,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 13548,
+          "cachedInputTokens": 0,
+          "outputTokens": 35,
+          "reasoningTokens": 0
+        }
+      ]
+    }
+  ]
+}
