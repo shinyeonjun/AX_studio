@@ -7,7 +7,7 @@ import { buildJevReadOperationIndex } from '../../../../decision/read-operation-
 import { routeChatWithJev } from '../router.js';
 import type { JevChatRouterResult } from '../router-contract.js';
 import { CodexDecisionEngine, type CodexDecisionCall } from './codex-decision-engine.js';
-import { HOLDOUT_BASIC_CASES, HOLDOUT_SCALE_CASES } from './routing-eval.holdout-cases.js';
+import { HOLDOUT2_BASIC_CASES, HOLDOUT2_SCALE_CASES, HOLDOUT_BASIC_CASES, HOLDOUT_SCALE_CASES } from './routing-eval.holdout-cases.js';
 import { JEV_ROUTING_CASES, JEV_SCALE_ROUTING_CASES, previousOrdersTable, routingMiss, type JevRoutingCase } from './routing-eval.cases.js';
 import { SCALE_CONNECTED, SCALE_CONNECTIONS, SCALE_HTTP_ENDPOINTS } from './routing-eval.scale-fixture.js';
 import { BASIC_CONNECTIONS } from './routing-eval.workspace.js';
@@ -17,13 +17,19 @@ import { BASIC_CONNECTIONS } from './routing-eval.workspace.js';
  * the same candidate lists. Only `decisionEngine.evaluate` differs. Nothing is read or executed.
  *
  *   AX_LIVE_DECISION_COMPARE=1 AX_COMPARE_ENGINE=jev | codex:<model>:<low|medium|high>
- *   AX_COMPARE_RUN=<n> AX_COMPARE_OUT=<dir>   (Jev key: JEV_API_KEY or TYPESAFE_API_KEY)
+ *   AX_COMPARE_RUN=<n> AX_COMPARE_OUT=<dir> [AX_COMPARE_PART=h2]   (Jev key: JEV_API_KEY or TYPESAFE_API_KEY)
  *
  * Writes <dir>/<engine>-run<n>.json; scripts/decision-compare-report.mjs turns the runs into tables.
  */
 const enabled = process.env.AX_LIVE_DECISION_COMPARE === '1';
 const engineSpec = process.env.AX_COMPARE_ENGINE?.trim() ?? 'jev';
 /** Comma-separated case ids, for a quick check of the harness. */
+/**
+ * Cases added after the first runs are run as a part of the same run: AX_COMPARE_PART=h2 runs only
+ * ids starting with h2 and writes <engine>-run<n>.h2.json (a retry part: h2-retry).
+ */
+const part = process.env.AX_COMPARE_PART?.trim() || undefined;
+const partPrefix = part?.replace(/-retry$/u, '');
 const only = process.env.AX_COMPARE_ONLY?.trim() ? new Set(process.env.AX_COMPARE_ONLY.split(',').map((id) => id.trim())) : undefined;
 
 type Workspace = {
@@ -42,6 +48,8 @@ const WORKSPACES: readonly Workspace[] = [
   { name: 'scale', set: 'main', cases: JEV_SCALE_ROUTING_CASES, ...scale },
   { name: 'basic', set: 'holdout', cases: HOLDOUT_BASIC_CASES, ...basic },
   { name: 'scale', set: 'holdout', cases: HOLDOUT_SCALE_CASES, ...scale },
+  { name: 'basic', set: 'holdout', cases: HOLDOUT2_BASIC_CASES, ...basic },
+  { name: 'scale', set: 'holdout', cases: HOLDOUT2_SCALE_CASES, ...scale },
 ];
 
 interface CallRecord {
@@ -110,6 +118,7 @@ describe.skipIf(!enabled)('decision engine comparison', () => {
       const index = buildJevReadOperationIndex(workspace.connections);
       for (const testCase of workspace.cases) {
         if (only && !only.has(testCase.id)) continue;
+        if (partPrefix ? !testCase.id.startsWith(partPrefix) : testCase.id.startsWith('h2')) continue;
         calls = [];
         const selection = index.select(testCase.message);
         const startedAt = performance.now();
@@ -152,7 +161,7 @@ describe.skipIf(!enabled)('decision engine comparison', () => {
     const out = process.env.AX_COMPARE_OUT?.trim();
     if (out) {
       mkdirSync(out, { recursive: true });
-      const file = join(out, `${engineSpec.replace(/[:]/g, '_')}-run${process.env.AX_COMPARE_RUN ?? '1'}.json`);
+      const file = join(out, `${engineSpec.replace(/[:]/g, '_')}-run${process.env.AX_COMPARE_RUN ?? '1'}${part ? `.${part}` : ''}.json`);
       writeFileSync(file, JSON.stringify({ engine: engineSpec, at: new Date().toISOString(), outcomes }, null, 2));
     }
     expect(outcomes.length).toBeGreaterThan(0);
