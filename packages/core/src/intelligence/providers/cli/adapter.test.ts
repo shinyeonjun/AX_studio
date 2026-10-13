@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { codexExecArgs } from './adapters/codex-cli.js';
+import { codexEventError, codexExecArgs } from './adapters/codex-cli.js';
 import { cliFailureMessage } from './output.js';
 
 describe('codex cli adapter', () => {
@@ -55,5 +55,14 @@ describe('codex cli adapter', () => {
       'Codex CLI 호출에 실패했습니다.',
     );
     expect(message).toBe('Codex CLI 호출에 실패했습니다.');
+  });
+
+  it('keeps the reason a codex turn failed, from its --json events', () => {
+    // Real: in the Jev vs Codex comparison, 11 requests to gpt-6.1-sol failed with this, shown only as the generic failure.
+    expect(codexEventError('{"type":"error","message":"Selected model is at capacity. Please try a different model."}'))
+      .toBe('Selected model is at capacity. Please try a different model.');
+    expect(codexEventError('{"type":"turn.failed","error":{"message":"stream disconnected"}}')).toBe('stream disconnected');
+    expect(codexEventError('{"type":"turn.completed","usage":{}}')).toBeUndefined();
+    expect(codexEventError('not json')).toBeUndefined();
   });
 });

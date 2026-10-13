@@ -83,6 +83,25 @@ async function codexCommand(): Promise<{ command: string; ignoreUserConfig: bool
   return { command, ignoreUserConfig: supported.has('--ignore-user-config') };
 }
 
+/**
+ * What `codex exec --json` said went wrong ({"type":"error"} or {"type":"turn.failed"} on stdout).
+ * Without it a failed turn surfaced only as "Codex CLI 호출에 실패했습니다".
+ */
+export function codexEventError(line: string): string | undefined {
+  let parsed: unknown;
+  try { parsed = JSON.parse(line); } catch { return undefined; }
+  if (!parsed || typeof parsed !== 'object') return undefined;
+  const event = parsed as { type?: unknown; message?: unknown; error?: { message?: unknown } };
+  if (event.type === 'error' && typeof event.message === 'string') return event.message;
+  if (event.type === 'turn.failed' && typeof event.error?.message === 'string') return event.error.message;
+  return undefined;
+}
+
+/** The generic failure, made specific by Codex's own error when it gave one. */
+function withEventError(failure: string | null, eventError: string | undefined): string | null {
+  return failure === FAILURE_MESSAGE && eventError ? `${FAILURE_MESSAGE} (${eventError.slice(0, 300)})` : failure;
+}
+
 function reportCodexUsage(line: string, input: Pick<TextGenerateInput, 'onUsage'>): void {
   let parsed: unknown;
   try { parsed = JSON.parse(line); } catch { return; }
@@ -139,6 +158,7 @@ export class CodexCliProvider implements ModelProvider {
     const prompt = composedPrompt(input);
     return withTempDir(async (dir) => {
       const outPath = join(dir, 'last.txt');
+      let eventError: string | undefined;
       const result = await runCommand(
         command,
         codexExecArgs(this.model, [...await imageArgs(dir, input.images), '-o', outPath], {
@@ -151,10 +171,10 @@ export class CodexCliProvider implements ModelProvider {
           abortSignal: input.abortSignal,
           cwd: dir,
           captureStdout: false,
-          onStdoutLine: line => reportCodexUsage(line, input),
+          onStdoutLine: line => { reportCodexUsage(line, input); eventError = codexEventError(line) ?? eventError; },
         },
       );
-      const failure = cliFailureMessage(result, FAILURE_MESSAGE);
+      const failure = withEventError(cliFailureMessage(result, FAILURE_MESSAGE), eventError);
       if (failure) throw new Error(failure);
       const text = (await readFile(outPath, 'utf8').catch(() => '')).trim() || result.stdout.trim();
       // stderr carries progress and diagnostics, never the answer.
@@ -172,6 +192,7 @@ export class CodexCliProvider implements ModelProvider {
       const schemaPath = join(dir, 'schema.json');
       const outPath = join(dir, 'last.txt');
       await writeFile(schemaPath, JSON.stringify(schema), 'utf8');
+      let eventError: string | undefined;
       const result = await runCommand(
         command,
         codexExecArgs(this.model, [
@@ -187,9 +208,10 @@ export class CodexCliProvider implements ModelProvider {
           abortSignal: input.abortSignal,
           cwd: dir,
           captureStdout: false,
-          onStdoutLine: line => reportCodexUsage(line, input),
+          onStdoutLine: line => { reportCodexUsage(line, input); eventError = codexEventError(line) ?? eventError; },
         },
       );
+      if (result.exitCode !== 0 && eventError) throw new Error(withEventError(FAILURE_MESSAGE, eventError)!);
       try {
         return {
           stdout: await readFile(outPath, 'utf8'),

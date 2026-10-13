@@ -1,0 +1,50 @@
+{
+  "engine": "codex:gpt-6-luna:low",
+  "records": [
+    {
+      "questions": 1,
+      "durationMs": 6160.5641,
+      "inputTokens": 10553,
+      "cachedInputTokens": 0,
+      "outputTokens": 19,
+      "reasoningTokens": 0,
+      "model": "gpt-6-luna"
+    },
+    {
+      "questions": 1,
+      "durationMs": 6467.03,
+      "inputTokens": 10555,
+      "cachedInputTokens": 0,
+      "outputTokens": 19,
+      "reasoningTokens": 0,
+      "model": "gpt-6-luna"
+    },
+    {
+      "questions": 1,
+      "durationMs": 6020.8267,
+      "inputTokens": 10553,
+      "cachedInputTokens": 0,
+      "outputTokens": 19,
+      "reasoningTokens": 0,
+      "model": "gpt-6-luna"
+    },
+    {
+      "questions": 1,
+      "durationMs": 6041.429500000002,
+      "inputTokens": 10555,
+      "cachedInputTokens": 9984,
+      "outputTokens": 19,
+      "reasoningTokens": 0,
+      "model": "gpt-6-luna"
+    },
+    {
+      "questions": 1,
+      "durationMs": 5090.6397,
+      "inputTokens": 10553,
+      "cachedInputTokens": 0,
+      "outputTokens": 19,
+      "reasoningTokens": 0,
+      "model": "gpt-6-luna"
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "engine": "jev",
+  "records": [
+    {
+      "questions": 1,
+      "durationMs": 327.38660000000004,
+      "inputTokens": 280,
+      "outputTokens": 22,
+      "model": "jev-1.13.0"
+    },
+    {
+      "questions": 1,
+      "durationMs": 193.92820000000006,
+      "inputTokens": 280,
+      "outputTokens": 22,
+      "model": "jev-1.13.0"
+    },
+    {
+      "questions": 1,
+      "durationMs": 209.28740000000016,
+      "inputTokens": 280,
+      "outputTokens": 22,
+      "model": "jev-1.13.0"
+    },
+    {
+      "questions": 1,
+      "durationMs": 209.83199999999988,
+      "inputTokens": 280,
+      "outputTokens": 22,
+      "model": "jev-1.13.0"
+    },
+    {
+      "questions": 1,
+      "durationMs": 210.64229999999998,
+      "inputTokens": 280,
+      "outputTokens": 22,
+      "model": "jev-1.13.0"
+    }
+  ]
+}

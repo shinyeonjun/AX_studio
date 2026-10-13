@@ -1,0 +1,133 @@
+{
+  "engine": "codex:gpt-6.1-sol:high",
+  "at": "2026-10-13T16:18:30.527Z",
+  "outcomes": [
+    {
+      "set": "main",
+      "workspace": "basic",
+      "id": "recurring-report",
+      "message": "매주 월요일 9시에 지역별 매출 합계를 슬랙 #ax테스트로 보내줘",
+      "expected": {
+        "kind": [
+          "command",
+          "clarify"
+        ],
+        "route": [
+          "workflow_create",
+          "job_propose"
+        ]
+      },
+      "passed": true,
+      "kind": "clarify",
+      "route": "job_propose",
+      "serviceError": false,
+      "decided": {
+        "message": "업무 계획을 확정하지 못했습니다. 요청한 내용 중 계획에 빠진 부분이 있습니다. 대상·조건·실행 시점을 더 구체적으로 알려주세요. 아무 반복 업무도 저장하거나 활성화하지 않았습니다.",
+        "chooser": "업무 계획을 확정하지 못했습니다"
+      },
+      "durationMs": 58351,
+      "calls": [
+        {
+          "questions": 29,
+          "durationMs": 18753.331599999998,
+          "requestBytes": 21634,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 16128,
+          "cachedInputTokens": 0,
+          "outputTokens": 482,
+          "reasoningTokens": 129
+        },
+        {
+          "questions": 7,
+          "durationMs": 10689.348600000001,
+          "requestBytes": 9732,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 15347,
+          "cachedInputTokens": 0,
+          "outputTokens": 212,
+          "reasoningTokens": 101
+        },
+        {
+          "questions": 7,
+          "durationMs": 6419.814899999998,
+          "requestBytes": 2497,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 11297,
+          "cachedInputTokens": 0,
+          "outputTokens": 77,
+          "reasoningTokens": 0
+        },
+        {
+          "questions": 1,
+          "durationMs": 7292.305199999995,
+          "requestBytes": 1866,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 11026,
+          "cachedInputTokens": 0,
+          "outputTokens": 46,
+          "reasoningTokens": 18
+        },
+        {
+          "questions": 2,
+          "durationMs": 15124.994599999998,
+          "requestBytes": 2292,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 11154,
+          "cachedInputTokens": 0,
+          "outputTokens": 285,
+          "reasoningTokens": 247
+        }
+      ]
+    },
+    {
+      "set": "main",
+      "workspace": "scale",
+      "id": "scale-crm-deals",
+      "message": "CRM에서 진행 중인 거래 금액 합계 알려줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "crm",
+          "table": "deals"
+        },
+        "tableTransform": [
+          "calculate"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "crm",
+          "table": "deals"
+        },
+        "tableTransform": "calculate"
+      },
+      "durationMs": 39362,
+      "calls": [
+        {
+          "questions": 175,
+          "durationMs": 39346.9284,
+          "requestBytes": 79358,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 33722,
+          "cachedInputTokens": 0,
+          "outputTokens": 1746,
+          "reasoningTokens": 129
+        }
+      ]
+    }
+  ]
+}
