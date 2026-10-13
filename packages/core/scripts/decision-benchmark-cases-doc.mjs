@@ -161,5 +161,5 @@ for (const entry of SETS) {
 }
 
 const target = join(root, '../../docs/evaluation/decision-benchmark-cases.md');
-writeFileSync(target, `${out.join('\n')}\n`);
+writeFileSync(target, `${out.join('\n').trimEnd()}\n`);
 console.log(`wrote ${target}: ${all.length} cases`);
