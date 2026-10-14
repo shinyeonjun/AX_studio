@@ -1,4 +1,4 @@
-import type { DecisionAnswer, DecisionQuestion } from '../../../../contracts/decision.js';
+import type { DecisionAnswer, DecisionEvaluationResult, DecisionQuestion } from '../../../../contracts/decision.js';
 import { MAX_DECISION_CHOICE_CRITERIA } from '../../../../contracts/decision.js';
 import { boundDecisionString, DECISION_CONTEXT_UNTRUSTED_DATA_POLICY } from '../../../decision/context.js';
 import type { JevReadOperationHint } from '../../../decision/read-operation-catalog.js';
@@ -7,7 +7,6 @@ import type { JevChatRouterInput } from './router-contract.js';
 import { pastSourceChoicesForDecision } from './decision-request.js';
 import { readSources } from './read-source-chooser.js';
 import { choiceAnswer } from './router-command.js';
-import type { JevFollowupEvaluator } from './router-routes.js';
 
 /**
  * What the selected reads come to. The first pass says which reads are relevant, each on its own;
@@ -188,7 +187,8 @@ export function withAttachedRelations(hint: JevReadOperationHint, readIndex: num
 interface DecideReadsInput {
   routerInput: JevChatRouterInput;
   reads: readonly JevReadOperationHint[];
-  evaluate: JevFollowupEvaluator;
+  /** The router's follow-up call (state, questions), typed here so this module does not import the routes. */
+  evaluate: (state: unknown, questions: Record<string, DecisionQuestion>) => Promise<DecisionEvaluationResult>;
   requestPlan?: JevChatRequestPlan;
 }
 
