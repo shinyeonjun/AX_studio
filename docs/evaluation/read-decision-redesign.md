@@ -17,6 +17,12 @@
   - 블라인드 v3에서는 원래 코드 20건, #327 0건, 재설계 9건입니다.
 - 커밋 전 측정은 지우지 않고 [`v3-redesign-unpinned/`](read-decision-redesign-runs/v3-redesign-unpinned/)에 남겼습니다. 두 측정 사이에 바뀐 코드는 테스트·문서와 타입 표기뿐이지만, 결과 파일만으로는 이를 증명할 수 없습니다.
 
+## 이후 탐색 (v3, 비블라인드)
+
+- ⑥ 질문을 "다른 곳의 조회도 이 요청에 답하는가"로 바꾼 갈래(place-fact, `372df8cf`)의 v3는 93.4%입니다([`v3-place-fact/`](read-decision-redesign-runs/v3-place-fact/)). 대조군 `9d5a3676`은 92.1%입니다([`v3-main-before-place-fact/`](read-decision-redesign-runs/v3-main-before-place-fact/)).
+- **`125be346`의 v3 95.2%는 쓰지 않습니다.** v3 결과를 보고 쓴 보고서 경로 한국어 예시가 함께 들어 있어 오염된 수치입니다. 결과 파일은 [`v3-place-fact-with-report-examples/`](read-decision-redesign-runs/v3-place-fact-with-report-examples/)에 기록으로만 남깁니다.
+- 판정은 블라인드 v4로 합니다([Jev vs Codex 문서의 v4 절](jev-vs-codex-decision.md)).
+
 ## 무엇을 재나: 라우팅 정확도
 
 이 문서의 "정확도"는 **라우팅 정확도**입니다. 값까지 맞는지는 보지 않습니다.
