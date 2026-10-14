@@ -2,6 +2,7 @@ export type {
   JevReadOperationHint,
   JevReadOperationSelection,
   JevReadParameterHint,
+  JevReadRelation,
 } from '../../catalog/read-operations/types.js';
 export { operationQueryTokens } from '../../catalog/read-operations/indexed-operation.js';
 export { explicitSlackChannel } from '../../catalog/read-operations/messaging-operations.js';

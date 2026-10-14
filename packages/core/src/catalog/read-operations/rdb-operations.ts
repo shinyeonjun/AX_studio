@@ -1,11 +1,12 @@
 import type { SourceListingConnection } from '../../connectors/types.js';
 import { addIndexedOperation, type IndexedReadOperation } from './indexed-operation.js';
+import type { JevReadRelation } from './types.js';
 import { asRecord, limitParameterHint, text } from './request-values.js';
 import { DEFAULT_RDB_DATABASE_ID, rdbDatabaseEntries, rdbDatabaseName, type RdbDatabaseEntry } from '../../connectors/rdb/config/databases.js';
 
 /** Columns named in an operation's description; enough for Jev to see where a field lives. */
 const DESCRIBED_COLUMNS = 30;
-/** Joins offered from one table at once (each its own operation, then all together). */
+/** Relations offered from one table; each is attached or not on its own. */
 const MAX_JOINS = 3;
 
 interface TableShape {
@@ -83,32 +84,27 @@ function addDatabaseOperations(operations: IndexedReadOperation[], database: Rdb
   for (const table of tables) {
     const safeTable = table.slice(0, 160);
     const columns = schema.tables.get(table)?.columns ?? [];
+    // One read per table: its rows are the records. Tables it refers to are relations the router
+    // may attach (each order with its customer's region), never separate reads of the same rows.
+    const relations: JevReadRelation[] = schema.relations
+      .filter((relation) => relation.from.table === table)
+      .slice(0, MAX_JOINS)
+      .map((relation) => ({
+        table: relation.to.table,
+        on: relation.from.column,
+        references: relation.to.column,
+        columns: (schema.tables.get(relation.to.table)?.columns ?? []).filter((column) => column !== relation.to.column),
+      }));
+    const related = relations.length > 0 ? ` · 연결된 테이블: ${relations.map((relation) => relation.table).join(', ')}` : '';
     addIndexedOperation(operations, {
       capabilityId: 'rdb.query.read',
       connector: 'rdb',
       ...source,
       label: `DB 조회: ${safeTable}`,
-      description: columns.length > 0 ? `${inDatabase}허용된 테이블 ${safeTable} 읽기 · 열: ${columnList(columns)}` : `${inDatabase}허용된 테이블 ${safeTable} 읽기`,
+      description: columns.length > 0
+        ? `${inDatabase}허용된 테이블 ${safeTable} 읽기 · 열: ${columnList(columns)}${related}`
+        : `${inDatabase}허용된 테이블 ${safeTable} 읽기${related}`,
+      ...(relations.length > 0 ? { relations } : {}),
     }, (userMessage) => ({ params: { ...pinned, table }, parameterHints: readHints(userMessage) }));
-
-    // A question about orders by customer region needs each order with its customer's columns.
-    const outgoing = schema.relations.filter((relation) => relation.from.table === table).slice(0, MAX_JOINS);
-    const groups = outgoing.length > 1 ? [...outgoing.map((relation) => [relation]), outgoing] : outgoing.map((relation) => [relation]);
-    for (const group of groups) {
-      const joined = group.map((relation) => relation.to.table);
-      addIndexedOperation(operations, {
-        capabilityId: 'rdb.query.read',
-        connector: 'rdb',
-        ...source,
-        label: `DB 조회: ${[safeTable, ...joined].join(' + ')}`,
-        description: `${inDatabase}${safeTable}의 각 행에 ${group.map((relation) => {
-          const added = (schema.tables.get(relation.to.table)?.columns ?? []).filter((column) => column !== relation.to.column);
-          return `${relation.to.table}의 열(${columnList(added)})을 ${relation.from.column} = ${relation.to.table}.${relation.to.column}로`;
-        }).join(', ')} 붙여 함께 읽기. 붙인 열 이름은 "${joined[0]}.열" 형식`,
-      }, (userMessage) => ({
-        params: { ...pinned, table, join: group.map((relation) => ({ table: relation.to.table, on: relation.from.column, references: relation.to.column })) },
-        parameterHints: readHints(userMessage),
-      }));
-    }
   }
 }

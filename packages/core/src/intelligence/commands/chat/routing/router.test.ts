@@ -15,7 +15,7 @@ import { buildJevReadOperationIndex, type JevReadOperationHint } from '../../../
 import { JevDecisionEngine } from '../../../decision/jev.js';
 import { AxDiscoverySearchArgsSchema, AxExecutionEnqueueOnceArgsSchema } from '../../schema/workflow-args.js';
 import { explicitHttpPath } from '../shared/http-endpoint.js';
-import { routeChatWithJev, rankReadHintsByRelevance } from './router.js';
+import { routeChatWithJev } from './router.js';
 import {
   parallelToolAnswersForTest,
   parallelToolCandidateForTest,
@@ -3294,7 +3294,7 @@ describe('routeChatWithJev', () => {
               needsNaturalLanguageAnswer: true,
               select: (candidate) => candidate.id === 'read:op_0' || candidate.id === 'read:op_1',
             }),
-            primary_read_operation: { type: 'choice', choice: 'several_needed', probabilities: { several_needed: 0.9 }, confidence: 0.9 },
+            combine_sources: { type: 'boolean', probability: 0.9 },
           },
         };
       },
@@ -3307,79 +3307,61 @@ describe('routeChatWithJev', () => {
       userMessage: '상품 목록과 담당자 목록을 비교해줘',
     });
 
-    expect(questionSets.some((ids) => ids.includes('primary_read_operation'))).toBe(true);
+    expect(questionSets.some((ids) => ids.includes('combine_sources'))).toBe(true);
     expect(result).not.toMatchObject({ kind: 'command', route: 'capability_read' });
   });
 
-  it('reads the table whose records the request is about, not a join that merely holds its columns', async () => {
-    // Real: "쇼핑몰 DB 상품 가격 목록 보여줘" selected products and also "orders + products",
-    // and merging them read every order with its product.
-    const products: JevReadOperationHint = { key: 'op_0', capabilityId: 'rdb.query.read', connector: 'rdb', sourceLabel: '쇼핑몰 DB', label: 'DB 조회: products', description: '허용된 테이블 products 읽기 · 열: code, name, price', params: { table: 'products' } };
-    const ordersProducts: JevReadOperationHint = {
-      key: 'op_1', capabilityId: 'rdb.query.read', connector: 'rdb', sourceLabel: '쇼핑몰 DB', label: 'DB 조회: orders + products', description: 'orders의 각 행에 products의 열(name, price)을 붙여 함께 읽기',
-      params: { table: 'orders', join: [{ table: 'products', on: 'product_code', references: 'code' }] },
-    };
-    const route = async (rowTable: string) => {
-      const rowTableQuestions: unknown[] = [];
+  describe('which selected read answers, and with which relations', () => {
+    const relations = [
+      { table: 'customers', on: 'customer_id', references: 'id', columns: ['name', 'region'] },
+      { table: 'products', on: 'product_code', references: 'code', columns: ['name', 'category', 'price'] },
+    ];
+    const orders: JevReadOperationHint = { key: 'op_0', capabilityId: 'rdb.query.read', connector: 'rdb', sourceLabel: '쇼핑몰 DB', label: 'DB 조회: orders', description: '허용된 테이블 orders 읽기', params: { table: 'orders' }, relations };
+    const products: JevReadOperationHint = { key: 'op_1', capabilityId: 'rdb.query.read', connector: 'rdb', sourceLabel: '쇼핑몰 DB', label: 'DB 조회: products', description: '허용된 테이블 products 읽기', params: { table: 'products' } };
+    const apiProducts: JevReadOperationHint = { key: 'op_2', capabilityId: 'http.request', connector: 'http', sourceLabel: 'DummyJSON', label: 'DummyJSON: Products', description: 'GET products', params: { path: 'products' } };
+    const route = async (hints: JevReadOperationHint[], followup: Record<string, DecisionAnswer>) => {
+      const asked: string[][] = [];
       const result = await routeChatWithJev({
         decisionEngine: {
           evaluate: async (request): Promise<DecisionEvaluationResult> => {
-            if (request.questions.row_table) rowTableQuestions.push(request.questions.row_table);
+            asked.push(Object.keys(request.questions));
             return {
               answers: {
                 route: { type: 'choice', choice: 'capability_read', probabilities: { capability_read: 0.9 }, confidence: 0.9 },
                 ...parallelToolAnswersForTest(request, { needsNaturalLanguageAnswer: false, select: (candidate) => candidate.kind === 'read' && candidate.id.startsWith('read:op_') }),
-                row_table: { type: 'choice', choice: rowTable, probabilities: { [rowTable]: 0.9 }, confidence: 0.9 },
                 table_transform: { type: 'choice', choice: 'none', probabilities: { none: 0.9 }, confidence: 0.9 },
+                ...followup,
               },
             };
           },
         },
-        connectedConnectors: ['rdb'],
-        readOperationHints: [products, ordersProducts],
-        userMessage: '쇼핑몰 DB 상품 가격 목록 보여줘',
+        connectedConnectors: ['rdb', 'http'],
+        readOperationHints: hints,
+        userMessage: '목록 보여줘',
       });
-      return { result, rowTableQuestions };
+      return { result, asked };
     };
+    const yes = { type: 'boolean' as const, probability: 0.9 };
+    const no = { type: 'boolean' as const, probability: 0.1 };
 
-    const listed = await route('table_0');
-    expect(listed.rowTableQuestions).toHaveLength(1);
-    expect(listed.result).toMatchObject({ kind: 'command', command: { args: { id: 'rdb.query.read', params: { table: 'products' } } } });
-    expect(listed.result.kind === 'command' && listed.result.command.args.params).not.toHaveProperty('join');
-    // Not told: the selected reads are merged as before.
-    expect((await route('unclear')).result).toMatchObject({
-      kind: 'command', command: { args: { params: { table: 'orders', join: [{ table: 'products' }] } } },
-    });
-  });
-
-  describe('rankReadHintsByRelevance', () => {
-    const productsHint: JevReadOperationHint = {
-      key: 'op_0',
-      capabilityId: 'http.request',
-      connector: 'http',
-      label: 'DummyJSON: Products',
-      description: 'DummyJSON: GET products — Products 상품 제품 물품 재고 스마트폰 노트북 가구 식료품 화장품 향수 stock inventory',
-      params: { path: 'products' },
-    };
-    const schemaHint: JevReadOperationHint = {
-      key: 'op_10',
-      capabilityId: 'rdb.schema.describe',
-      connector: 'rdb',
-      label: '테스트 스키마',
-      description: '테스트의 허용된 테이블 목록 및 DB 스키마 구조 조회 (테이블 구조 확인 전용)',
-      params: {},
-    };
-
-    it('ranks domain data operations higher than unrequested schema inspection', () => {
-      const ranked = rankReadHintsByRelevance([schemaHint, productsHint], '가구 중에 재고 20개 이상인 것들만 표로 보여줘');
-      expect(ranked[0]?.key).toBe('op_0');
-      expect(ranked[0]?.capabilityId).toBe('http.request');
+    it('reads the table whose own rows are the records, without joining what it does not need', async () => {
+      // Real: a product price list read every order with its product when join variants were reads of their own.
+      const { result } = await route([orders, products], { records_0: no, records_1: yes, attach_0_0: no, attach_0_1: no });
+      expect(result).toMatchObject({ kind: 'command', command: { args: { id: 'rdb.query.read', params: { table: 'products' } } } });
+      expect(result.kind === 'command' && result.command.args.params).not.toHaveProperty('join');
     });
 
-    it('ranks schema inspection higher when the query explicitly asks for schema or tables', () => {
-      const ranked = rankReadHintsByRelevance([productsHint, schemaHint], 'DB 테이블 목록 스키마 보여줘');
-      expect(ranked[0]?.key).toBe('op_10');
-      expect(ranked[0]?.capabilityId).toBe('rdb.schema.describe');
+    it('attaches only the relations the request uses', async () => {
+      const { result, asked } = await route([orders], { attach_0_0: yes, attach_0_1: no });
+      expect(asked[1]).toEqual(['attach_0_0', 'attach_0_1']);
+      expect(result).toMatchObject({ kind: 'command', command: { args: { params: { table: 'orders', join: [{ table: 'customers', on: 'customer_id', references: 'id' }] } } } });
+    });
+
+    it('asks where to look when records of that kind are in several places and none is named', async () => {
+      const unnamed = await route([products, apiProducts], { records_0: yes, records_1: yes, named_place: { type: 'choice', choice: 'none', probabilities: { none: 0.9 }, confidence: 0.9 } });
+      expect(unnamed.result).toMatchObject({ kind: 'clarify', presentation: { title: '어디에서 찾을까요?' } });
+      const named = await route([products, apiProducts], { records_0: yes, records_1: yes, named_place: { type: 'choice', choice: 'place_1', probabilities: { place_1: 0.9 }, confidence: 0.9 } });
+      expect(named.result).toMatchObject({ kind: 'command', command: { args: { id: 'http.request' } } });
     });
   });
 
@@ -3443,7 +3425,7 @@ describe('routeChatWithJev', () => {
     });
   });
 
-  it('routes anaphoric calculation and summary queries over previous conversation to answer without external tools', async () => {
+  it('answers from the previous conversation when Jev selects no read for an anaphoric calculation', async () => {
     const hints: JevReadOperationHint[] = [
       {
         key: 'op_0',
@@ -3458,7 +3440,7 @@ describe('routeChatWithJev', () => {
       evaluate: async (request): Promise<DecisionEvaluationResult> => {
         const parallelAnswers = parallelToolAnswersForTest(request, {
           needsNaturalLanguageAnswer: true,
-          select: (candidate) => candidate.id === 'read:op_0',
+          select: () => false,
         });
         return {
           answers: {
@@ -3489,7 +3471,7 @@ describe('routeChatWithJev', () => {
     });
   });
 
-  describe('lexical cues as tie-breakers only', () => {
+  describe('wording never overrides Jev', () => {
     const table = buildTableArtifact({
       id: 'products',
       headers: ['title', 'rating'],
@@ -3518,17 +3500,6 @@ describe('routeChatWithJev', () => {
         userMessage: '평점 높은 순으로 정렬해줘',
       });
       expect(result).toMatchObject({ kind: 'command', route: 'capability_read' });
-    });
-
-    it('uses the sort cue to prefer the previous table only when Jev is uncertain', async () => {
-      const result = await routeChatWithJev({
-        decisionEngine: engineWith(0.4),
-        connectedConnectors: ['http'],
-        readOperationHints: hints,
-        previousReadResult: table,
-        userMessage: '평점 높은 순으로 정렬해줘',
-      });
-      expect(result).toMatchObject({ kind: 'previous_result', route: 'previous_result' });
     });
 
     it('does not turn a confident read route into an answer because of anaphoric calculation wording', async () => {

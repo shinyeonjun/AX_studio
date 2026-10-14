@@ -95,6 +95,7 @@ export function buildJevDecisionRequest(input: BuildJevDecisionRequestInput) {
     readOperationHints: operationChoiceHints,
     actionHints: input.actionSelection.hints,
     transformCapabilities: input.transformCapabilities ?? [],
+    userMessage: input.userMessage,
   });
   const operationCandidateCount = operationChoiceHints.length;
   const hasReadOperationCatalog = input.readOperationCatalogSize > 0 || input.readOperationHints.length > 0;

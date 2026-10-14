@@ -7,7 +7,7 @@ import type {
 import { clearDynamicCatalogForTests, registerDynamicCapabilities } from '../../../../catalog/dynamic-catalog.js';
 import type { ConnectorCapability } from '../../../../catalog/capability-types.js';
 import { routeChatWithJev } from './router.js';
-import { parseParallelToolSelection, requestNamedToolIds, selectParallelTools } from './parallel-tool-selection.js';
+import { parallelToolSelectionQuestions, parseParallelToolSelection, requestNamedToolIds, selectParallelTools } from './parallel-tool-selection.js';
 
 const candidates = [
   { id: 'db.read', kind: 'read', connector: 'rdb', label: 'DB 조회', description: '조건에 맞는 행 조회' },
@@ -255,13 +255,14 @@ describe('tools the request names outright', () => {
     expect([...requestNamedToolIds(candidates, '안녕하세요 보내줘')]).toEqual([]);
   });
 
-  it('selects a named tool just under 0.5, but not one Jev rejects or one the request does not name', () => {
-    const requestNamed = requestNamedToolIds(candidates, '#ax테스트에 안녕하세요 보내줘');
-    expect(parseParallelToolSelection({ candidates, answers: answers(0.49), telemetry, requestNamed }))
+  it('tells Jev which tool the request names, and decides it at the same 0.5 as every tool', () => {
+    const named = candidates.map((candidate) => (requestNamedToolIds(candidates, '#ax테스트에 안녕하세요 보내줘').has(candidate.id) ? { ...candidate, namedInRequest: true as const } : candidate));
+    const questions = parallelToolSelectionQuestions(named);
+    expect((questions.tool_0!.instructions as { candidate: Record<string, unknown> }).candidate).toMatchObject({ named_in_request: true });
+    expect((questions.tool_1!.instructions as { candidate: Record<string, unknown> }).candidate).not.toHaveProperty('named_in_request');
+    expect(parseParallelToolSelection({ candidates: named, answers: answers(0.51), telemetry }))
       .toMatchObject({ kind: 'selected', operationDecisions: [{ selected: true }, { selected: false }] });
-    expect(parseParallelToolSelection({ candidates, answers: answers(0.1), telemetry, requestNamed }))
-      .toMatchObject({ kind: 'clarify' });
-    expect(parseParallelToolSelection({ candidates, answers: answers(0.49), telemetry }))
+    expect(parseParallelToolSelection({ candidates: named, answers: answers(0.49), telemetry }))
       .toMatchObject({ kind: 'clarify' });
   });
 });
@@ -290,17 +291,4 @@ describe('a spreadsheet the request names by file name', () => {
     expect([...requestNamedToolIds(candidates, '자료 보여줘', [{ ...sheetHint, parameterHints: [{ path: 'path', required: true, choices: ['자료_1.xlsx'] }] }])]).toEqual([]);
   });
 
-  it('reads the named file just under 0.5 and leaves a merely plausible other source out', () => {
-    const requestNamed = requestNamedToolIds(candidates, '8월 주문내역 요약해줘', [sheetHint]);
-    // Real answers: 카테고리별 매출 (DB 0.21, sheet 0.45) and 요약 (DB 0.55, sheet 0.48).
-    expect(parseParallelToolSelection({ candidates, answers: answers(0.21, 0.45), telemetry, requestNamed }))
-      .toMatchObject({ kind: 'selected', operationDecisions: [{ selected: false }, { selected: true }] });
-    expect(parseParallelToolSelection({ candidates, answers: answers(0.55, 0.48), telemetry, requestNamed }))
-      .toMatchObject({ kind: 'selected', operationDecisions: [{ selected: false }, { selected: true }] });
-    expect(parseParallelToolSelection({ candidates, answers: answers(0.92, 0.48), telemetry, requestNamed }))
-      .toMatchObject({ kind: 'selected', operationDecisions: [{ selected: true }, { selected: true }] });
-    // Without the name, the DB at 0.55 is still chosen as before.
-    expect(parseParallelToolSelection({ candidates, answers: answers(0.55, 0.48), telemetry }))
-      .toMatchObject({ kind: 'selected', operationDecisions: [{ selected: true }, { selected: false }] });
-  });
 });
