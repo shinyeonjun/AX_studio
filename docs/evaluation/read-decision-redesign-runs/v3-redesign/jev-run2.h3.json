@@ -1,6 +1,6 @@
 {
   "engine": "jev",
-  "at": "2026-10-14T06:43:29.422Z",
+  "at": "2026-10-14T09:39:34.245Z",
   "outcomes": [
     {
       "set": "holdout",
@@ -16,11 +16,11 @@
       "kind": "reply",
       "route": "answer",
       "serviceError": false,
-      "durationMs": 348,
+      "durationMs": 316,
       "calls": [
         {
           "questions": 25,
-          "durationMs": 338.9031000000001,
+          "durationMs": 305.6567000000001,
           "requestBytes": 21046,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -43,11 +43,11 @@
       "kind": "reply",
       "route": "answer",
       "serviceError": false,
-      "durationMs": 232,
+      "durationMs": 223,
       "calls": [
         {
           "questions": 25,
-          "durationMs": 229.59939999999983,
+          "durationMs": 220.5172,
           "requestBytes": 21030,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -70,11 +70,11 @@
       "kind": "reply",
       "route": "answer",
       "serviceError": false,
-      "durationMs": 224,
+      "durationMs": 209,
       "calls": [
         {
           "questions": 25,
-          "durationMs": 222.9507000000001,
+          "durationMs": 208.25430000000006,
           "requestBytes": 21054,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -97,22 +97,20 @@
           "table": "customers"
         }
       },
-      "passed": true,
-      "kind": "command",
-      "route": "capability_read",
+      "passed": false,
+      "miss": "kind clarify",
+      "kind": "clarify",
+      "route": "execution_enqueue_once",
       "serviceError": false,
       "decided": {
-        "id": "rdb.query.read",
-        "params": {
-          "table": "customers"
-        },
-        "tableTransform": "none"
+        "message": "쇼핑몰 DB, DummyJSON에 모두 관련 자료가 있어 어느 쪽에서 찾을지 정하지 못했습니다. 한 곳을 골라 주세요. 둘을 함께 비교하려면 \"두 자료를 비교해 줘\"처럼 말씀해 주세요. 아직 아무것도 실행하지 않았습니다.",
+        "chooser": "어디에서 찾을까요?"
       },
-      "durationMs": 431,
+      "durationMs": 613,
       "calls": [
         {
           "questions": 25,
-          "durationMs": 228.13760000000002,
+          "durationMs": 207.93730000000005,
           "requestBytes": 21049,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -120,13 +118,22 @@
           "outputTokens": 741
         },
         {
-          "questions": 3,
-          "durationMs": 200.28020000000015,
-          "requestBytes": 3722,
+          "questions": 2,
+          "durationMs": 199.2565000000002,
+          "requestBytes": 3218,
           "providerRequests": 1,
           "model": "jev-1.13.0",
-          "inputTokens": 1611,
-          "outputTokens": 86
+          "inputTokens": 1467,
+          "outputTokens": 63
+        },
+        {
+          "questions": 3,
+          "durationMs": 202.88949999999977,
+          "requestBytes": 3822,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 1579,
+          "outputTokens": 65
         }
       ]
     },
@@ -155,11 +162,11 @@
         },
         "tableTransform": "none"
       },
-      "durationMs": 390,
+      "durationMs": 416,
       "calls": [
         {
           "questions": 25,
-          "durationMs": 206.0263,
+          "durationMs": 225.32200000000012,
           "requestBytes": 21072,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -168,7 +175,7 @@
         },
         {
           "questions": 2,
-          "durationMs": 182.54309999999987,
+          "durationMs": 188.55960000000005,
           "requestBytes": 2633,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -202,11 +209,11 @@
         },
         "tableTransform": "none"
       },
-      "durationMs": 410,
+      "durationMs": 400,
       "calls": [
         {
           "questions": 25,
-          "durationMs": 214.1599000000001,
+          "durationMs": 220.10509999999977,
           "requestBytes": 21072,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -215,7 +222,7 @@
         },
         {
           "questions": 2,
-          "durationMs": 194.52390000000014,
+          "durationMs": 178.41499999999996,
           "requestBytes": 2633,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -249,11 +256,11 @@
         },
         "tableTransform": "none"
       },
-      "durationMs": 218,
+      "durationMs": 211,
       "calls": [
         {
           "questions": 26,
-          "durationMs": 217.02140000000009,
+          "durationMs": 210.14750000000004,
           "requestBytes": 21480,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -287,11 +294,11 @@
         },
         "tableTransform": "none"
       },
-      "durationMs": 220,
+      "durationMs": 217,
       "calls": [
         {
           "questions": 25,
-          "durationMs": 219.12300000000005,
+          "durationMs": 215.96990000000005,
           "requestBytes": 21054,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -325,11 +332,11 @@
         },
         "tableTransform": "none"
       },
-      "durationMs": 210,
+      "durationMs": 220,
       "calls": [
         {
           "questions": 25,
-          "durationMs": 208.58410000000003,
+          "durationMs": 218.6555000000003,
           "requestBytes": 21034,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -363,11 +370,11 @@
         },
         "tableTransform": "none"
       },
-      "durationMs": 426,
+      "durationMs": 449,
       "calls": [
         {
           "questions": 25,
-          "durationMs": 219.68089999999984,
+          "durationMs": 229.1023,
           "requestBytes": 21044,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -376,7 +383,7 @@
         },
         {
           "questions": 2,
-          "durationMs": 205.3416000000002,
+          "durationMs": 217.91470000000027,
           "requestBytes": 2549,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -413,11 +420,11 @@
         },
         "tableTransform": "calculate"
       },
-      "durationMs": 433,
+      "durationMs": 489,
       "calls": [
         {
           "questions": 25,
-          "durationMs": 231.83200000000033,
+          "durationMs": 229.8753999999999,
           "requestBytes": 21048,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -426,7 +433,7 @@
         },
         {
           "questions": 3,
-          "durationMs": 200.36110000000008,
+          "durationMs": 257.5481,
           "requestBytes": 3719,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -464,11 +471,11 @@
         },
         "tableTransform": "filter"
       },
-      "durationMs": 519,
+      "durationMs": 521,
       "calls": [
         {
           "questions": 26,
-          "durationMs": 328.9508999999998,
+          "durationMs": 311.3679999999995,
           "requestBytes": 21676,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -477,7 +484,7 @@
         },
         {
           "questions": 1,
-          "durationMs": 188.33429999999953,
+          "durationMs": 207.1184000000003,
           "requestBytes": 2446,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -514,11 +521,11 @@
         },
         "tableTransform": "calculate"
       },
-      "durationMs": 650,
+      "durationMs": 628,
       "calls": [
         {
           "questions": 25,
-          "durationMs": 219.6921999999995,
+          "durationMs": 208.83030000000053,
           "requestBytes": 21083,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -527,7 +534,7 @@
         },
         {
           "questions": 4,
-          "durationMs": 228.6855999999998,
+          "durationMs": 207.86409999999978,
           "requestBytes": 4640,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -536,7 +543,7 @@
         },
         {
           "questions": 3,
-          "durationMs": 199.67169999999987,
+          "durationMs": 208.89770000000044,
           "requestBytes": 3874,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -583,11 +590,11 @@
         },
         "tableTransform": "calculate"
       },
-      "durationMs": 420,
+      "durationMs": 421,
       "calls": [
         {
           "questions": 25,
-          "durationMs": 228.44899999999961,
+          "durationMs": 231.8724000000002,
           "requestBytes": 21089,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -596,8 +603,8 @@
         },
         {
           "questions": 3,
-          "durationMs": 190.0657000000001,
-          "requestBytes": 3775,
+          "durationMs": 187.0649999999996,
+          "requestBytes": 3776,
           "providerRequests": 1,
           "model": "jev-1.13.0",
           "inputTokens": 1635,
@@ -640,11 +647,11 @@
         },
         "tableTransform": "calculate"
       },
-      "durationMs": 400,
+      "durationMs": 410,
       "calls": [
         {
           "questions": 25,
-          "durationMs": 219.58380000000034,
+          "durationMs": 208.83719999999994,
           "requestBytes": 21051,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -653,7 +660,7 @@
         },
         {
           "questions": 2,
-          "durationMs": 179.52540000000045,
+          "durationMs": 199.59620000000086,
           "requestBytes": 2569,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -703,11 +710,11 @@
         },
         "tableTransform": "sort"
       },
-      "durationMs": 770,
+      "durationMs": 740,
       "calls": [
         {
           "questions": 26,
-          "durationMs": 328.1952999999994,
+          "durationMs": 328.4263000000001,
           "requestBytes": 21660,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -716,7 +723,7 @@
         },
         {
           "questions": 3,
-          "durationMs": 210.0574999999999,
+          "durationMs": 199.26749999999993,
           "requestBytes": 3765,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -725,7 +732,7 @@
         },
         {
           "questions": 1,
-          "durationMs": 230.26939999999922,
+          "durationMs": 210.17149999999947,
           "requestBytes": 2406,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -763,11 +770,11 @@
         },
         "tableTransform": "sort"
       },
-      "durationMs": 242,
+      "durationMs": 220,
       "calls": [
         {
           "questions": 25,
-          "durationMs": 241.5655999999999,
+          "durationMs": 218.76400000000012,
           "requestBytes": 21086,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -806,11 +813,11 @@
         },
         "tableTransform": "none"
       },
-      "durationMs": 212,
+      "durationMs": 231,
       "calls": [
         {
           "questions": 26,
-          "durationMs": 211.03729999999996,
+          "durationMs": 228.85829999999987,
           "requestBytes": 21479,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -846,11 +853,11 @@
         },
         "tableTransform": "none"
       },
-      "durationMs": 205,
+      "durationMs": 219,
       "calls": [
         {
           "questions": 25,
-          "durationMs": 204.17169999999987,
+          "durationMs": 217.82740000000013,
           "requestBytes": 21046,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -878,11 +885,11 @@
         "message": "쇼핑몰 DB, DummyJSON에 모두 관련 자료가 있어 어느 쪽에서 찾을지 정하지 못했습니다. 한 곳을 골라 주세요. 둘을 함께 비교하려면 \"두 자료를 비교해 줘\"처럼 말씀해 주세요. 아직 아무것도 실행하지 않았습니다.",
         "chooser": "어디에서 찾을까요?"
       },
-      "durationMs": 599,
+      "durationMs": 620,
       "calls": [
         {
           "questions": 25,
-          "durationMs": 223.70359999999982,
+          "durationMs": 208.6789000000008,
           "requestBytes": 21087,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -891,7 +898,7 @@
         },
         {
           "questions": 2,
-          "durationMs": 184.6211999999996,
+          "durationMs": 208.48849999999948,
           "requestBytes": 3301,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -900,7 +907,7 @@
         },
         {
           "questions": 3,
-          "durationMs": 189.55379999999968,
+          "durationMs": 200.96299999999974,
           "requestBytes": 3887,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -929,11 +936,11 @@
         "params": {},
         "tableTransform": "none"
       },
-      "durationMs": 241,
+      "durationMs": 209,
       "calls": [
         {
           "questions": 25,
-          "durationMs": 240.52149999999892,
+          "durationMs": 207.60870000000068,
           "requestBytes": 21051,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -967,11 +974,11 @@
         },
         "tableTransform": "none"
       },
-      "durationMs": 419,
+      "durationMs": 430,
       "calls": [
         {
           "questions": 25,
-          "durationMs": 209.25099999999838,
+          "durationMs": 218.04600000000028,
           "requestBytes": 21044,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -980,7 +987,7 @@
         },
         {
           "questions": 1,
-          "durationMs": 208.48819999999978,
+          "durationMs": 210.4421000000002,
           "requestBytes": 2666,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -1009,11 +1016,11 @@
         "params": {},
         "tableTransform": "filter_sort"
       },
-      "durationMs": 221,
+      "durationMs": 210,
       "calls": [
         {
           "questions": 25,
-          "durationMs": 219.98719999999958,
+          "durationMs": 208.91660000000047,
           "requestBytes": 21086,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -1043,11 +1050,11 @@
       "decided": {
         "command": "ui.present"
       },
-      "durationMs": 231,
+      "durationMs": 230,
       "calls": [
         {
           "questions": 25,
-          "durationMs": 229.35319999999956,
+          "durationMs": 228.04509999999937,
           "requestBytes": 21092,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -1077,11 +1084,11 @@
       "decided": {
         "command": "execution.enqueue_once"
       },
-      "durationMs": 638,
+      "durationMs": 639,
       "calls": [
         {
           "questions": 25,
-          "durationMs": 238.84869999999864,
+          "durationMs": 238.73710000000028,
           "requestBytes": 21067,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -1090,7 +1097,7 @@
         },
         {
           "questions": 2,
-          "durationMs": 185.08539999999994,
+          "durationMs": 200.9459999999999,
           "requestBytes": 2625,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -1099,7 +1106,7 @@
         },
         {
           "questions": 2,
-          "durationMs": 207.8693999999996,
+          "durationMs": 186.97570000000087,
           "requestBytes": 2029,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -1134,11 +1141,11 @@
         },
         "tableTransform": "calculate"
       },
-      "durationMs": 429,
+      "durationMs": 388,
       "calls": [
         {
           "questions": 25,
-          "durationMs": 239.74369999999908,
+          "durationMs": 199.95540000000074,
           "requestBytes": 21046,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -1147,7 +1154,7 @@
         },
         {
           "questions": 2,
-          "durationMs": 188.1735000000008,
+          "durationMs": 187.1857,
           "requestBytes": 2554,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -1178,11 +1185,11 @@
       "decided": {
         "message": "새 업무를 저장하라는 요청인지 확실하지 않아 저장하지 않았습니다. 저장할 업무를 명시해 주세요."
       },
-      "durationMs": 241,
+      "durationMs": 210,
       "calls": [
         {
           "questions": 25,
-          "durationMs": 239.98179999999957,
+          "durationMs": 209.5651999999991,
           "requestBytes": 21082,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -1213,11 +1220,11 @@
       "decided": {
         "command": "job.propose"
       },
-      "durationMs": 860,
+      "durationMs": 930,
       "calls": [
         {
           "questions": 25,
-          "durationMs": 239.96209999999883,
+          "durationMs": 218.1882000000005,
           "requestBytes": 21119,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -1226,7 +1233,7 @@
         },
         {
           "questions": 2,
-          "durationMs": 198.50049999999828,
+          "durationMs": 187.8706999999995,
           "requestBytes": 2704,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -1235,7 +1242,7 @@
         },
         {
           "questions": 7,
-          "durationMs": 217.10379999999896,
+          "durationMs": 264.28299999999945,
           "requestBytes": 10409,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -1244,7 +1251,7 @@
         },
         {
           "questions": 2,
-          "durationMs": 185.78020000000106,
+          "durationMs": 221.43139999999948,
           "requestBytes": 2228,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -1267,11 +1274,11 @@
       "kind": "previous_result",
       "route": "previous_result",
       "serviceError": false,
-      "durationMs": 321,
+      "durationMs": 269,
       "calls": [
         {
           "questions": 25,
-          "durationMs": 320.40530000000035,
+          "durationMs": 267.5439000000006,
           "requestBytes": 21751,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -1295,11 +1302,11 @@
       "kind": "reply",
       "route": "answer",
       "serviceError": false,
-      "durationMs": 338,
+      "durationMs": 272,
       "calls": [
         {
           "questions": 25,
-          "durationMs": 337.42029999999977,
+          "durationMs": 270.6808999999994,
           "requestBytes": 21739,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -1322,11 +1329,11 @@
       "kind": "reply",
       "route": "answer",
       "serviceError": false,
-      "durationMs": 336,
+      "durationMs": 380,
       "calls": [
         {
           "questions": 150,
-          "durationMs": 293.64930000000095,
+          "durationMs": 303.5740000000005,
           "requestBytes": 76452,
           "providerRequests": 2,
           "model": "jev-1.13.0",
@@ -1349,11 +1356,11 @@
       "kind": "reply",
       "route": "answer",
       "serviceError": false,
-      "durationMs": 363,
+      "durationMs": 344,
       "calls": [
         {
           "questions": 150,
-          "durationMs": 339.95620000000054,
+          "durationMs": 306.3233999999993,
           "requestBytes": 76526,
           "providerRequests": 2,
           "model": "jev-1.13.0",
@@ -1376,11 +1383,11 @@
       "kind": "reply",
       "route": "answer",
       "serviceError": false,
-      "durationMs": 296,
+      "durationMs": 623,
       "calls": [
         {
           "questions": 150,
-          "durationMs": 294.41719999999987,
+          "durationMs": 620.7754999999997,
           "requestBytes": 76608,
           "providerRequests": 2,
           "model": "jev-1.13.0",
@@ -1416,11 +1423,11 @@
         },
         "tableTransform": "none"
       },
-      "durationMs": 748,
+      "durationMs": 738,
       "calls": [
         {
           "questions": 150,
-          "durationMs": 304.29119999999966,
+          "durationMs": 281.16020000000026,
           "requestBytes": 76482,
           "providerRequests": 2,
           "model": "jev-1.13.0",
@@ -1429,7 +1436,7 @@
         },
         {
           "questions": 5,
-          "durationMs": 242.90480000000025,
+          "durationMs": 214.20160000000033,
           "requestBytes": 9913,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -1438,7 +1445,7 @@
         },
         {
           "questions": 3,
-          "durationMs": 198.85750000000007,
+          "durationMs": 240.0134999999991,
           "requestBytes": 8496,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -1474,11 +1481,11 @@
         },
         "tableTransform": "none"
       },
-      "durationMs": 749,
+      "durationMs": 791,
       "calls": [
         {
           "questions": 150,
-          "durationMs": 341.0097999999998,
+          "durationMs": 327.2366000000002,
           "requestBytes": 76520,
           "providerRequests": 2,
           "model": "jev-1.13.0",
@@ -1487,7 +1494,7 @@
         },
         {
           "questions": 5,
-          "durationMs": 212.6275999999998,
+          "durationMs": 228.64829999999893,
           "requestBytes": 10254,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -1496,7 +1503,7 @@
         },
         {
           "questions": 3,
-          "durationMs": 193.9349999999995,
+          "durationMs": 231.92280000000028,
           "requestBytes": 8489,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -1532,11 +1539,11 @@
         },
         "tableTransform": "none"
       },
-      "durationMs": 739,
+      "durationMs": 746,
       "calls": [
         {
           "questions": 150,
-          "durationMs": 320.064699999999,
+          "durationMs": 305.6985000000004,
           "requestBytes": 76488,
           "providerRequests": 2,
           "model": "jev-1.13.0",
@@ -1545,7 +1552,7 @@
         },
         {
           "questions": 5,
-          "durationMs": 197.44959999999992,
+          "durationMs": 231.17549999999937,
           "requestBytes": 10402,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -1554,7 +1561,7 @@
         },
         {
           "questions": 4,
-          "durationMs": 219.48339999999916,
+          "durationMs": 206.45650000000023,
           "requestBytes": 9387,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -1590,11 +1597,11 @@
         },
         "tableTransform": "none"
       },
-      "durationMs": 719,
+      "durationMs": 749,
       "calls": [
         {
           "questions": 150,
-          "durationMs": 309.1376999999993,
+          "durationMs": 339.1790000000001,
           "requestBytes": 76526,
           "providerRequests": 2,
           "model": "jev-1.13.0",
@@ -1602,18 +1609,18 @@
           "outputTokens": 3443
         },
         {
-          "questions": 4,
-          "durationMs": 199.72560000000158,
-          "requestBytes": 9767,
+          "questions": 3,
+          "durationMs": 207.57819999999992,
+          "requestBytes": 8874,
           "providerRequests": 1,
           "model": "jev-1.13.0",
-          "inputTokens": 4655,
-          "outputTokens": 121
+          "inputTokens": 4391,
+          "outputTokens": 92
         },
         {
           "questions": 3,
-          "durationMs": 208.5070999999989,
-          "requestBytes": 8537,
+          "durationMs": 199.13130000000092,
+          "requestBytes": 8538,
           "providerRequests": 1,
           "model": "jev-1.13.0",
           "inputTokens": 4228,
@@ -1648,11 +1655,11 @@
         },
         "tableTransform": "none"
       },
-      "durationMs": 721,
+      "durationMs": 876,
       "calls": [
         {
           "questions": 151,
-          "durationMs": 289.2605000000003,
+          "durationMs": 299.78240000000005,
           "requestBytes": 76907,
           "providerRequests": 2,
           "model": "jev-1.13.0",
@@ -1661,7 +1668,7 @@
         },
         {
           "questions": 6,
-          "durationMs": 219.6826000000001,
+          "durationMs": 238.04040000000168,
           "requestBytes": 11199,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -1670,7 +1677,7 @@
         },
         {
           "questions": 4,
-          "durationMs": 210.39400000000023,
+          "durationMs": 335.8839999999982,
           "requestBytes": 9465,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -1706,11 +1713,11 @@
         },
         "tableTransform": "none"
       },
-      "durationMs": 552,
+      "durationMs": 534,
       "calls": [
         {
           "questions": 150,
-          "durationMs": 356.98779999999897,
+          "durationMs": 312.0594999999994,
           "requestBytes": 76494,
           "providerRequests": 2,
           "model": "jev-1.13.0",
@@ -1719,12 +1726,12 @@
         },
         {
           "questions": 1,
-          "durationMs": 194.01789999999892,
-          "requestBytes": 7339,
+          "durationMs": 220.2505999999994,
+          "requestBytes": 7494,
           "providerRequests": 1,
           "model": "jev-1.13.0",
-          "inputTokens": 3972,
-          "outputTokens": 45
+          "inputTokens": 4035,
+          "outputTokens": 54
         }
       ]
     },
@@ -1755,11 +1762,11 @@
         },
         "tableTransform": "none"
       },
-      "durationMs": 285,
+      "durationMs": 287,
       "calls": [
         {
           "questions": 150,
-          "durationMs": 283.5839999999989,
+          "durationMs": 285.96619999999893,
           "requestBytes": 76466,
           "providerRequests": 2,
           "model": "jev-1.13.0",
@@ -1795,11 +1802,11 @@
         },
         "tableTransform": "none"
       },
-      "durationMs": 473,
+      "durationMs": 500,
       "calls": [
         {
           "questions": 150,
-          "durationMs": 279.02160000000003,
+          "durationMs": 288.90499999999884,
           "requestBytes": 76488,
           "providerRequests": 2,
           "model": "jev-1.13.0",
@@ -1808,7 +1815,7 @@
         },
         {
           "questions": 1,
-          "durationMs": 192.10510000000068,
+          "durationMs": 208.91379999999845,
           "requestBytes": 6702,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -1844,11 +1851,11 @@
         },
         "tableTransform": "none"
       },
-      "durationMs": 292,
+      "durationMs": 300,
       "calls": [
         {
           "questions": 150,
-          "durationMs": 290.7432000000008,
+          "durationMs": 298.71270000000004,
           "requestBytes": 76508,
           "providerRequests": 2,
           "model": "jev-1.13.0",
@@ -1884,11 +1891,11 @@
         },
         "tableTransform": "none"
       },
-      "durationMs": 805,
+      "durationMs": 743,
       "calls": [
         {
           "questions": 150,
-          "durationMs": 380.2481999999982,
+          "durationMs": 300.9350999999988,
           "requestBytes": 76488,
           "providerRequests": 2,
           "model": "jev-1.13.0",
@@ -1896,22 +1903,22 @@
           "outputTokens": 3442
         },
         {
-          "questions": 7,
-          "durationMs": 207.0673999999999,
-          "requestBytes": 12071,
+          "questions": 8,
+          "durationMs": 225.15560000000187,
+          "requestBytes": 12942,
           "providerRequests": 1,
           "model": "jev-1.13.0",
-          "inputTokens": 5368,
-          "outputTokens": 208
+          "inputTokens": 5630,
+          "outputTokens": 237
         },
         {
-          "questions": 6,
-          "durationMs": 215.8827999999994,
-          "requestBytes": 11236,
+          "questions": 7,
+          "durationMs": 214.03770000000077,
+          "requestBytes": 12093,
           "providerRequests": 1,
           "model": "jev-1.13.0",
-          "inputTokens": 4926,
-          "outputTokens": 125
+          "inputTokens": 5145,
+          "outputTokens": 145
         }
       ]
     },
@@ -1942,11 +1949,11 @@
         },
         "tableTransform": "none"
       },
-      "durationMs": 717,
+      "durationMs": 704,
       "calls": [
         {
           "questions": 150,
-          "durationMs": 293.9559999999983,
+          "durationMs": 293.3130000000019,
           "requestBytes": 76512,
           "providerRequests": 2,
           "model": "jev-1.13.0",
@@ -1955,7 +1962,7 @@
         },
         {
           "questions": 2,
-          "durationMs": 205.49219999999696,
+          "durationMs": 215.5139999999992,
           "requestBytes": 8508,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -1964,7 +1971,7 @@
         },
         {
           "questions": 3,
-          "durationMs": 216.40399999999863,
+          "durationMs": 192.1356999999989,
           "requestBytes": 8585,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -2000,11 +2007,11 @@
         },
         "tableTransform": "none"
       },
-      "durationMs": 719,
+      "durationMs": 728,
       "calls": [
         {
           "questions": 150,
-          "durationMs": 289.65799999999945,
+          "durationMs": 305.5468000000001,
           "requestBytes": 76488,
           "providerRequests": 2,
           "model": "jev-1.13.0",
@@ -2013,7 +2020,7 @@
         },
         {
           "questions": 3,
-          "durationMs": 208.53180000000066,
+          "durationMs": 198.54550000000017,
           "requestBytes": 8794,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -2022,7 +2029,7 @@
         },
         {
           "questions": 4,
-          "durationMs": 219.4770000000026,
+          "durationMs": 220.48649999999907,
           "requestBytes": 9311,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -2058,11 +2065,11 @@
         },
         "tableTransform": "none"
       },
-      "durationMs": 741,
+      "durationMs": 829,
       "calls": [
         {
           "questions": 150,
-          "durationMs": 278.86409999999887,
+          "durationMs": 306.96340000000055,
           "requestBytes": 76522,
           "providerRequests": 2,
           "model": "jev-1.13.0",
@@ -2071,7 +2078,7 @@
         },
         {
           "questions": 4,
-          "durationMs": 259.7211000000025,
+          "durationMs": 217.0160999999971,
           "requestBytes": 9657,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -2080,7 +2087,7 @@
         },
         {
           "questions": 3,
-          "durationMs": 201.2342000000026,
+          "durationMs": 302.0073999999986,
           "requestBytes": 8642,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -2116,11 +2123,11 @@
         },
         "tableTransform": "none"
       },
-      "durationMs": 303,
+      "durationMs": 302,
       "calls": [
         {
           "questions": 150,
-          "durationMs": 301.7003999999979,
+          "durationMs": 299.4340000000011,
           "requestBytes": 76468,
           "providerRequests": 2,
           "model": "jev-1.13.0",
@@ -2153,11 +2160,11 @@
         "message": "ERP DB, ERP API에 모두 관련 자료가 있어 어느 쪽에서 찾을지 정하지 못했습니다. 한 곳을 골라 주세요. 둘을 함께 비교하려면 \"두 자료를 비교해 줘\"처럼 말씀해 주세요. 아직 아무것도 실행하지 않았습니다.",
         "chooser": "어디에서 찾을까요?"
       },
-      "durationMs": 754,
+      "durationMs": 738,
       "calls": [
         {
           "questions": 150,
-          "durationMs": 324.45880000000034,
+          "durationMs": 324.7410999999993,
           "requestBytes": 76534,
           "providerRequests": 2,
           "model": "jev-1.13.0",
@@ -2166,7 +2173,7 @@
         },
         {
           "questions": 2,
-          "durationMs": 234.84509999999864,
+          "durationMs": 199.64679999999862,
           "requestBytes": 8239,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -2175,7 +2182,7 @@
         },
         {
           "questions": 3,
-          "durationMs": 192.76770000000033,
+          "durationMs": 211.17379999999685,
           "requestBytes": 8496,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -2224,11 +2231,11 @@
         },
         "tableTransform": "calculate"
       },
-      "durationMs": 840,
+      "durationMs": 757,
       "calls": [
         {
           "questions": 150,
-          "durationMs": 409.3269,
+          "durationMs": 276.22859999999855,
           "requestBytes": 76588,
           "providerRequests": 2,
           "model": "jev-1.13.0",
@@ -2237,7 +2244,7 @@
         },
         {
           "questions": 5,
-          "durationMs": 218.41660000000047,
+          "durationMs": 229.60120000000097,
           "requestBytes": 11176,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -2246,7 +2253,7 @@
         },
         {
           "questions": 5,
-          "durationMs": 210.37319999999818,
+          "durationMs": 248.27709999999934,
           "requestBytes": 10323,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -2298,11 +2305,11 @@
         },
         "tableTransform": "calculate"
       },
-      "durationMs": 779,
+      "durationMs": 729,
       "calls": [
         {
           "questions": 150,
-          "durationMs": 317.3135000000002,
+          "durationMs": 277.22520000000077,
           "requestBytes": 76612,
           "providerRequests": 2,
           "model": "jev-1.13.0",
@@ -2311,7 +2318,7 @@
         },
         {
           "questions": 5,
-          "durationMs": 210.8099000000002,
+          "durationMs": 229.1839,
           "requestBytes": 10745,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -2320,7 +2327,7 @@
         },
         {
           "questions": 5,
-          "durationMs": 249.3230999999978,
+          "durationMs": 219.4738000000034,
           "requestBytes": 10284,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -2366,11 +2373,11 @@
         },
         "tableTransform": "calculate"
       },
-      "durationMs": 530,
+      "durationMs": 521,
       "calls": [
         {
           "questions": 150,
-          "durationMs": 289.65429999999833,
+          "durationMs": 311.02319999999963,
           "requestBytes": 76554,
           "providerRequests": 2,
           "model": "jev-1.13.0",
@@ -2378,13 +2385,13 @@
           "outputTokens": 3439
         },
         {
-          "questions": 4,
-          "durationMs": 238.53899999999703,
-          "requestBytes": 8947,
+          "questions": 1,
+          "durationMs": 207.92949999999837,
+          "requestBytes": 6719,
           "providerRequests": 1,
           "model": "jev-1.13.0",
-          "inputTokens": 4409,
-          "outputTokens": 106
+          "inputTokens": 3785,
+          "outputTokens": 24
         }
       ]
     },
@@ -2419,11 +2426,11 @@
         },
         "tableTransform": "sort"
       },
-      "durationMs": 289,
+      "durationMs": 297,
       "calls": [
         {
           "questions": 150,
-          "durationMs": 287.9958000000006,
+          "durationMs": 294.9343000000008,
           "requestBytes": 76494,
           "providerRequests": 2,
           "model": "jev-1.13.0",
@@ -2462,11 +2469,11 @@
         },
         "tableTransform": "calculate"
       },
-      "durationMs": 530,
+      "durationMs": 508,
       "calls": [
         {
           "questions": 150,
-          "durationMs": 309.0508000000009,
+          "durationMs": 281.3852000000006,
           "requestBytes": 76522,
           "providerRequests": 2,
           "model": "jev-1.13.0",
@@ -2475,7 +2482,7 @@
         },
         {
           "questions": 4,
-          "durationMs": 219.16400000000067,
+          "durationMs": 224.1952999999994,
           "requestBytes": 9335,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -2514,11 +2521,11 @@
         },
         "tableTransform": "calculate"
       },
-      "durationMs": 708,
+      "durationMs": 728,
       "calls": [
         {
           "questions": 150,
-          "durationMs": 298.9192000000003,
+          "durationMs": 307.641599999999,
           "requestBytes": 76532,
           "providerRequests": 2,
           "model": "jev-1.13.0",
@@ -2527,21 +2534,21 @@
         },
         {
           "questions": 3,
-          "durationMs": 207.89810000000216,
-          "requestBytes": 9373,
+          "durationMs": 198.01150000000052,
+          "requestBytes": 9075,
           "providerRequests": 1,
           "model": "jev-1.13.0",
-          "inputTokens": 4589,
-          "outputTokens": 101
+          "inputTokens": 4487,
+          "outputTokens": 92
         },
         {
-          "questions": 5,
-          "durationMs": 199.65500000000247,
-          "requestBytes": 10294,
+          "questions": 4,
+          "durationMs": 220.02829999999813,
+          "requestBytes": 9484,
           "providerRequests": 1,
           "model": "jev-1.13.0",
-          "inputTokens": 4701,
-          "outputTokens": 105
+          "inputTokens": 4495,
+          "outputTokens": 85
         }
       ]
     },
@@ -2576,20 +2583,20 @@
         },
         "tableTransform": "filter"
       },
-      "durationMs": 948,
+      "durationMs": 938,
       "calls": [
         {
           "questions": 151,
-          "durationMs": 298.700499999999,
+          "durationMs": 296.2435000000005,
           "requestBytes": 77132,
           "providerRequests": 2,
           "model": "jev-1.13.0",
           "inputTokens": 24799,
-          "outputTokens": 3470
+          "outputTokens": 3473
         },
         {
           "questions": 2,
-          "durationMs": 230.21169999999984,
+          "durationMs": 219.3921999999984,
           "requestBytes": 8039,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -2598,7 +2605,7 @@
         },
         {
           "questions": 3,
-          "durationMs": 197.80709999999817,
+          "durationMs": 210.293700000002,
           "requestBytes": 8546,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -2607,7 +2614,7 @@
         },
         {
           "questions": 1,
-          "durationMs": 219.54040000000168,
+          "durationMs": 208.78460000000268,
           "requestBytes": 6974,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -2644,11 +2651,11 @@
         },
         "tableTransform": "none"
       },
-      "durationMs": 302,
+      "durationMs": 291,
       "calls": [
         {
           "questions": 151,
-          "durationMs": 300.8809000000001,
+          "durationMs": 288.07440000000133,
           "requestBytes": 76913,
           "providerRequests": 2,
           "model": "jev-1.13.0",
@@ -2685,11 +2692,11 @@
         },
         "tableTransform": "none"
       },
-      "durationMs": 300,
+      "durationMs": 399,
       "calls": [
         {
           "questions": 151,
-          "durationMs": 299.2504000000008,
+          "durationMs": 395.3771000000015,
           "requestBytes": 76901,
           "providerRequests": 2,
           "model": "jev-1.13.0",
@@ -2726,11 +2733,11 @@
         },
         "tableTransform": "none"
       },
-      "durationMs": 525,
+      "durationMs": 507,
       "calls": [
         {
           "questions": 151,
-          "durationMs": 315.2592000000004,
+          "durationMs": 285.8335999999981,
           "requestBytes": 76937,
           "providerRequests": 2,
           "model": "jev-1.13.0",
@@ -2739,7 +2746,7 @@
         },
         {
           "questions": 1,
-          "durationMs": 208.64940000000206,
+          "durationMs": 218.61079999999856,
           "requestBytes": 7338,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -2780,7 +2787,7 @@
       "calls": [
         {
           "questions": 150,
-          "durationMs": 319.0002999999997,
+          "durationMs": 318.72499999999854,
           "requestBytes": 76492,
           "providerRequests": 2,
           "model": "jev-1.13.0",
@@ -2817,11 +2824,11 @@
         },
         "tableTransform": "none"
       },
-      "durationMs": 293,
+      "durationMs": 279,
       "calls": [
         {
           "questions": 150,
-          "durationMs": 291.9356000000007,
+          "durationMs": 277.58500000000276,
           "requestBytes": 76480,
           "providerRequests": 2,
           "model": "jev-1.13.0",
@@ -2858,11 +2865,11 @@
         },
         "tableTransform": "none"
       },
-      "durationMs": 705,
+      "durationMs": 755,
       "calls": [
         {
           "questions": 150,
-          "durationMs": 283.59279999999853,
+          "durationMs": 285.7602000000006,
           "requestBytes": 76480,
           "providerRequests": 2,
           "model": "jev-1.13.0",
@@ -2871,20 +2878,20 @@
         },
         {
           "questions": 3,
-          "durationMs": 207.50370000000112,
-          "requestBytes": 8505,
+          "durationMs": 229.075499999999,
+          "requestBytes": 8835,
           "providerRequests": 1,
           "model": "jev-1.13.0",
-          "inputTokens": 4281,
-          "outputTokens": 83
+          "inputTokens": 4393,
+          "outputTokens": 92
         },
         {
           "questions": 3,
-          "durationMs": 211.95319999999992,
-          "requestBytes": 8501,
+          "durationMs": 237.31780000000072,
+          "requestBytes": 8645,
           "providerRequests": 1,
           "model": "jev-1.13.0",
-          "inputTokens": 4221,
+          "inputTokens": 4263,
           "outputTokens": 65
         }
       ]
@@ -2917,11 +2924,11 @@
         },
         "tableTransform": "none"
       },
-      "durationMs": 501,
+      "durationMs": 532,
       "calls": [
         {
           "questions": 151,
-          "durationMs": 294.0737000000008,
+          "durationMs": 320.3896999999997,
           "requestBytes": 76911,
           "providerRequests": 2,
           "model": "jev-1.13.0",
@@ -2930,7 +2937,7 @@
         },
         {
           "questions": 1,
-          "durationMs": 205.74449999999706,
+          "durationMs": 209.3565000000017,
           "requestBytes": 7342,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -2957,11 +2964,11 @@
       "decided": {
         "reason": "missing_context"
       },
-      "durationMs": 310,
+      "durationMs": 300,
       "calls": [
         {
           "questions": 150,
-          "durationMs": 309.1219999999994,
+          "durationMs": 297.1313000000009,
           "requestBytes": 76460,
           "providerRequests": 2,
           "model": "jev-1.13.0",
@@ -2986,14 +2993,14 @@
       "route": "execution_enqueue_once",
       "serviceError": false,
       "decided": {
-        "message": "그룹웨어 API, 쇼핑몰 DB, CRM DB에 모두 관련 자료가 있어 어느 쪽에서 찾을지 정하지 못했습니다. 한 곳을 골라 주세요. 둘을 함께 비교하려면 \"두 자료를 비교해 줘\"처럼 말씀해 주세요. 아직 아무것도 실행하지 않았습니다.",
+        "message": "쇼핑몰 DB, CRM DB, ERP DB, 그룹웨어 API에 모두 관련 자료가 있어 어느 쪽에서 찾을지 정하지 못했습니다. 한 곳을 골라 주세요. 둘을 함께 비교하려면 \"두 자료를 비교해 줘\"처럼 말씀해 주세요. 아직 아무것도 실행하지 않았습니다.",
         "chooser": "어디에서 찾을까요?"
       },
-      "durationMs": 677,
+      "durationMs": 818,
       "calls": [
         {
           "questions": 150,
-          "durationMs": 285.86889999999767,
+          "durationMs": 405.997800000001,
           "requestBytes": 76466,
           "providerRequests": 2,
           "model": "jev-1.13.0",
@@ -3002,21 +3009,21 @@
         },
         {
           "questions": 2,
-          "durationMs": 190.01120000000083,
-          "requestBytes": 8211,
+          "durationMs": 209.45370000000185,
+          "requestBytes": 8513,
           "providerRequests": 1,
           "model": "jev-1.13.0",
-          "inputTokens": 4213,
-          "outputTokens": 72
+          "inputTokens": 4337,
+          "outputTokens": 79
         },
         {
-          "questions": 4,
-          "durationMs": 199.74449999999706,
-          "requestBytes": 9258,
+          "questions": 2,
+          "durationMs": 197.05969999999797,
+          "requestBytes": 2293,
           "providerRequests": 1,
           "model": "jev-1.13.0",
-          "inputTokens": 4411,
-          "outputTokens": 85
+          "inputTokens": 1110,
+          "outputTokens": 77
         }
       ]
     },
@@ -3031,19 +3038,31 @@
         ],
         "sourceChooser": true
       },
-      "passed": true,
-      "kind": "clarify",
-      "route": "execution_enqueue_once",
+      "passed": false,
+      "miss": "kind command",
+      "kind": "command",
+      "route": "capability_read",
       "serviceError": false,
       "decided": {
-        "message": "재고 DB, 재고 API에 모두 관련 자료가 있어 어느 쪽에서 찾을지 정하지 못했습니다. 한 곳을 골라 주세요. 둘을 함께 비교하려면 \"두 자료를 비교해 줘\"처럼 말씀해 주세요. 아직 아무것도 실행하지 않았습니다.",
-        "chooser": "어디에서 찾을까요?"
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "inventory",
+          "table": "stock_levels",
+          "join": [
+            {
+              "table": "products",
+              "on": "product_id",
+              "references": "id"
+            }
+          ]
+        },
+        "tableTransform": "none"
       },
-      "durationMs": 720,
+      "durationMs": 758,
       "calls": [
         {
           "questions": 150,
-          "durationMs": 289.27850000000035,
+          "durationMs": 287.08650000000125,
           "requestBytes": 76488,
           "providerRequests": 2,
           "model": "jev-1.13.0",
@@ -3052,7 +3071,7 @@
         },
         {
           "questions": 3,
-          "durationMs": 221.04209999999875,
+          "durationMs": 252.92399999999907,
           "requestBytes": 8492,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -3061,7 +3080,7 @@
         },
         {
           "questions": 3,
-          "durationMs": 208.12950000000274,
+          "durationMs": 216.05189999999493,
           "requestBytes": 8501,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -3089,11 +3108,11 @@
         "message": "ERP DB, 쇼핑몰 DB, 주문 API에 모두 관련 자료가 있어 어느 쪽에서 찾을지 정하지 못했습니다. 한 곳을 골라 주세요. 둘을 함께 비교하려면 \"두 자료를 비교해 줘\"처럼 말씀해 주세요. 아직 아무것도 실행하지 않았습니다.",
         "chooser": "어디에서 찾을까요?"
       },
-      "durationMs": 719,
+      "durationMs": 738,
       "calls": [
         {
           "questions": 150,
-          "durationMs": 288.7489000000023,
+          "durationMs": 307.0120999999999,
           "requestBytes": 76510,
           "providerRequests": 2,
           "model": "jev-1.13.0",
@@ -3102,7 +3121,7 @@
         },
         {
           "questions": 4,
-          "durationMs": 208.28059999999823,
+          "durationMs": 210.73719999999594,
           "requestBytes": 9575,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -3111,7 +3130,7 @@
         },
         {
           "questions": 4,
-          "durationMs": 219.91609999999855,
+          "durationMs": 217.93390000000363,
           "requestBytes": 9458,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -3145,11 +3164,11 @@
         },
         "tableTransform": "none"
       },
-      "durationMs": 759,
+      "durationMs": 697,
       "calls": [
         {
           "questions": 150,
-          "durationMs": 318.21140000000014,
+          "durationMs": 278.42520000000513,
           "requestBytes": 76460,
           "providerRequests": 2,
           "model": "jev-1.13.0",
@@ -3158,7 +3177,7 @@
         },
         {
           "questions": 6,
-          "durationMs": 209.2245000000039,
+          "durationMs": 219.20569999999861,
           "requestBytes": 11605,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -3167,7 +3186,7 @@
         },
         {
           "questions": 6,
-          "durationMs": 230.03399999999965,
+          "durationMs": 196.34479999999894,
           "requestBytes": 11229,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -3199,11 +3218,11 @@
         },
         "tableTransform": "none"
       },
-      "durationMs": 699,
+      "durationMs": 712,
       "calls": [
         {
           "questions": 150,
-          "durationMs": 299.57419999999547,
+          "durationMs": 280.6811999999991,
           "requestBytes": 76522,
           "providerRequests": 2,
           "model": "jev-1.13.0",
@@ -3212,7 +3231,7 @@
         },
         {
           "questions": 2,
-          "durationMs": 198.06180000000313,
+          "durationMs": 211.1443999999974,
           "requestBytes": 8070,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -3221,7 +3240,7 @@
         },
         {
           "questions": 4,
-          "durationMs": 199.82679999999527,
+          "durationMs": 217.005799999999,
           "requestBytes": 9231,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -3252,11 +3271,11 @@
         },
         "tableTransform": "none"
       },
-      "durationMs": 500,
+      "durationMs": 569,
       "calls": [
         {
           "questions": 150,
-          "durationMs": 297.16939999999886,
+          "durationMs": 332.3652000000002,
           "requestBytes": 76526,
           "providerRequests": 2,
           "model": "jev-1.13.0",
@@ -3265,7 +3284,7 @@
         },
         {
           "questions": 1,
-          "durationMs": 201.13469999999506,
+          "durationMs": 234.56620000000112,
           "requestBytes": 7320,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -3294,11 +3313,11 @@
         "params": {},
         "tableTransform": "none"
       },
-      "durationMs": 529,
+      "durationMs": 510,
       "calls": [
         {
           "questions": 150,
-          "durationMs": 298.95819999999367,
+          "durationMs": 287.433100000002,
           "requestBytes": 76584,
           "providerRequests": 2,
           "model": "jev-1.13.0",
@@ -3307,7 +3326,7 @@
         },
         {
           "questions": 1,
-          "durationMs": 228.8698000000004,
+          "durationMs": 220.04559999999765,
           "requestBytes": 7427,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -3338,11 +3357,11 @@
       "decided": {
         "command": "resource.list"
       },
-      "durationMs": 460,
+      "durationMs": 290,
       "calls": [
         {
           "questions": 150,
-          "durationMs": 458.6175000000003,
+          "durationMs": 287.49810000000434,
           "requestBytes": 76580,
           "providerRequests": 2,
           "model": "jev-1.13.0",
@@ -3372,11 +3391,11 @@
       "decided": {
         "command": "execution.enqueue_once"
       },
-      "durationMs": 477,
+      "durationMs": 528,
       "calls": [
         {
           "questions": 150,
-          "durationMs": 286.8963999999978,
+          "durationMs": 294.186099999999,
           "requestBytes": 76618,
           "providerRequests": 2,
           "model": "jev-1.13.0",
@@ -3385,7 +3404,7 @@
         },
         {
           "questions": 2,
-          "durationMs": 187.30969999999797,
+          "durationMs": 228.9363000000012,
           "requestBytes": 1755,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -3415,11 +3434,11 @@
       "decided": {
         "message": "보고서를 만들려면 지난 기간에 완성한 보고서(PDF나 Word 파일)를 이 대화에 올려 주세요. 빈 양식 PDF가 있으면 함께 올려 주셔도 됩니다."
       },
-      "durationMs": 305,
+      "durationMs": 289,
       "calls": [
         {
           "questions": 150,
-          "durationMs": 304.07150000000547,
+          "durationMs": 287.24540000000707,
           "requestBytes": 76642,
           "providerRequests": 2,
           "model": "jev-1.13.0",
@@ -3451,11 +3470,11 @@
         "message": "앞 단계 결과를 다음 단계에 어떻게 넘길지 정하지 못했습니다. 어떤 결과를 쓸지 알려 주세요. 아무 반복 업무도 저장하거나 활성화하지 않았습니다.",
         "chooser": "실행 전 계획 확인"
       },
-      "durationMs": 895,
+      "durationMs": 1078,
       "calls": [
         {
           "questions": 150,
-          "durationMs": 283.22839999999997,
+          "durationMs": 307.53259999999864,
           "requestBytes": 76608,
           "providerRequests": 2,
           "model": "jev-1.13.0",
@@ -3464,7 +3483,7 @@
         },
         {
           "questions": 7,
-          "durationMs": 218.46620000000257,
+          "durationMs": 349.5584999999992,
           "requestBytes": 10406,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -3473,7 +3492,7 @@
         },
         {
           "questions": 7,
-          "durationMs": 189.76239999999962,
+          "durationMs": 206.6906999999992,
           "requestBytes": 2681,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -3482,7 +3501,7 @@
         },
         {
           "questions": 1,
-          "durationMs": 200.33090000000084,
+          "durationMs": 208.4311000000016,
           "requestBytes": 2147,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -3513,11 +3532,11 @@
       "decided": {
         "message": "새 업무를 저장하라는 요청인지 확실하지 않아 저장하지 않았습니다. 저장할 업무를 명시해 주세요."
       },
-      "durationMs": 299,
+      "durationMs": 301,
       "calls": [
         {
           "questions": 150,
-          "durationMs": 298.2189999999973,
+          "durationMs": 299.0813999999955,
           "requestBytes": 76590,
           "providerRequests": 2,
           "model": "jev-1.13.0",
@@ -3548,11 +3567,11 @@
       "decided": {
         "command": "job.propose"
       },
-      "durationMs": 1318,
+      "durationMs": 1445,
       "calls": [
         {
           "questions": 151,
-          "durationMs": 296.07310000000143,
+          "durationMs": 304.14800000000105,
           "requestBytes": 77274,
           "providerRequests": 2,
           "model": "jev-1.13.0",
@@ -3561,7 +3580,7 @@
         },
         {
           "questions": 1,
-          "durationMs": 200.33630000000267,
+          "durationMs": 328.40529999999853,
           "requestBytes": 6883,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -3570,7 +3589,7 @@
         },
         {
           "questions": 7,
-          "durationMs": 219.93269999999757,
+          "durationMs": 209.46850000000268,
           "requestBytes": 10398,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -3579,7 +3598,7 @@
         },
         {
           "questions": 2,
-          "durationMs": 208.97649999999703,
+          "durationMs": 198.3839999999982,
           "requestBytes": 2779,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -3588,7 +3607,7 @@
         },
         {
           "questions": 3,
-          "durationMs": 198.60220000000118,
+          "durationMs": 198.00879999999597,
           "requestBytes": 4055,
           "providerRequests": 1,
           "model": "jev-1.13.0",
@@ -3597,7 +3616,7 @@
         },
         {
           "questions": 2,
-          "durationMs": 188.02859999999782,
+          "durationMs": 198.65920000000187,
           "requestBytes": 2207,
           "providerRequests": 1,
           "model": "jev-1.13.0",

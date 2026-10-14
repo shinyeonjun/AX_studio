@@ -1,0 +1,108 @@
+{
+  "engine": "jev",
+  "at": "2026-10-14T11:08:04.753Z",
+  "outcomes": [
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h3s-big-coupons",
+      "message": "할인율 20% 이상인 쿠폰만 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "shop",
+          "table": "coupons"
+        },
+        "tableTransform": [
+          "filter",
+          "filter_sort"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "shop",
+          "table": "coupons"
+        },
+        "tableTransform": "filter"
+      },
+      "durationMs": 1449,
+      "calls": [
+        {
+          "questions": 151,
+          "durationMs": 605.7620999999999,
+          "requestBytes": 77132,
+          "providerRequests": 2,
+          "model": "jev-1.13.0",
+          "inputTokens": 24799,
+          "outputTokens": 3473
+        },
+        {
+          "questions": 2,
+          "durationMs": 205.9806000000001,
+          "requestBytes": 8039,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 4155,
+          "outputTokens": 63
+        },
+        {
+          "questions": 3,
+          "durationMs": 209.89739999999983,
+          "requestBytes": 8546,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 4244,
+          "outputTokens": 65
+        },
+        {
+          "questions": 1,
+          "durationMs": 369.01800000000003,
+          "requestBytes": 6974,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 3875,
+          "outputTokens": 36
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h3s-ambiguous-posts",
+      "message": "게시글 목록 보여줘",
+      "expected": {
+        "kind": [
+          "clarify"
+        ],
+        "sourceChooser": true
+      },
+      "passed": false,
+      "miss": "kind fallback (missing_context)",
+      "kind": "fallback",
+      "serviceError": false,
+      "decided": {
+        "reason": "missing_context"
+      },
+      "durationMs": 301,
+      "calls": [
+        {
+          "questions": 150,
+          "durationMs": 278.9467999999997,
+          "requestBytes": 76460,
+          "providerRequests": 2,
+          "model": "jev-1.13.0",
+          "inputTokens": 24608,
+          "outputTokens": 3439
+        }
+      ]
+    }
+  ]
+}

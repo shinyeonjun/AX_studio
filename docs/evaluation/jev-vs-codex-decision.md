@@ -4,6 +4,8 @@
 - 질문: AX Studio의 요청 판단(어떤 경로·도구·자료·값으로 처리할지)을 판단 모델 Jev가 할 때와 LLM(Codex CLI)이 할 때, 정확도·일관성·속도·토큰·비용이 어떻게 다른가?
 - 케이스 목록: [`decision-benchmark-cases.md`](decision-benchmark-cases.md) (149건, 케이스마다 정답 조건)
 - 원본 결과: [`jev-vs-codex-decision-runs/`](jev-vs-codex-decision-runs/) (실행 42개 + 재시도 4개 + 고정 비용 6개 파일), 집계: [`jev-vs-codex-decision-results.json`](jev-vs-codex-decision-results.json)
+- 정확도는 **라우팅 정확도**입니다. 결과 종류, 경로, 출처 선택지, 도구, 지정된 테이블·연결·경로, 빠진 join, 변환 종류를 채점하고, 필터 값·정렬 기준·개수·불필요한 추가 join은 채점하지 않습니다.
+- 블라인드 홀드아웃 v3(재설계 뒤, 같은 커밋) 결과는 [아래](#블라인드-홀드아웃-v3-재설계-뒤-같은-커밋에서-세-엔진)에 있습니다.
 
 ## 요약
 
@@ -344,7 +346,35 @@ Codex는 질문이 하나뿐이어도 호출 한 번에 5~7초와 약 1만 토�
 
 ## 이후: 읽기 판단 재설계 (2026-10-14)
 
-위 `orders` 수정을 포함해 사례마다 덧댄 보정을 모두 없애고 판단 구조를 다시 짰습니다. 블라인드 홀드아웃 v3(76건)에서 Jev는 원래 코드 83.3%, `orders` 수정 92.5%, 재설계 94.3%입니다. 엉뚱한 실행 결정은 개발 세트에서 23건 → 0건이 됐습니다. 자세한 내용: [read-decision-redesign.md](read-decision-redesign.md)
+위 `orders` 수정을 포함해 사례마다 덧댄 보정을 모두 없애고 판단 구조를 다시 짰습니다. 블라인드 홀드아웃 v3(76건)에서 Jev는 원래 코드 83.3%, `orders` 수정 92.5%, 재설계 92.1%(고정 커밋)입니다. 재설계는 #327과 같은 수준이고(p = 1.0), 원래 코드보다 좋다는 것은 이 표본으로 판정할 수 없습니다(p = 0.077). v3 엉뚱한 실행 결정은 원래 코드 20건, #327 0건, 재설계 9건입니다. 자세한 내용과 정정 내역: [read-decision-redesign.md](read-decision-redesign.md)
+
+## 블라인드 홀드아웃 v3: 재설계 뒤, 같은 커밋에서 세 엔진
+
+- 측정: 2026-10-14, 세 엔진 모두 커밋 `4f4dfede`에서 하나씩 실행, 엔진마다 3회
+- 케이스: v3 76건(basic 30, scale 46). 재설계 전에 블라인드로 쓰고 커밋한 세트입니다(#328).
+- 세 엔진은 재설계된 같은 판단 질문에 답합니다. 달라지는 것은 질문에 답하는 엔진뿐입니다.
+- 원본: [`jev-vs-codex-decision-runs/v3/`](jev-vs-codex-decision-runs/v3/), 집계: [`jev-vs-codex-decision-v3-results.json`](jev-vs-codex-decision-v3-results.json)
+
+| v3 76건 × 3회 | Jev | gpt-6-luna high | gpt-6.1-sol medium |
+|---|---|---|---|
+| **라우팅 정확도** | 92.1% | 89.9% | **96.5%** |
+| 95% 신뢰구간 | 83.8–96.3 | 81.1–94.9 | 89.6–98.9 |
+| basic / scale | 94.4% / 90.6% | 92.2% / 88.4% | 94.4% / 97.8% |
+| Jev와 차이 (케이스 단위, 엔진만 맞힘 / Jev만 맞힘) | – | 1 / 3, p = 0.63 | 4 / 2, p = 0.69 |
+| **엉뚱한 실행 결정 (228건 중)** | 9 | 22 | **6** |
+| 3회 모두 같은 결정 | 90.8% | 81.6% | **94.7%** |
+| 요청 1건 판단 시간 p50 / p95 | **0.48 / 0.92초** | 18.2 / 34.7초 | 35.3 / 59.3초 |
+| 요청 1000건 비용 (공식 API 가격) | **$0.88** | $3.25 | $68.14 |
+| 이 측정 전체 비용 (228건) | $0.20 | $0.74 | $15.54 |
+| 서비스 실패 (재시도 뒤 남은 것) | 0 (첫 시도 2건) | 0 | 0 |
+
+- **v3에서는 어떤 엔진 차이도 유의하지 않습니다.** sol이 4.4%p 높지만 케이스 단위로 sol만 맞힌 것 4건, Jev만 맞힌 것 2건입니다. 홀드아웃 100건(원래 코드)에서 sol과 Jev의 차이가 유의했던 것(p = 0.004)과 다릅니다. 다만 76건으로는 4%p 차이를 가릴 힘이 없어서, "차이가 없다"는 뜻이 아닙니다.
+- **엉뚱한 실행은 sol 6, Jev 9, luna 22건입니다.** luna는 되물어야 할 요청에서 한쪽을 골라 실행하는 실수가 여전히 많습니다(재고·사용자·주문 수·게시글).
+- **세 엔진이 모두 틀린 케이스가 있습니다.** "매출 데이터 보여줘"는 세 엔진 모두 3회 모두 ERP API 매출을 실행했습니다. 곳 이름("ERP API: 매출")에 자료 단어가 들어 있어 "요청이 이곳을 가리키는가"에 모두 예라고 답했습니다. 엔진이 아니라 질문 쪽 문제입니다.
+- **보고서 요청("이번 분기 매출 보고서 하나 만들어 줘")은 Jev와 luna가 3회 모두 일반 조회로 실행했고, sol은 맞혔습니다.** 재설계에서 보고서 경로의 한국어 예시를 원칙 문장으로 바꾼 영향으로 보입니다.
+- **Codex 둘 다 "카테고리별로 상품이 몇 개씩 있는지 세어줘"를 되묻지 않고 실행했습니다(0/3).** Jev는 3/3입니다.
+- **속도·비용 차이는 그대로입니다.** Jev가 sol보다 74배 빠르고 77배 쌉니다.
+- 이 비교도 아래 조건이 Jev 쪽으로 기울어 있습니다: 기준 확률(0.5)과 질문 형식은 Jev를 보고 만들었고, Codex는 CLI라 호출마다 프로세스 시작과 자체 지시문 비용이 붙습니다.
 
 ## 다음 할 일 후보
 
@@ -362,6 +392,7 @@ cd packages/core
 AX_LIVE_DECISION_COMPARE=1 AX_COMPARE_ENGINE=jev AX_COMPARE_RUN=1 AX_COMPARE_OUT=<dir> \
   npx vitest run src/intelligence/commands/chat/routing/eval/decision-compare.live.test.ts
 # 홀드아웃 v2만: AX_COMPARE_PART=h2 (결과 파일 <engine>-run<n>.h2.json)
+# 홀드아웃 v3만: AX_COMPARE_PART=h3 (결과 파일 <engine>-run<n>.h3.json, 재시도는 AX_COMPARE_PART=h3-retry)
 # Codex: AX_COMPARE_ENGINE=codex:<model>:<low|medium|high>
 # 고정 비용: AX_COMPARE_OVERHEAD=1 AX_COMPARE_ONLY=none ... -t "fixed overhead"
 # 서비스 실패만 다시: AX_COMPARE_ONLY=<id,...> AX_COMPARE_RUN=<n>-retry (v2는 AX_COMPARE_PART=h2-retry)
