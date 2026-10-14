@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import type { DecisionEngine } from '../../../../../contracts/decision.js';
+import type { DecisionAnswer, DecisionEngine } from '../../../../../contracts/decision.js';
 import { JevDecisionEngine } from '../../../../decision/jev.js';
 import { buildJevReadOperationIndex } from '../../../../decision/read-operation-catalog.js';
 import { routeChatWithJev } from '../router.js';
@@ -68,6 +68,29 @@ interface CallRecord {
   reasoningTokens?: number;
   model?: string;
   error?: string;
+  /** Every answer of the call, by question id: a probability, a choice with its probability, or a score. */
+  answers?: Record<string, number | string>;
+}
+
+/** The answers in a form short enough to keep for every call: `0.87`, `"read_2 (0.91)"`, `"score 3"`. */
+function compactAnswers(answers: Record<string, DecisionAnswer>): Record<string, number | string> {
+  return Object.fromEntries(Object.entries(answers).map(([id, answer]) => {
+    if (answer.type === 'boolean') return [id, Math.round(answer.probability * 1000) / 1000];
+    if (answer.type === 'choice') return [id, `${answer.choice} (${(answer.probabilities[answer.choice] ?? 0).toFixed(2)})`];
+    return [id, `score ${answer.score}`];
+  }));
+}
+
+/** The engine with each call's answers written onto the call record the engine pushed for it. */
+function recordingAnswers(engine: DecisionEngine, calls: () => CallRecord[]): DecisionEngine {
+  return {
+    async evaluate(request) {
+      const response = await engine.evaluate(request);
+      const call = calls().at(-1);
+      if (call) call.answers = compactAnswers(response.answers);
+      return response;
+    },
+  };
 }
 
 function decided(result: JevChatRouterResult): unknown {
@@ -117,6 +140,7 @@ describe.skipIf(!enabled)('decision engine comparison', () => {
         ...(call.error ? { error: call.error } : {}),
       }));
     }
+    engine = recordingAnswers(engine, () => calls);
 
     const outcomes: Array<Record<string, unknown>> = [];
     for (const workspace of WORKSPACES) {
