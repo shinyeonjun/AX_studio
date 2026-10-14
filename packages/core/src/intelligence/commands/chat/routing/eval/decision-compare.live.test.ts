@@ -59,6 +59,8 @@ interface CallRecord {
   questions: number;
   requestBytes?: number;
   durationMs: number;
+  /** Rate-limit wait before this call (Codex); subtracted from the case's time. */
+  waitedMs?: number;
   providerRequests?: number;
   inputTokens?: number;
   cachedInputTokens?: number;
@@ -109,7 +111,7 @@ describe.skipIf(!enabled)('decision engine comparison', () => {
       const [, model, effort] = engineSpec.split(':');
       expect(model && ['low', 'medium', 'high'].includes(effort ?? ''), 'AX_COMPARE_ENGINE=codex:<model>:<low|medium|high>').toBeTruthy();
       engine = new CodexDecisionEngine(model!, effort as 'low' | 'medium' | 'high', (call: CodexDecisionCall) => calls.push({
-        questions: call.questions, durationMs: call.durationMs, requestBytes: call.promptChars, providerRequests: 1, model,
+        questions: call.questions, durationMs: call.durationMs, ...(call.waitedMs ? { waitedMs: call.waitedMs } : {}), requestBytes: call.promptChars, providerRequests: 1, model,
         inputTokens: call.usage?.inputTokens, cachedInputTokens: call.usage?.cachedInputTokens,
         outputTokens: call.usage?.outputTokens, reasoningTokens: call.usage?.reasoningTokens,
         ...(call.error ? { error: call.error } : {}),
@@ -153,7 +155,7 @@ describe.skipIf(!enabled)('decision engine comparison', () => {
           kind: result?.kind, route: result && 'route' in result ? result.route : undefined,
           serviceError: result?.kind === 'fallback' && result.reason === 'service_error',
           decided: result ? decided(result) : undefined,
-          durationMs: Math.round(performance.now() - startedAt),
+          durationMs: Math.round(performance.now() - startedAt - calls.reduce((total, call) => total + (call.waitedMs ?? 0), 0)),
           calls,
         };
         outcomes.push(outcome);
