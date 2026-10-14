@@ -1,0 +1,4024 @@
+{
+  "engine": "holistic:gpt-6.1-sol:medium",
+  "at": "2026-10-14T13:59:26.228Z",
+  "outcomes": [
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h4-what-is-jev",
+      "message": "근데 Jev가 정확히 뭐 하는 애야?",
+      "expected": {
+        "kind": [
+          "reply"
+        ]
+      },
+      "passed": true,
+      "kind": "reply",
+      "route": "answer",
+      "serviceError": false,
+      "durationMs": 7218,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 7217.0812000000005,
+          "requestBytes": 8433,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 12906,
+          "cachedInputTokens": 0,
+          "outputTokens": 47,
+          "reasoningTokens": 0,
+          "output": {
+            "kind": "reply",
+            "route": "answer",
+            "read": null,
+            "join": null,
+            "transform": null,
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 0.99
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h4-tired",
+      "message": "아 오늘 진짜 피곤하다...",
+      "expected": {
+        "kind": [
+          "reply"
+        ]
+      },
+      "passed": true,
+      "kind": "reply",
+      "route": "answer",
+      "serviceError": false,
+      "durationMs": 7254,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 7253.901800000001,
+          "requestBytes": 8428,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 12904,
+          "cachedInputTokens": 0,
+          "outputTokens": 45,
+          "reasoningTokens": 0,
+          "output": {
+            "kind": "reply",
+            "route": null,
+            "read": null,
+            "join": null,
+            "transform": null,
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 1
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h4-excel-question",
+      "message": "조회한 표를 엑셀 파일로도 받을 수 있나요?",
+      "expected": {
+        "kind": [
+          "reply"
+        ]
+      },
+      "passed": true,
+      "kind": "reply",
+      "route": "answer",
+      "serviceError": false,
+      "durationMs": 11144,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 11143.9404,
+          "requestBytes": 8437,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 12911,
+          "cachedInputTokens": 0,
+          "outputTokens": 93,
+          "reasoningTokens": 44,
+          "output": {
+            "kind": "reply",
+            "route": "answer",
+            "read": null,
+            "join": null,
+            "transform": null,
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 0.98
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h4-who-ordered",
+      "message": "누가 뭘 주문했는지 주문 기록 좀 볼게요",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "table": "orders"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "table": "orders",
+          "join": [
+            {
+              "table": "customers",
+              "on": "customer_id",
+              "references": "id"
+            },
+            {
+              "table": "products",
+              "on": "product_code",
+              "references": "code"
+            }
+          ]
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 11849,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 3640.586199999998,
+          "requestBytes": 8435,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "error": "Codex CLI 호출에 실패했습니다. (exceeded retry limit, last status: 429 Too Many Requests)"
+        },
+        {
+          "questions": 0,
+          "durationMs": 8201.806199999999,
+          "waitedMs": 30000,
+          "requestBytes": 8435,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 12909,
+          "cachedInputTokens": 8832,
+          "outputTokens": 84,
+          "reasoningTokens": 28,
+          "output": {
+            "kind": "command",
+            "route": "capability_read",
+            "read": "op_1",
+            "join": [
+              "customers",
+              "products"
+            ],
+            "transform": "none",
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 0.99
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h4-orders-raw",
+      "message": "orders 데이터 raw로 한번 보여줘봐",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "table": "orders"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "table": "orders"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 9040,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 9039.724799999996,
+          "requestBytes": 8436,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 12902,
+          "cachedInputTokens": 0,
+          "outputTokens": 51,
+          "reasoningTokens": 0,
+          "output": {
+            "kind": "command",
+            "route": "capability_read",
+            "read": "op_1",
+            "join": null,
+            "transform": "none",
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 0.99
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h4-orders-codes",
+      "message": "주문번호랑 상품코드 매칭된 주문 내역 보여주세요",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "table": "orders"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "table": "orders"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 7703,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 7702.8609,
+          "requestBytes": 8439,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 12911,
+          "cachedInputTokens": 0,
+          "outputTokens": 77,
+          "reasoningTokens": 24,
+          "output": {
+            "kind": "command",
+            "route": "capability_read",
+            "read": "op_1",
+            "join": null,
+            "transform": "none",
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 0.97
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h4-customer-listup",
+      "message": "쇼핑몰 고객 리스트업 해줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "table": "customers"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "table": "customers"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 8188,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 8187.46160000001,
+          "requestBytes": 8427,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 12904,
+          "cachedInputTokens": 0,
+          "outputTokens": 51,
+          "reasoningTokens": 0,
+          "output": {
+            "kind": "command",
+            "route": "capability_read",
+            "read": "op_2",
+            "join": null,
+            "transform": "none",
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 0.99
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h4-customer-where",
+      "message": "고객별 거주 지역 정리된 거 있어? 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "table": "customers"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "table": "customers"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 15797,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 15797.267500000002,
+          "requestBytes": 8436,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 12910,
+          "cachedInputTokens": 0,
+          "outputTokens": 187,
+          "reasoningTokens": 134,
+          "output": {
+            "kind": "command",
+            "route": "capability_read",
+            "read": "op_2",
+            "join": null,
+            "transform": "none",
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 0.96
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h4-db-items-kind",
+      "message": "우리 DB에 올라간 상품들 이름이랑 분류 같이 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "table": "products"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "table": "products"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 8483,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 8482.3554,
+          "requestBytes": 8442,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 12911,
+          "cachedInputTokens": 0,
+          "outputTokens": 49,
+          "reasoningTokens": 0,
+          "output": {
+            "kind": "command",
+            "route": "capability_read",
+            "read": "op_3",
+            "join": null,
+            "transform": "none",
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 1
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h4-db-products-query",
+      "message": "쇼핑몰 데이터베이스 products 테이블 조회해줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "table": "products"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "table": "products"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 9069,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 9068.78880000001,
+          "requestBytes": 8441,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 12908,
+          "cachedInputTokens": 0,
+          "outputTokens": 49,
+          "reasoningTokens": 0,
+          "output": {
+            "kind": "command",
+            "route": "capability_read",
+            "read": "op_3",
+            "join": null,
+            "transform": "none",
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 1
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h4-unfinished-orders",
+      "message": "아직 처리 안 끝난 주문만 추려줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "table": "orders"
+        },
+        "tableTransform": [
+          "filter",
+          "filter_sort"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "table": "orders"
+        },
+        "tableTransform": "filter"
+      },
+      "durationMs": 9500,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 9499.762400000007,
+          "requestBytes": 8431,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 12905,
+          "cachedInputTokens": 0,
+          "outputTokens": 51,
+          "reasoningTokens": 0,
+          "output": {
+            "kind": "command",
+            "route": "capability_read",
+            "read": "op_1",
+            "join": null,
+            "transform": "filter",
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 0.98
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h4-daily-order-count",
+      "message": "날짜별 주문 건수 집계 부탁해요",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "table": "orders"
+        },
+        "tableTransform": [
+          "calculate"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "table": "orders"
+        },
+        "tableTransform": "calculate"
+      },
+      "durationMs": 14810,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 3178.4003000000084,
+          "requestBytes": 8430,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "error": "Codex CLI 호출에 실패했습니다. (exceeded retry limit, last status: 429 Too Many Requests)"
+        },
+        {
+          "questions": 0,
+          "durationMs": 11616.603100000008,
+          "waitedMs": 30000,
+          "requestBytes": 8430,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 12907,
+          "cachedInputTokens": 0,
+          "outputTokens": 51,
+          "reasoningTokens": 0,
+          "output": {
+            "kind": "command",
+            "route": "capability_read",
+            "read": "op_1",
+            "join": null,
+            "transform": "calculate",
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 0.99
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h4-top-region",
+      "message": "고객 제일 많은 지역이 어디야?",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "table": "customers"
+        },
+        "tableTransform": [
+          "calculate",
+          "sort",
+          "filter_sort"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "table": "customers"
+        },
+        "tableTransform": "calculate"
+      },
+      "durationMs": 11262,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 11261.744999999995,
+          "requestBytes": 8430,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 12904,
+          "cachedInputTokens": 0,
+          "outputTokens": 143,
+          "reasoningTokens": 90,
+          "output": {
+            "kind": "command",
+            "route": "capability_read",
+            "read": "op_2",
+            "join": null,
+            "transform": "calculate",
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 0.96
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h4-db-under-10k",
+      "message": "DB 상품 중에 만원 이하짜리만 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "table": "products"
+        },
+        "tableTransform": [
+          "filter",
+          "filter_sort"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "table": "products"
+        },
+        "tableTransform": "filter"
+      },
+      "durationMs": 6530,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 6529.728000000003,
+          "requestBytes": 8434,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 12904,
+          "cachedInputTokens": 0,
+          "outputTokens": 51,
+          "reasoningTokens": 0,
+          "output": {
+            "kind": "command",
+            "route": "capability_read",
+            "read": "op_3",
+            "join": null,
+            "transform": "filter",
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 0.99
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h4-db-price-sort",
+      "message": "쇼핑몰 DB 상품들 price 높은 거부터 sort 해서 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "table": "products"
+        },
+        "tableTransform": [
+          "sort",
+          "filter_sort"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "table": "products"
+        },
+        "tableTransform": "sort"
+      },
+      "durationMs": 8850,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 8849.582900000009,
+          "requestBytes": 8448,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 12912,
+          "cachedInputTokens": 0,
+          "outputTokens": 49,
+          "reasoningTokens": 0,
+          "output": {
+            "kind": "command",
+            "route": "capability_read",
+            "read": "op_3",
+            "join": null,
+            "transform": "sort",
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 1
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h4-code-revenue",
+      "message": "상품코드별로 매출 합계 좀 뽑아줄래?",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "table": "orders"
+        },
+        "tableTransform": [
+          "calculate"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "table": "orders"
+        },
+        "tableTransform": "calculate"
+      },
+      "durationMs": 10748,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 10747.926399999997,
+          "requestBytes": 8433,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 12911,
+          "cachedInputTokens": 0,
+          "outputTokens": 84,
+          "reasoningTokens": 31,
+          "output": {
+            "kind": "command",
+            "route": "capability_read",
+            "read": "op_1",
+            "join": null,
+            "transform": "calculate",
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 0.98
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h4-seoul-orders",
+      "message": "서울 사는 고객들 주문만 따로 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "table": "orders"
+        },
+        "join": [
+          "customers"
+        ],
+        "tableTransform": [
+          "filter",
+          "filter_sort"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "table": "orders",
+          "join": [
+            {
+              "table": "customers",
+              "on": "customer_id",
+              "references": "id"
+            }
+          ]
+        },
+        "tableTransform": "filter"
+      },
+      "durationMs": 12621,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 3458.7385999999824,
+          "requestBytes": 8433,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "error": "Codex CLI 호출에 실패했습니다. (exceeded retry limit, last status: 429 Too Many Requests)"
+        },
+        {
+          "questions": 0,
+          "durationMs": 9159.86129999999,
+          "waitedMs": 30000,
+          "requestBytes": 8433,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 12905,
+          "cachedInputTokens": 0,
+          "outputTokens": 52,
+          "reasoningTokens": 0,
+          "output": {
+            "kind": "command",
+            "route": "capability_read",
+            "read": "op_1",
+            "join": [
+              "customers"
+            ],
+            "transform": "filter",
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 0.99
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h4-api-carts-call",
+      "message": "dummyjson carts 엔드포인트 호출해서 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "http.request",
+        "params": {
+          "path": "carts"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "http.request",
+        "params": {
+          "method": "GET",
+          "path": "carts",
+          "connectionId": "dummyjson"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 8761,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 8760.847299999994,
+          "requestBytes": 8443,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 12907,
+          "cachedInputTokens": 0,
+          "outputTokens": 49,
+          "reasoningTokens": 0,
+          "output": {
+            "kind": "command",
+            "route": "capability_read",
+            "read": "op_5",
+            "join": null,
+            "transform": "none",
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 1
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h4-api-user-emails",
+      "message": "DummyJSON에 있는 유저들 이메일 주소 쭉 보고 싶어요",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "http.request",
+        "params": {
+          "path": "users"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "http.request",
+        "params": {
+          "method": "GET",
+          "path": "users",
+          "connectionId": "dummyjson"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 8928,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 8927.931699999957,
+          "requestBytes": 8446,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 12909,
+          "cachedInputTokens": 0,
+          "outputTokens": 49,
+          "reasoningTokens": 0,
+          "output": {
+            "kind": "command",
+            "route": "capability_read",
+            "read": "op_6",
+            "join": null,
+            "transform": "none",
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 1
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h4-ambiguous-price-list",
+      "message": "판매 중인 아이템들 가격표 좀 뽑아줘",
+      "expected": {
+        "kind": [
+          "clarify"
+        ],
+        "sourceChooser": true
+      },
+      "passed": true,
+      "kind": "clarify",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "message": "쇼핑몰 DB, DummyJSON 중 어디에서 찾을까요?",
+        "chooser": "어디에서 찾을까요?"
+      },
+      "durationMs": 12303,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 12302.956099999952,
+          "requestBytes": 8433,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 12910,
+          "cachedInputTokens": 0,
+          "outputTokens": 58,
+          "reasoningTokens": 0,
+          "output": {
+            "kind": "clarify_source",
+            "route": "capability_read",
+            "read": null,
+            "join": null,
+            "transform": null,
+            "parameters": null,
+            "clarify_reads": [
+              "op_3",
+              "op_4"
+            ],
+            "confidence": 0.99
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h4-mail-from-lead",
+      "message": "팀장님이 보낸 메일 중에 이번 주 거 찾아줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "gmail.messages.search"
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "gmail.messages.search",
+        "params": {},
+        "tableTransform": "none"
+      },
+      "durationMs": 11467,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 11467.142100000056,
+          "requestBytes": 8437,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 12909,
+          "cachedInputTokens": 0,
+          "outputTokens": 104,
+          "reasoningTokens": 51,
+          "output": {
+            "kind": "command",
+            "route": "capability_read",
+            "read": "op_8",
+            "join": null,
+            "transform": "none",
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 0.96
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h4-slack-mention",
+      "message": "슬랙에서 나 멘션된 메시지 있나 찾아봐",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "slack.messages.search"
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "slack.messages.search",
+        "params": {
+          "query": "has:me"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 15074,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 2991.820400000026,
+          "requestBytes": 8434,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "error": "Codex CLI 호출에 실패했습니다. (exceeded retry limit, last status: 429 Too Many Requests)"
+        },
+        {
+          "questions": 0,
+          "durationMs": 12071.551199999987,
+          "waitedMs": 30000,
+          "requestBytes": 8434,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 12910,
+          "cachedInputTokens": 0,
+          "outputTokens": 126,
+          "reasoningTokens": 63,
+          "output": {
+            "kind": "command",
+            "route": "capability_read",
+            "read": "op_11",
+            "join": null,
+            "transform": "none",
+            "parameters": [
+              {
+                "path": "query",
+                "value": "has:me"
+              }
+            ],
+            "clarify_reads": null,
+            "confidence": 0.98
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h4-mail-flight",
+      "message": "항공권 예약 확인 메일 어디 갔지? 찾아줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "gmail.messages.search"
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "gmail.messages.search",
+        "params": {},
+        "tableTransform": "none"
+      },
+      "durationMs": 7100,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 7100.032799999986,
+          "requestBytes": 8436,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 12908,
+          "cachedInputTokens": 0,
+          "outputTokens": 51,
+          "reasoningTokens": 0,
+          "output": {
+            "kind": "command",
+            "route": "capability_read",
+            "read": "op_8",
+            "join": null,
+            "transform": "none",
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 0.99
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h4-remember-name",
+      "message": "나 부를 때 연준님이라고 불러줘. 기억해 둬",
+      "expected": {
+        "kind": [
+          "command",
+          "clarify"
+        ],
+        "route": [
+          "context_remember"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "context_remember",
+      "serviceError": false,
+      "decided": {
+        "command": "route.context_remember"
+      },
+      "durationMs": 11398,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 11397.397999999986,
+          "requestBytes": 8437,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 12910,
+          "cachedInputTokens": 0,
+          "outputTokens": 47,
+          "reasoningTokens": 0,
+          "output": {
+            "kind": "command",
+            "route": "context_remember",
+            "read": null,
+            "join": null,
+            "transform": null,
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 1
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h4-slack-build-once",
+      "message": "ax테스트 채널에 지금 바로 \"빌드 깨졌어요 확인 부탁\" 메시지 하나 쏴줘",
+      "expected": {
+        "kind": [
+          "command",
+          "clarify"
+        ],
+        "route": [
+          "execution_enqueue_once"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "execution_enqueue_once",
+      "serviceError": false,
+      "decided": {
+        "command": "route.execution_enqueue_once"
+      },
+      "durationMs": 9793,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 9792.019099999976,
+          "requestBytes": 8425,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 12914,
+          "cachedInputTokens": 0,
+          "outputTokens": 47,
+          "reasoningTokens": 0,
+          "output": {
+            "kind": "command",
+            "route": "execution_enqueue_once",
+            "read": null,
+            "join": null,
+            "transform": null,
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 1
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h4-report-last-week",
+      "message": "지난주 주문 현황 정리한 보고서 작성해줘",
+      "expected": {
+        "kind": [
+          "command",
+          "clarify"
+        ],
+        "route": [
+          "report_generate"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "report_generate",
+      "serviceError": false,
+      "decided": {
+        "command": "route.report_generate"
+      },
+      "durationMs": 15242,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 3489.2815999999875,
+          "requestBytes": 8435,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "error": "Codex CLI 호출에 실패했습니다. (exceeded retry limit, last status: 429 Too Many Requests)"
+        },
+        {
+          "questions": 0,
+          "durationMs": 11747.453399999999,
+          "waitedMs": 30000,
+          "requestBytes": 8435,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 12909,
+          "cachedInputTokens": 0,
+          "outputTokens": 80,
+          "reasoningTokens": 30,
+          "output": {
+            "kind": "command",
+            "route": "report_generate",
+            "read": null,
+            "join": null,
+            "transform": null,
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 0.98
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h4-daily-mail-digest",
+      "message": "매일 저녁 6시마다 오늘 들어온 메일 요약해서 슬랙 #ax테스트에 올려줘",
+      "expected": {
+        "kind": [
+          "command",
+          "clarify"
+        ],
+        "route": [
+          "workflow_create",
+          "job_propose"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "job_propose",
+      "serviceError": false,
+      "decided": {
+        "command": "route.job_propose"
+      },
+      "durationMs": 9195,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 9194.686800000025,
+          "requestBytes": 8422,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 12916,
+          "cachedInputTokens": 0,
+          "outputTokens": 49,
+          "reasoningTokens": 0,
+          "output": {
+            "kind": "command",
+            "route": "job_propose",
+            "read": null,
+            "join": null,
+            "transform": null,
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 0.99
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h4-new-order-alert",
+      "message": "새 주문 들어오면 그때그때 내 Gmail로 알림 보내게 해줘",
+      "expected": {
+        "kind": [
+          "command",
+          "clarify"
+        ],
+        "route": [
+          "workflow_create",
+          "job_propose"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "job_propose",
+      "serviceError": false,
+      "decided": {
+        "command": "route.job_propose"
+      },
+      "durationMs": 13742,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 13741.273899999971,
+          "requestBytes": 8446,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 12912,
+          "cachedInputTokens": 0,
+          "outputTokens": 206,
+          "reasoningTokens": 155,
+          "output": {
+            "kind": "command",
+            "route": "job_propose",
+            "read": null,
+            "join": null,
+            "transform": null,
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 0.94
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h4-follow-cancelled",
+      "message": "여기서 취소 상태인 것만 보여줄래",
+      "expected": {
+        "kind": [
+          "previous_result"
+        ]
+      },
+      "passed": true,
+      "kind": "previous_result",
+      "route": "previous_result",
+      "serviceError": false,
+      "durationMs": 6421,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 6420.544999999984,
+          "requestBytes": 8847,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 13010,
+          "cachedInputTokens": 0,
+          "outputTokens": 49,
+          "reasoningTokens": 0,
+          "output": {
+            "kind": "previous_result",
+            "route": "previous_result",
+            "read": null,
+            "join": null,
+            "transform": "filter",
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 0.99
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h4-follow-rows",
+      "message": "방금 나온 표 몇 줄이야?",
+      "expected": {
+        "kind": [
+          "previous_result",
+          "reply"
+        ]
+      },
+      "passed": true,
+      "kind": "previous_result",
+      "route": "previous_result",
+      "serviceError": false,
+      "durationMs": 8493,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 8492.463699999964,
+          "requestBytes": 8843,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 13007,
+          "cachedInputTokens": 8832,
+          "outputTokens": 47,
+          "reasoningTokens": 0,
+          "output": {
+            "kind": "previous_result",
+            "route": "previous_result",
+            "read": null,
+            "join": null,
+            "transform": "calculate",
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 1
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h4s-bored",
+      "message": "심심한데 재밌는 얘기 하나 해줘",
+      "expected": {
+        "kind": [
+          "reply"
+        ]
+      },
+      "passed": true,
+      "kind": "reply",
+      "route": "answer",
+      "serviceError": false,
+      "durationMs": 14202,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 3350.9197000000277,
+          "requestBytes": 27527,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "error": "Codex CLI 호출에 실패했습니다. (exceeded retry limit, last status: 429 Too Many Requests)"
+        },
+        {
+          "questions": 0,
+          "durationMs": 10835.9044,
+          "waitedMs": 30000,
+          "requestBytes": 27527,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 19045,
+          "cachedInputTokens": 8832,
+          "outputTokens": 45,
+          "reasoningTokens": 0,
+          "output": {
+            "kind": "reply",
+            "route": null,
+            "read": null,
+            "join": null,
+            "transform": null,
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 1
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h4s-report-format",
+      "message": "보고서 만들 때 참고 파일은 어떤 형식으로 올려야 돼?",
+      "expected": {
+        "kind": [
+          "reply"
+        ]
+      },
+      "passed": true,
+      "kind": "reply",
+      "route": "answer",
+      "serviceError": false,
+      "durationMs": 7591,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 7591.045500000007,
+          "requestBytes": 27540,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 19044,
+          "cachedInputTokens": 0,
+          "outputTokens": 45,
+          "reasoningTokens": 0,
+          "output": {
+            "kind": "reply",
+            "route": null,
+            "read": null,
+            "join": null,
+            "transform": null,
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 1
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h4s-api-key",
+      "message": "API 키는 어디에 저장되는 거예요?",
+      "expected": {
+        "kind": [
+          "reply"
+        ]
+      },
+      "passed": true,
+      "kind": "reply",
+      "route": "answer",
+      "serviceError": false,
+      "durationMs": 7296,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 7296.1954999999725,
+          "requestBytes": 27530,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 19040,
+          "cachedInputTokens": 0,
+          "outputTokens": 47,
+          "reasoningTokens": 0,
+          "output": {
+            "kind": "reply",
+            "route": null,
+            "read": null,
+            "join": null,
+            "transform": null,
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 0.99
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h4s-journal",
+      "message": "회계 분개 전표 내역 좀 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "finance",
+          "table": "journal_entries"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "finance",
+          "table": "journal_entries"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 7458,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 7457.216799999995,
+          "requestBytes": 27527,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 19038,
+          "cachedInputTokens": 0,
+          "outputTokens": 51,
+          "reasoningTokens": 0,
+          "output": {
+            "kind": "command",
+            "route": "capability_read",
+            "read": "op_23",
+            "join": null,
+            "transform": "none",
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 0.99
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h4s-crm-activities",
+      "message": "고객사 영업 활동 기록(통화, 미팅 같은 거) 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "crm",
+          "table": "activities"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "crm",
+          "table": "activities"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 7738,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 7737.581299999962,
+          "requestBytes": 27539,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 19045,
+          "cachedInputTokens": 0,
+          "outputTokens": 125,
+          "reasoningTokens": 72,
+          "output": {
+            "kind": "command",
+            "route": "capability_read",
+            "read": "op_36",
+            "join": null,
+            "transform": "none",
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 0.99
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h4s-stock-movements",
+      "message": "재고 DB에서 입출고 변동 이력 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "inventory",
+          "table": "stock_movements"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "inventory",
+          "table": "stock_movements"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 10984,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 3591.432700000005,
+          "requestBytes": 27531,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "error": "Codex CLI 호출에 실패했습니다. (exceeded retry limit, last status: 429 Too Many Requests)"
+        },
+        {
+          "questions": 0,
+          "durationMs": 7389.904800000018,
+          "waitedMs": 30000,
+          "requestBytes": 27531,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 19042,
+          "cachedInputTokens": 0,
+          "outputTokens": 49,
+          "reasoningTokens": 0,
+          "output": {
+            "kind": "command",
+            "route": "capability_read",
+            "read": "op_45",
+            "join": null,
+            "transform": "none",
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 1
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h4s-payroll",
+      "message": "인사 DB 급여 지급 내역 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "hr",
+          "table": "payroll"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "hr",
+          "table": "payroll"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 8136,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 8135.401599999983,
+          "requestBytes": 27528,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 19037,
+          "cachedInputTokens": 0,
+          "outputTokens": 49,
+          "reasoningTokens": 0,
+          "output": {
+            "kind": "command",
+            "route": "capability_read",
+            "read": "op_30",
+            "join": null,
+            "transform": "none",
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 1
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h4s-campaign-contacts",
+      "message": "CRM에서 캠페인 대상 고객들 응답했는지 여부 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "crm",
+          "table": "campaign_contacts"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "crm",
+          "table": "campaign_contacts"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 7828,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 7828.168899999931,
+          "requestBytes": 27539,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 19045,
+          "cachedInputTokens": 8832,
+          "outputTokens": 51,
+          "reasoningTokens": 0,
+          "output": {
+            "kind": "command",
+            "route": "capability_read",
+            "read": "op_38",
+            "join": null,
+            "transform": "none",
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 0.99
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h4s-invoices",
+      "message": "회계 쪽에서 발행한 인보이스 목록 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "finance",
+          "table": "invoices"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "finance",
+          "table": "invoices"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 10548,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 10548.136300000013,
+          "requestBytes": 27532,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 19043,
+          "cachedInputTokens": 0,
+          "outputTokens": 51,
+          "reasoningTokens": 0,
+          "output": {
+            "kind": "command",
+            "route": "capability_read",
+            "read": "op_18",
+            "join": null,
+            "transform": "none",
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 0.99
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h4s-satisfaction",
+      "message": "티켓 처리 후 받은 만족도 점수랑 코멘트 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "support",
+          "table": "satisfaction_surveys"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "support",
+          "table": "satisfaction_surveys"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 7659,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 7658.718899999978,
+          "requestBytes": 27536,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 19042,
+          "cachedInputTokens": 8832,
+          "outputTokens": 90,
+          "reasoningTokens": 37,
+          "output": {
+            "kind": "command",
+            "route": "capability_read",
+            "read": "op_56",
+            "join": null,
+            "transform": "none",
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 0.99
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h4s-freight-bands",
+      "message": "무게 구간별 배송 운임 요율 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "erp",
+          "table": "tb_frt_rt"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "erp",
+          "table": "tb_frt_rt"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 11790,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 3728.3809999999357,
+          "requestBytes": 27529,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "error": "Codex CLI 호출에 실패했습니다. (exceeded retry limit, last status: 429 Too Many Requests)"
+        },
+        {
+          "questions": 0,
+          "durationMs": 8046.851900000009,
+          "waitedMs": 30000,
+          "requestBytes": 27529,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 19039,
+          "cachedInputTokens": 0,
+          "outputTokens": 65,
+          "reasoningTokens": 12,
+          "output": {
+            "kind": "command",
+            "route": "capability_read",
+            "read": "op_65",
+            "join": null,
+            "transform": "none",
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 0.99
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h4s-shop-grades",
+      "message": "쇼핑몰 고객들 회원 등급이랑 가입일 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "shop",
+          "table": "customers"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "shop",
+          "table": "customers"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 7580,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 7580.194299999974,
+          "requestBytes": 27533,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 19039,
+          "cachedInputTokens": 0,
+          "outputTokens": 49,
+          "reasoningTokens": 0,
+          "output": {
+            "kind": "command",
+            "route": "capability_read",
+            "read": "op_2",
+            "join": null,
+            "transform": "none",
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 1
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h4s-shop-brands",
+      "message": "쇼핑몰에 등록된 상품들 브랜드랑 가격 같이 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "shop",
+          "table": "products"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "shop",
+          "table": "products"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 7600,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 7599.925700000022,
+          "requestBytes": 27537,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 19041,
+          "cachedInputTokens": 0,
+          "outputTokens": 49,
+          "reasoningTokens": 0,
+          "output": {
+            "kind": "command",
+            "route": "capability_read",
+            "read": "op_3",
+            "join": null,
+            "transform": "none",
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 1
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h4s-employees",
+      "message": "인사 DB 직원들 입사일이랑 직급 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "hr",
+          "table": "employees"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "hr",
+          "table": "employees"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 7413,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 7412.400699999998,
+          "requestBytes": 27532,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 19043,
+          "cachedInputTokens": 0,
+          "outputTokens": 49,
+          "reasoningTokens": 0,
+          "output": {
+            "kind": "command",
+            "route": "capability_read",
+            "read": "op_26",
+            "join": null,
+            "transform": "none",
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 1
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h4s-deals",
+      "message": "CRM 파이프라인에 있는 딜들 쭉 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "crm",
+          "table": "deals"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "crm",
+          "table": "deals"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 7364,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 7364.168899999931,
+          "requestBytes": 27532,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 19044,
+          "cachedInputTokens": 8832,
+          "outputTokens": 51,
+          "reasoningTokens": 0,
+          "output": {
+            "kind": "command",
+            "route": "capability_read",
+            "read": "op_35",
+            "join": null,
+            "transform": "none",
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 0.99
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h4s-ad-spend",
+      "message": "마케팅 DB 광고비 지출 기록 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "marketing",
+          "table": "ad_spend"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "marketing",
+          "table": "ad_spend"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 11531,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 2824.9553000000305,
+          "requestBytes": 27530,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "error": "Codex CLI 호출에 실패했습니다. (exceeded retry limit, last status: 429 Too Many Requests)"
+        },
+        {
+          "questions": 0,
+          "durationMs": 8703.89969999995,
+          "waitedMs": 30000,
+          "requestBytes": 27530,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 19041,
+          "cachedInputTokens": 8832,
+          "outputTokens": 49,
+          "reasoningTokens": 0,
+          "output": {
+            "kind": "command",
+            "route": "capability_read",
+            "read": "op_48",
+            "join": null,
+            "transform": "none",
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 1
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h4s-carrier-sla",
+      "message": "택배사들 SLA 기준 일수 확인하고 싶어",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "logistics",
+          "table": "carriers"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "logistics",
+          "table": "carriers"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 7450,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 7449.67359999998,
+          "requestBytes": 27532,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 19037,
+          "cachedInputTokens": 8832,
+          "outputTokens": 51,
+          "reasoningTokens": 0,
+          "output": {
+            "kind": "command",
+            "route": "capability_read",
+            "read": "op_13",
+            "join": null,
+            "transform": "none",
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 0.99
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h4s-delays",
+      "message": "배송 늦어진 건들 상세 기록 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "logistics",
+          "table": "delivery_delays"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "logistics",
+          "table": "delivery_delays"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 12171,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 12170.417500000098,
+          "requestBytes": 27529,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 19037,
+          "cachedInputTokens": 8832,
+          "outputTokens": 138,
+          "reasoningTokens": 85,
+          "output": {
+            "kind": "command",
+            "route": "capability_read",
+            "read": "op_14",
+            "join": null,
+            "transform": "none",
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 0.96
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h4s-overdue-sum",
+      "message": "결제기한 넘긴 인보이스 금액 다 합치면 얼마야?",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "finance",
+          "table": "invoices"
+        },
+        "tableTransform": [
+          "calculate"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "finance",
+          "table": "invoices"
+        },
+        "tableTransform": "calculate"
+      },
+      "durationMs": 7728,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 7727.584700000007,
+          "requestBytes": 27536,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 19045,
+          "cachedInputTokens": 0,
+          "outputTokens": 51,
+          "reasoningTokens": 0,
+          "output": {
+            "kind": "command",
+            "route": "capability_read",
+            "read": "op_18",
+            "join": null,
+            "transform": "calculate",
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 0.99
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h4s-leave-type-days",
+      "message": "휴가 종류별로 사용 일수 합계 내줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "hr",
+          "table": "leaves"
+        },
+        "tableTransform": [
+          "calculate"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "hr",
+          "table": "leaves"
+        },
+        "tableTransform": "calculate"
+      },
+      "durationMs": 7698,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 7697.63890000002,
+          "requestBytes": 27529,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 19043,
+          "cachedInputTokens": 8832,
+          "outputTokens": 51,
+          "reasoningTokens": 0,
+          "output": {
+            "kind": "command",
+            "route": "capability_read",
+            "read": "op_28",
+            "join": null,
+            "transform": "calculate",
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 0.99
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h4s-warehouse-city",
+      "message": "도시별로 창고가 몇 개씩 있어?",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "logistics",
+          "table": "warehouses"
+        },
+        "tableTransform": [
+          "calculate"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "logistics",
+          "table": "warehouses"
+        },
+        "tableTransform": "calculate"
+      },
+      "durationMs": 8410,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 8409.781499999925,
+          "requestBytes": 27527,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 19039,
+          "cachedInputTokens": 8832,
+          "outputTokens": 49,
+          "reasoningTokens": 0,
+          "output": {
+            "kind": "command",
+            "route": "capability_read",
+            "read": "op_12",
+            "join": null,
+            "transform": "calculate",
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 1
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h4s-low-reviews",
+      "message": "평점 2점 이하 리뷰만 골라줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "shop",
+          "table": "reviews"
+        },
+        "tableTransform": [
+          "filter",
+          "filter_sort"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "shop",
+          "table": "reviews"
+        },
+        "tableTransform": "filter"
+      },
+      "durationMs": 11046,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 3430.303799999994,
+          "requestBytes": 27526,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "error": "Codex CLI 호출에 실패했습니다. (exceeded retry limit, last status: 429 Too Many Requests)"
+        },
+        {
+          "questions": 0,
+          "durationMs": 7612.124499999918,
+          "waitedMs": 30000,
+          "requestBytes": 27526,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 19038,
+          "cachedInputTokens": 0,
+          "outputTokens": 51,
+          "reasoningTokens": 0,
+          "output": {
+            "kind": "command",
+            "route": "capability_read",
+            "read": "op_6",
+            "join": null,
+            "transform": "filter",
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 0.99
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h4s-payment-method",
+      "message": "회계 쪽 결제 내역을 결제 수단별로 금액 합계 내줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "finance",
+          "table": "payments"
+        },
+        "tableTransform": [
+          "calculate"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "finance",
+          "table": "payments"
+        },
+        "tableTransform": "calculate"
+      },
+      "durationMs": 6357,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 6356.381799999974,
+          "requestBytes": 27538,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 19050,
+          "cachedInputTokens": 0,
+          "outputTokens": 51,
+          "reasoningTokens": 0,
+          "output": {
+            "kind": "command",
+            "route": "capability_read",
+            "read": "op_19",
+            "join": null,
+            "transform": "calculate",
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 0.99
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h4s-agents-by-team",
+      "message": "상담원 팀별 인원수 알려줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "support",
+          "table": "agents"
+        },
+        "tableTransform": [
+          "calculate"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "support",
+          "table": "agents"
+        },
+        "tableTransform": "calculate"
+      },
+      "durationMs": 7234,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 7233.597899999935,
+          "requestBytes": 27524,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 19037,
+          "cachedInputTokens": 8832,
+          "outputTokens": 74,
+          "reasoningTokens": 21,
+          "output": {
+            "kind": "command",
+            "route": "capability_read",
+            "read": "op_54",
+            "join": null,
+            "transform": "calculate",
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 0.99
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h4s-faq-views",
+      "message": "조회수 높은 FAQ 순서대로 10개 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "support",
+          "table": "faq_articles"
+        },
+        "tableTransform": [
+          "sort",
+          "filter_sort"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "support",
+          "table": "faq_articles"
+        },
+        "tableTransform": "sort"
+      },
+      "durationMs": 5438,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 5437.450499999919,
+          "requestBytes": 27533,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 19041,
+          "cachedInputTokens": 8832,
+          "outputTokens": 49,
+          "reasoningTokens": 0,
+          "output": {
+            "kind": "command",
+            "route": "capability_read",
+            "read": "op_57",
+            "join": null,
+            "transform": "sort",
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 1
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h4s-albums",
+      "message": "JSONPlaceholder 앨범 리스트 불러와",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "http.request",
+        "params": {
+          "connectionId": "jsonplaceholder",
+          "path": "albums"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "http.request",
+        "params": {
+          "method": "GET",
+          "path": "albums",
+          "connectionId": "jsonplaceholder"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 6722,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 6721.363899999997,
+          "requestBytes": 27536,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 19036,
+          "cachedInputTokens": 0,
+          "outputTokens": 49,
+          "reasoningTokens": 0,
+          "output": {
+            "kind": "command",
+            "route": "capability_read",
+            "read": "op_77",
+            "join": null,
+            "transform": "none",
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 1
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h4s-notion-pages",
+      "message": "노션 페이지들 뭐 있는지 가져와줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "http.request",
+        "params": {
+          "connectionId": "notion-api",
+          "path": "pages"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "http.request",
+        "params": {
+          "method": "GET",
+          "path": "pages",
+          "connectionId": "notion-api"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 7846,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 2267.925600000075,
+          "requestBytes": 27528,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "error": "Codex CLI 호출에 실패했습니다. (exceeded retry limit, last status: 429 Too Many Requests)"
+        },
+        {
+          "questions": 0,
+          "durationMs": 5560.13599999994,
+          "waitedMs": 30000,
+          "requestBytes": 27528,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 19039,
+          "cachedInputTokens": 0,
+          "outputTokens": 49,
+          "reasoningTokens": 0,
+          "output": {
+            "kind": "command",
+            "route": "capability_read",
+            "read": "op_100",
+            "join": null,
+            "transform": "none",
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 1
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h4s-tracking",
+      "message": "송장번호로 배송 추적 현황 API에서 조회해줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "http.request",
+        "params": {
+          "connectionId": "delivery-api",
+          "path": "tracking"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "http.request",
+        "params": {
+          "method": "GET",
+          "path": "tracking",
+          "connectionId": "delivery-api"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 10651,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 10650.283400000073,
+          "requestBytes": 27535,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 19041,
+          "cachedInputTokens": 0,
+          "outputTokens": 109,
+          "reasoningTokens": 56,
+          "output": {
+            "kind": "command",
+            "route": "capability_read",
+            "read": "op_112",
+            "join": null,
+            "transform": "none",
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 0.98
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h4s-languages",
+      "message": "번역기에서 지원하는 언어 뭐뭐야?",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "http.request",
+        "params": {
+          "connectionId": "translate-api",
+          "path": "languages"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "http.request",
+        "params": {
+          "method": "GET",
+          "path": "languages",
+          "connectionId": "translate-api"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 9050,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 9050.099099999992,
+          "requestBytes": 27528,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 19040,
+          "cachedInputTokens": 0,
+          "outputTokens": 51,
+          "reasoningTokens": 0,
+          "output": {
+            "kind": "command",
+            "route": "capability_read",
+            "read": "op_119",
+            "join": null,
+            "transform": "none",
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 0.99
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h4s-pokemon-types",
+      "message": "포켓몬 타입 종류 좀 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "http.request",
+        "params": {
+          "connectionId": "pokeapi",
+          "path": "type"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "http.request",
+        "params": {
+          "method": "GET",
+          "path": "type",
+          "connectionId": "pokeapi"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 7680,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 7679.0622999999905,
+          "requestBytes": 27525,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 19035,
+          "cachedInputTokens": 0,
+          "outputTokens": 49,
+          "reasoningTokens": 0,
+          "output": {
+            "kind": "command",
+            "route": "capability_read",
+            "read": "op_124",
+            "join": null,
+            "transform": "none",
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 1
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h4s-erp-purchases",
+      "message": "ERP 매입 내역 API로 가져와",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "http.request",
+        "params": {
+          "connectionId": "erp-api",
+          "path": "purchases"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "http.request",
+        "params": {
+          "method": "GET",
+          "path": "purchases",
+          "connectionId": "erp-api"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 10027,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 4649.69299999997,
+          "requestBytes": 27528,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "error": "Codex CLI 호출에 실패했습니다. (exceeded retry limit, last status: 429 Too Many Requests)"
+        },
+        {
+          "questions": 0,
+          "durationMs": 5373.923699999927,
+          "waitedMs": 30000,
+          "requestBytes": 27528,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 19038,
+          "cachedInputTokens": 8832,
+          "outputTokens": 49,
+          "reasoningTokens": 0,
+          "output": {
+            "kind": "command",
+            "route": "capability_read",
+            "read": "op_108",
+            "join": null,
+            "transform": "none",
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 1
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h4s-github-repos",
+      "message": "깃허브 저장소 목록 좀",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "http.request",
+        "params": {
+          "connectionId": "github-api",
+          "path": "repos"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "http.request",
+        "params": {
+          "method": "GET",
+          "path": "repos",
+          "connectionId": "github-api"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 6330,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 6329.505300000077,
+          "requestBytes": 27522,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 19035,
+          "cachedInputTokens": 8832,
+          "outputTokens": 49,
+          "reasoningTokens": 0,
+          "output": {
+            "kind": "command",
+            "route": "capability_read",
+            "read": "op_94",
+            "join": null,
+            "transform": "none",
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 1
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h4s-ambiguous-todos",
+      "message": "투두 리스트 데이터 가져와",
+      "expected": {
+        "kind": [
+          "clarify"
+        ],
+        "sourceChooser": true
+      },
+      "passed": true,
+      "kind": "clarify",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "message": "DummyJSON, JSONPlaceholder 중 어디에서 찾을까요?",
+        "chooser": "어디에서 찾을까요?"
+      },
+      "durationMs": 6219,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 6218.630100000068,
+          "requestBytes": 27524,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 19035,
+          "cachedInputTokens": 0,
+          "outputTokens": 58,
+          "reasoningTokens": 0,
+          "output": {
+            "kind": "clarify_source",
+            "route": "capability_read",
+            "read": null,
+            "join": null,
+            "transform": null,
+            "parameters": null,
+            "clarify_reads": [
+              "op_71",
+              "op_78"
+            ],
+            "confidence": 0.99
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h4s-ambiguous-customer-regions",
+      "message": "고객 분포를 지역 기준으로 보고 싶어",
+      "expected": {
+        "kind": [
+          "clarify"
+        ],
+        "sourceChooser": true
+      },
+      "passed": true,
+      "kind": "clarify",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "message": "쇼핑몰 DB, CRM DB, ERP DB 중 어디에서 찾을까요?",
+        "chooser": "어디에서 찾을까요?"
+      },
+      "durationMs": 9128,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 9127.955599999987,
+          "requestBytes": 27530,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 19038,
+          "cachedInputTokens": 8832,
+          "outputTokens": 98,
+          "reasoningTokens": 34,
+          "output": {
+            "kind": "clarify_source",
+            "route": "capability_read",
+            "read": null,
+            "join": null,
+            "transform": null,
+            "parameters": null,
+            "clarify_reads": [
+              "op_2",
+              "op_34",
+              "op_60"
+            ],
+            "confidence": 0.99
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h4s-ambiguous-partners",
+      "message": "협력업체 리스트 보여줘",
+      "expected": {
+        "kind": [
+          "clarify"
+        ],
+        "sourceChooser": true
+      },
+      "passed": true,
+      "kind": "clarify",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "message": "재고 DB, ERP DB, ERP API 중 어디에서 찾을까요?",
+        "chooser": "어디에서 찾을까요?"
+      },
+      "durationMs": 8860,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 8859.715799999889,
+          "requestBytes": 27522,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 19040,
+          "cachedInputTokens": 8832,
+          "outputTokens": 100,
+          "reasoningTokens": 36,
+          "output": {
+            "kind": "clarify_source",
+            "route": "capability_read",
+            "read": null,
+            "join": null,
+            "transform": null,
+            "parameters": null,
+            "clarify_reads": [
+              "op_44",
+              "op_61",
+              "op_109"
+            ],
+            "confidence": 0.98
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h4s-ambiguous-pageviews",
+      "message": "페이지별 방문수 보여줘",
+      "expected": {
+        "kind": [
+          "clarify"
+        ],
+        "sourceChooser": true
+      },
+      "passed": true,
+      "kind": "clarify",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "message": "마케팅 DB, 웹 분석 API 중 어디에서 찾을까요?",
+        "chooser": "어디에서 찾을까요?"
+      },
+      "durationMs": 8482,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 2316.687799999956,
+          "requestBytes": 27522,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "error": "Codex CLI 호출에 실패했습니다. (exceeded retry limit, last status: 429 Too Many Requests)"
+        },
+        {
+          "questions": 0,
+          "durationMs": 6156.185100000002,
+          "waitedMs": 30000,
+          "requestBytes": 27522,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 19037,
+          "cachedInputTokens": 0,
+          "outputTokens": 58,
+          "reasoningTokens": 0,
+          "output": {
+            "kind": "clarify_source",
+            "route": "capability_read",
+            "read": null,
+            "join": null,
+            "transform": null,
+            "parameters": null,
+            "clarify_reads": [
+              "op_50",
+              "op_117"
+            ],
+            "confidence": 0.99
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h4s-ambiguous-carts",
+      "message": "장바구니 데이터 좀 불러와",
+      "expected": {
+        "kind": [
+          "clarify"
+        ],
+        "sourceChooser": true
+      },
+      "passed": true,
+      "kind": "clarify",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "message": "쇼핑몰 DB, DummyJSON 중 어디에서 찾을까요?",
+        "chooser": "어디에서 찾을까요?"
+      },
+      "durationMs": 5988,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 5987.057599999942,
+          "requestBytes": 27524,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 19038,
+          "cachedInputTokens": 0,
+          "outputTokens": 58,
+          "reasoningTokens": 0,
+          "output": {
+            "kind": "clarify_source",
+            "route": "capability_read",
+            "read": null,
+            "join": null,
+            "transform": null,
+            "parameters": null,
+            "clarify_reads": [
+              "op_7",
+              "op_68"
+            ],
+            "confidence": 0.99
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h4s-sales-folder-count",
+      "message": "영업자료 폴더 안 문서들 몇 개나 있어?",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "local_folder.list"
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "local_folder.list",
+        "params": {
+          "folderId": "f-sales",
+          "limit": 20
+        },
+        "tableTransform": "calculate"
+      },
+      "durationMs": 7011,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 7009.660099999979,
+          "requestBytes": 27532,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 19044,
+          "cachedInputTokens": 0,
+          "outputTokens": 51,
+          "reasoningTokens": 0,
+          "output": {
+            "kind": "command",
+            "route": "capability_read",
+            "read": "op_130",
+            "join": null,
+            "transform": "calculate",
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 0.99
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h4s-slack-general",
+      "message": "slack #general 채널 최근 대화 읽어줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": [
+          "slack.messages.read",
+          "slack.messages.search"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "slack.messages.read",
+        "params": {
+          "channel": "#general"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 14037,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 14036.671899999958,
+          "requestBytes": 27506,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 19033,
+          "cachedInputTokens": 8832,
+          "outputTokens": 73,
+          "reasoningTokens": 22,
+          "output": {
+            "kind": "command",
+            "route": "capability_read",
+            "read": "op_128",
+            "join": null,
+            "transform": "none",
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 1
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h4s-mail-tax-settlement",
+      "message": "인사팀에서 온 메일 중 연말정산 관련된 거 찾아줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "gmail.messages.search"
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "gmail.messages.search",
+        "params": {
+          "query": "연말정산"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 8879,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 8878.688599999994,
+          "requestBytes": 27477,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 19033,
+          "cachedInputTokens": 0,
+          "outputTokens": 95,
+          "reasoningTokens": 42,
+          "output": {
+            "kind": "command",
+            "route": "capability_read",
+            "read": "op_126",
+            "join": null,
+            "transform": "none",
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 0.99
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h4s-connected-folders",
+      "message": "지금 연결돼 있는 폴더들 뭐 있지?",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "route": [
+          "connection_list",
+          "source_list",
+          "resource_list"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "source_list",
+      "serviceError": false,
+      "decided": {
+        "command": "route.source_list"
+      },
+      "durationMs": 9240,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 3144.3607000000775,
+          "requestBytes": 27529,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "error": "Codex CLI 호출에 실패했습니다. (exceeded retry limit, last status: 429 Too Many Requests)"
+        },
+        {
+          "questions": 0,
+          "durationMs": 6080.09440000006,
+          "waitedMs": 30000,
+          "requestBytes": 27529,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 19042,
+          "cachedInputTokens": 0,
+          "outputTokens": 48,
+          "reasoningTokens": 0,
+          "output": {
+            "kind": "command",
+            "route": "source_list",
+            "read": null,
+            "join": null,
+            "transform": null,
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 0.99
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h4s-remember-kst",
+      "message": "시간은 항상 한국 시간 기준으로 보여줘. 이거 기억해",
+      "expected": {
+        "kind": [
+          "command",
+          "clarify"
+        ],
+        "route": [
+          "context_remember"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "context_remember",
+      "serviceError": false,
+      "decided": {
+        "command": "route.context_remember"
+      },
+      "durationMs": 5938,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 5937.695999999996,
+          "requestBytes": 27539,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 19041,
+          "cachedInputTokens": 0,
+          "outputTokens": 47,
+          "reasoningTokens": 0,
+          "output": {
+            "kind": "command",
+            "route": "context_remember",
+            "read": null,
+            "join": null,
+            "transform": null,
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 1
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h4s-report-hiring",
+      "message": "인사 DB 데이터로 상반기 채용 현황 보고서 만들어줘",
+      "expected": {
+        "kind": [
+          "command",
+          "clarify"
+        ],
+        "route": [
+          "report_generate"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "report_generate",
+      "serviceError": false,
+      "decided": {
+        "command": "route.report_generate"
+      },
+      "durationMs": 7531,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 7530.6222000001,
+          "requestBytes": 27539,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 19045,
+          "cachedInputTokens": 0,
+          "outputTokens": 75,
+          "reasoningTokens": 25,
+          "output": {
+            "kind": "command",
+            "route": "report_generate",
+            "read": null,
+            "join": null,
+            "transform": null,
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 0.98
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h4s-biweekly-leads",
+      "message": "격주 수요일마다 CRM 신규 리드 수 집계해서 슬랙 #ax테스트에 공유해줘",
+      "expected": {
+        "kind": [
+          "command",
+          "clarify"
+        ],
+        "route": [
+          "workflow_create",
+          "job_propose"
+        ]
+      },
+      "passed": true,
+      "kind": "clarify",
+      "route": "job_propose",
+      "serviceError": false,
+      "decided": {
+        "message": ""
+      },
+      "durationMs": 15646,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 15645.987899999833,
+          "requestBytes": 27520,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 19046,
+          "cachedInputTokens": 0,
+          "outputTokens": 161,
+          "reasoningTokens": 108,
+          "output": {
+            "kind": "clarify_route",
+            "route": "job_propose",
+            "read": null,
+            "join": null,
+            "transform": null,
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 0.93
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h4s-urgent-ticket-trigger",
+      "message": "우선순위 높은 티켓이 새로 생기면 즉시 슬랙으로 알려주는 거 만들어줘",
+      "expected": {
+        "kind": [
+          "command",
+          "clarify"
+        ],
+        "route": [
+          "workflow_create",
+          "job_propose"
+        ]
+      },
+      "passed": true,
+      "kind": "clarify",
+      "route": "job_propose",
+      "serviceError": false,
+      "decided": {
+        "message": ""
+      },
+      "durationMs": 9190,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 9189.449699999997,
+          "requestBytes": 27548,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 19054,
+          "cachedInputTokens": 8832,
+          "outputTokens": 130,
+          "reasoningTokens": 77,
+          "output": {
+            "kind": "clarify_route",
+            "route": "job_propose",
+            "read": null,
+            "join": null,
+            "transform": null,
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 0.96
+          }
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h4s-nightly-coin",
+      "message": "매일 밤 11시에 비트코인 시세 체크해서 메일 보내줘",
+      "expected": {
+        "kind": [
+          "command",
+          "clarify"
+        ],
+        "route": [
+          "workflow_create",
+          "job_propose"
+        ]
+      },
+      "passed": true,
+      "kind": "clarify",
+      "route": "job_propose",
+      "serviceError": false,
+      "decided": {
+        "message": ""
+      },
+      "durationMs": 14001,
+      "calls": [
+        {
+          "questions": 0,
+          "durationMs": 2342.0523999999277,
+          "requestBytes": 27539,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "error": "Codex CLI 호출에 실패했습니다. (exceeded retry limit, last status: 429 Too Many Requests)"
+        },
+        {
+          "questions": 0,
+          "durationMs": 11651.144800000126,
+          "waitedMs": 30000,
+          "requestBytes": 27539,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "transport": "cli",
+          "inputTokens": 19047,
+          "cachedInputTokens": 8832,
+          "outputTokens": 87,
+          "reasoningTokens": 34,
+          "output": {
+            "kind": "clarify_route",
+            "route": "job_propose",
+            "read": null,
+            "join": null,
+            "transform": null,
+            "parameters": null,
+            "clarify_reads": null,
+            "confidence": 0.99
+          }
+        }
+      ]
+    }
+  ]
+}

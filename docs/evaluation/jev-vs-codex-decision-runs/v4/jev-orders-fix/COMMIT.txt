@@ -1,0 +1,18 @@
+commit d1d4ed88b8be44aa9ead98670235e91137bd29d2
+#327 orders fix; eval/ and scripts copied from af883142, product code untouched
+harness and v4 cases from af883142 (exp/place-fact; v4 = d6c2feb0)
+uncommitted in worktree:
+ M packages/core/scripts/decision-compare-report.mjs
+ M packages/core/src/intelligence/commands/chat/routing/eval/codex-decision-engine.ts
+ M packages/core/src/intelligence/commands/chat/routing/eval/decision-compare.live.test.ts
+ M packages/core/src/intelligence/commands/chat/routing/eval/routing-eval.cases.test.ts
+ M packages/core/src/intelligence/commands/chat/routing/eval/routing-eval.cases.ts
+ M packages/core/src/intelligence/commands/chat/routing/eval/routing-eval.holdout-cases.ts
+ M packages/core/src/intelligence/commands/chat/routing/eval/routing-eval.live.test.ts
+ M packages/core/src/intelligence/commands/chat/routing/eval/routing-eval.scale-fixture.ts
+ M packages/core/src/intelligence/commands/chat/routing/eval/routing-eval.workspace.ts
+?? packages/core/src/intelligence/commands/chat/routing/eval/holistic-llm-router.test.ts
+?? packages/core/src/intelligence/commands/chat/routing/eval/holistic-llm-router.ts
+?? packages/core/src/intelligence/commands/chat/routing/eval/prompt-leak.test.ts
+?? packages/core/src/intelligence/commands/chat/routing/eval/routing-eval.holdout3-cases.ts
+?? packages/core/src/intelligence/commands/chat/routing/eval/routing-eval.holdout4-cases.ts

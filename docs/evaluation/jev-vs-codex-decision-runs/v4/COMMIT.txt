@@ -1,0 +1,8 @@
+commit af883142ec7cc132cae184e7a3183415b0fb77fe
+LLM arms on exp/place-fact; routing code identical to 372df8cf; v4 = d6c2feb0
+
+Jev place-fact (jev-run*.h4.json, overhead-jev.json): measured in worktree tmp/arms/place-fact, clean checkout of the same commit:
+commit af883142ec7cc132cae184e7a3183415b0fb77fe
+place-fact (primary arm): clean checkout of af883142, product code identical to 372df8cf
+harness and v4 cases from af883142 (exp/place-fact; v4 = d6c2feb0)
+uncommitted in worktree:

@@ -1,0 +1,2796 @@
+{
+  "summary": [
+    {
+      "arm": "jev original",
+      "runs": 3,
+      "runAccuracy": [
+        0.8289473684210527,
+        0.8157894736842105,
+        0.8289473684210527
+      ],
+      "caseAccuracy2of3": 0.8289473684210527,
+      "casesPassed2of3": 63,
+      "judgments": 228,
+      "counts": {
+        "pass": 188,
+        "asked": 12,
+        "wrong_target": 28
+      },
+      "latency": {
+        "p50": 411,
+        "p95": 797,
+        "casesWithFailedCall": 0,
+        "cleanP50": 411,
+        "cleanP95": 797
+      },
+      "cost1000": 0.9253283421052635
+    },
+    {
+      "arm": "jev orders-fix",
+      "runs": 3,
+      "runAccuracy": [
+        0.9078947368421053,
+        0.9210526315789473,
+        0.9210526315789473
+      ],
+      "caseAccuracy2of3": 0.9210526315789473,
+      "casesPassed2of3": 70,
+      "judgments": 228,
+      "counts": {
+        "pass": 209,
+        "asked": 13,
+        "wrong_target": 6
+      },
+      "latency": {
+        "p50": 518,
+        "p95": 868,
+        "casesWithFailedCall": 0,
+        "cleanP50": 518,
+        "cleanP95": 868
+      },
+      "cost1000": 0.9475621842105265
+    },
+    {
+      "arm": "jev redesign",
+      "runs": 3,
+      "runAccuracy": [
+        0.9078947368421053,
+        0.9078947368421053,
+        0.9210526315789473
+      ],
+      "caseAccuracy2of3": 0.9078947368421053,
+      "casesPassed2of3": 69,
+      "judgments": 228,
+      "counts": {
+        "pass": 208,
+        "asked": 11,
+        "wrong_target": 6,
+        "over_execute": 3
+      },
+      "latency": {
+        "p50": 478,
+        "p95": 992,
+        "casesWithFailedCall": 0,
+        "cleanP50": 478,
+        "cleanP95": 992
+      },
+      "cost1000": 0.8684607105263159
+    },
+    {
+      "arm": "jev control",
+      "runs": 3,
+      "runAccuracy": [
+        0.9078947368421053,
+        0.9078947368421053,
+        0.9078947368421053
+      ],
+      "caseAccuracy2of3": 0.9078947368421053,
+      "casesPassed2of3": 69,
+      "judgments": 228,
+      "counts": {
+        "pass": 207,
+        "asked": 12,
+        "wrong_target": 6,
+        "over_execute": 3
+      },
+      "latency": {
+        "p50": 460,
+        "p95": 1010,
+        "casesWithFailedCall": 0,
+        "cleanP50": 460,
+        "cleanP95": 1010
+      },
+      "cost1000": 0.8678795263157895
+    },
+    {
+      "arm": "jev place-fact",
+      "runs": 3,
+      "runAccuracy": [
+        0.9605263157894737,
+        0.9473684210526315,
+        0.9473684210526315
+      ],
+      "caseAccuracy2of3": 0.9473684210526315,
+      "casesPassed2of3": 72,
+      "judgments": 228,
+      "counts": {
+        "pass": 217,
+        "asked": 3,
+        "wrong_target": 6,
+        "over_execute": 2
+      },
+      "latency": {
+        "p50": 473,
+        "p95": 985,
+        "casesWithFailedCall": 0,
+        "cleanP50": 473,
+        "cleanP95": 985
+      },
+      "cost1000": 0.8688326315789472
+    },
+    {
+      "arm": "codex_gpt-6-luna_high",
+      "runs": 3,
+      "runAccuracy": [
+        0.881578947368421,
+        0.8552631578947368,
+        0.868421052631579
+      ],
+      "caseAccuracy2of3": 0.868421052631579,
+      "casesPassed2of3": 66,
+      "judgments": 228,
+      "counts": {
+        "pass": 198,
+        "over_execute": 18,
+        "asked": 3,
+        "wrong_target": 7,
+        "declined": 2
+      },
+      "latency": {
+        "p50": 16000,
+        "p95": 29811,
+        "casesWithFailedCall": 0,
+        "cleanP50": 16000,
+        "cleanP95": 29811
+      },
+      "cost1000": 3.1919342105263153,
+      "apiEstimate": {
+        "overhead": {
+          "inputTokens": 10553.4,
+          "durationMs": 3974.154499999997
+        },
+        "per1000Usd": 1.7436238947368417,
+        "p50Ms": 11257.845500000003,
+        "p95Ms": 21347.07300000002
+      }
+    },
+    {
+      "arm": "codex_gpt-6.1-sol_medium",
+      "runs": 3,
+      "runAccuracy": [
+        0.9210526315789473,
+        0.9078947368421053,
+        0.9078947368421053
+      ],
+      "caseAccuracy2of3": 0.9078947368421053,
+      "casesPassed2of3": 69,
+      "judgments": 228,
+      "counts": {
+        "pass": 208,
+        "declined": 7,
+        "over_execute": 3,
+        "asked": 3,
+        "wrong_target": 7
+      },
+      "latency": {
+        "p50": 34658,
+        "p95": 59083,
+        "casesWithFailedCall": 28,
+        "cleanP50": 35971,
+        "cleanP95": 60102
+      },
+      "cost1000": 68.62058947368422,
+      "apiEstimate": {
+        "overhead": {
+          "inputTokens": 10554.2,
+          "durationMs": 4601.909
+        },
+        "per1000Usd": 35.8713637719298,
+        "p50Ms": 29369.091,
+        "p95Ms": 44616.273
+      }
+    },
+    {
+      "arm": "holistic_gpt-6-luna_high",
+      "runs": 3,
+      "runAccuracy": [
+        0.9736842105263158,
+        0.9736842105263158,
+        0.9736842105263158
+      ],
+      "caseAccuracy2of3": 0.9736842105263158,
+      "casesPassed2of3": 74,
+      "judgments": 228,
+      "counts": {
+        "pass": 222,
+        "wrong_target": 6
+      },
+      "latency": {
+        "p50": 5466,
+        "p95": 8185,
+        "casesWithFailedCall": 0,
+        "cleanP50": 5466,
+        "cleanP95": 8185
+      },
+      "cost1000": 1.0798076315789469,
+      "apiEstimate": {
+        "overhead": {
+          "inputTokens": 10553.4,
+          "durationMs": 3974.154499999997
+        },
+        "per1000Usd": 0.23122068421052636,
+        "p50Ms": 1491.845500000003,
+        "p95Ms": 4210.845500000003
+      }
+    },
+    {
+      "arm": "holistic_gpt-6.1-sol_medium",
+      "runs": 3,
+      "runAccuracy": [
+        1,
+        1,
+        1
+      ],
+      "caseAccuracy2of3": 1,
+      "casesPassed2of3": 76,
+      "judgments": 228,
+      "counts": {
+        "pass": 228
+      },
+      "latency": {
+        "p50": 7828,
+        "p95": 14202,
+        "casesWithFailedCall": 31,
+        "cleanP50": 7470,
+        "cleanP95": 13028
+      },
+      "cost1000": 26.493277192982465,
+      "apiEstimate": {
+        "overhead": {
+          "inputTokens": 10554.2,
+          "durationMs": 4601.909
+        },
+        "per1000Usd": 7.155795526315789,
+        "p50Ms": 2806.0910000000003,
+        "p95Ms": 8407.091
+      }
+    }
+  ],
+  "pairs": [
+    {
+      "other": "jev original",
+      "bothPass": 62,
+      "onlyJev": [
+        "h4-customer-listup",
+        "h4-customer-where",
+        "h4-db-items-kind",
+        "h4-db-products-query",
+        "h4-top-region",
+        "h4-db-under-10k",
+        "h4s-satisfaction",
+        "h4s-shop-brands",
+        "h4s-carrier-sla",
+        "h4s-warehouse-city"
+      ],
+      "onlyOther": [
+        "h4s-ambiguous-todos"
+      ],
+      "bothFail": [
+        "h4-slack-mention",
+        "h4-report-last-week",
+        "h4s-report-hiring"
+      ],
+      "p": 0.01171875
+    },
+    {
+      "other": "jev orders-fix",
+      "bothPass": 69,
+      "onlyJev": [
+        "h4-customer-listup",
+        "h4s-satisfaction",
+        "h4s-shop-brands"
+      ],
+      "onlyOther": [
+        "h4s-ambiguous-todos"
+      ],
+      "bothFail": [
+        "h4-slack-mention",
+        "h4-report-last-week",
+        "h4s-report-hiring"
+      ],
+      "p": 0.625
+    },
+    {
+      "other": "jev redesign",
+      "bothPass": 69,
+      "onlyJev": [
+        "h4s-satisfaction",
+        "h4s-overdue-sum",
+        "h4s-agents-by-team"
+      ],
+      "onlyOther": [],
+      "bothFail": [
+        "h4-slack-mention",
+        "h4-report-last-week",
+        "h4s-ambiguous-todos",
+        "h4s-report-hiring"
+      ],
+      "p": 0.25
+    },
+    {
+      "other": "jev control",
+      "bothPass": 69,
+      "onlyJev": [
+        "h4s-satisfaction",
+        "h4s-overdue-sum",
+        "h4s-agents-by-team"
+      ],
+      "onlyOther": [],
+      "bothFail": [
+        "h4-slack-mention",
+        "h4-report-last-week",
+        "h4s-ambiguous-todos",
+        "h4s-report-hiring"
+      ],
+      "p": 0.25
+    },
+    {
+      "other": "codex_gpt-6-luna_high",
+      "bothPass": 66,
+      "onlyJev": [
+        "h4-ambiguous-price-list",
+        "h4-follow-rows",
+        "h4s-ambiguous-customer-regions",
+        "h4s-ambiguous-partners",
+        "h4s-ambiguous-pageviews",
+        "h4s-ambiguous-carts"
+      ],
+      "onlyOther": [],
+      "bothFail": [
+        "h4-slack-mention",
+        "h4-report-last-week",
+        "h4s-ambiguous-todos",
+        "h4s-report-hiring"
+      ],
+      "p": 0.03125
+    },
+    {
+      "other": "codex_gpt-6.1-sol_medium",
+      "bothPass": 68,
+      "onlyJev": [
+        "h4-excel-question",
+        "h4-seoul-orders",
+        "h4-ambiguous-price-list",
+        "h4-follow-rows"
+      ],
+      "onlyOther": [
+        "h4s-ambiguous-todos"
+      ],
+      "bothFail": [
+        "h4-slack-mention",
+        "h4-report-last-week",
+        "h4s-report-hiring"
+      ],
+      "p": 0.375
+    },
+    {
+      "other": "holistic_gpt-6-luna_high",
+      "bothPass": 72,
+      "onlyJev": [],
+      "onlyOther": [
+        "h4-slack-mention",
+        "h4s-ambiguous-todos"
+      ],
+      "bothFail": [
+        "h4-report-last-week",
+        "h4s-report-hiring"
+      ],
+      "p": 0.5
+    },
+    {
+      "other": "holistic_gpt-6.1-sol_medium",
+      "bothPass": 72,
+      "onlyJev": [],
+      "onlyOther": [
+        "h4-slack-mention",
+        "h4-report-last-week",
+        "h4s-ambiguous-todos",
+        "h4s-report-hiring"
+      ],
+      "bothFail": [],
+      "p": 0.125
+    }
+  ],
+  "caseTable": [
+    {
+      "id": "h4-excel-question",
+      "message": "조회한 표를 엑셀 파일로도 받을 수 있나요?",
+      "expected": {
+        "kind": [
+          "reply"
+        ]
+      },
+      "workspace": "basic",
+      "byArm": {
+        "jev original": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev orders-fix": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev redesign": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev control": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev place-fact": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "codex_gpt-6-luna_high": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "codex_gpt-6.1-sol_medium": {
+          "passes": 0,
+          "got": [
+            "declined:fallback//undefined",
+            "declined:fallback//undefined",
+            "declined:fallback//undefined"
+          ]
+        },
+        "holistic_gpt-6-luna_high": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "holistic_gpt-6.1-sol_medium": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        }
+      }
+    },
+    {
+      "id": "h4-customer-listup",
+      "message": "쇼핑몰 고객 리스트업 해줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "table": "customers"
+        }
+      },
+      "workspace": "basic",
+      "byArm": {
+        "jev original": {
+          "passes": 0,
+          "got": [
+            "asked:clarify/execution_enqueue_once/undefined",
+            "asked:clarify/execution_enqueue_once/undefined",
+            "asked:clarify/execution_enqueue_once/undefined"
+          ]
+        },
+        "jev orders-fix": {
+          "passes": 0,
+          "got": [
+            "asked:clarify/execution_enqueue_once/undefined",
+            "asked:clarify/execution_enqueue_once/undefined",
+            "asked:clarify/execution_enqueue_once/undefined"
+          ]
+        },
+        "jev redesign": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev control": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev place-fact": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "codex_gpt-6-luna_high": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "codex_gpt-6.1-sol_medium": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "holistic_gpt-6-luna_high": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "holistic_gpt-6.1-sol_medium": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        }
+      }
+    },
+    {
+      "id": "h4-customer-where",
+      "message": "고객별 거주 지역 정리된 거 있어? 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "table": "customers"
+        }
+      },
+      "workspace": "basic",
+      "byArm": {
+        "jev original": {
+          "passes": 0,
+          "got": [
+            "wrong_target:command/capability_read/rdb.query.read:.orders",
+            "wrong_target:command/capability_read/rdb.query.read:.orders",
+            "wrong_target:command/capability_read/rdb.query.read:.orders"
+          ]
+        },
+        "jev orders-fix": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev redesign": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev control": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev place-fact": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "codex_gpt-6-luna_high": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "codex_gpt-6.1-sol_medium": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "holistic_gpt-6-luna_high": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "holistic_gpt-6.1-sol_medium": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        }
+      }
+    },
+    {
+      "id": "h4-db-items-kind",
+      "message": "우리 DB에 올라간 상품들 이름이랑 분류 같이 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "table": "products"
+        }
+      },
+      "workspace": "basic",
+      "byArm": {
+        "jev original": {
+          "passes": 0,
+          "got": [
+            "wrong_target:command/capability_read/rdb.query.read:.orders",
+            "wrong_target:command/capability_read/rdb.query.read:.orders",
+            "wrong_target:command/capability_read/rdb.query.read:.orders"
+          ]
+        },
+        "jev orders-fix": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev redesign": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev control": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev place-fact": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "codex_gpt-6-luna_high": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "codex_gpt-6.1-sol_medium": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "holistic_gpt-6-luna_high": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "holistic_gpt-6.1-sol_medium": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        }
+      }
+    },
+    {
+      "id": "h4-db-products-query",
+      "message": "쇼핑몰 데이터베이스 products 테이블 조회해줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "table": "products"
+        }
+      },
+      "workspace": "basic",
+      "byArm": {
+        "jev original": {
+          "passes": 0,
+          "got": [
+            "wrong_target:command/capability_read/rdb.query.read:.orders",
+            "wrong_target:command/capability_read/rdb.query.read:.orders",
+            "wrong_target:command/capability_read/rdb.query.read:.orders"
+          ]
+        },
+        "jev orders-fix": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev redesign": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev control": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev place-fact": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "codex_gpt-6-luna_high": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "codex_gpt-6.1-sol_medium": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "holistic_gpt-6-luna_high": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "holistic_gpt-6.1-sol_medium": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        }
+      }
+    },
+    {
+      "id": "h4-top-region",
+      "message": "고객 제일 많은 지역이 어디야?",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "table": "customers"
+        },
+        "tableTransform": [
+          "calculate",
+          "sort",
+          "filter_sort"
+        ]
+      },
+      "workspace": "basic",
+      "byArm": {
+        "jev original": {
+          "passes": 0,
+          "got": [
+            "wrong_target:command/capability_read/rdb.query.read:.orders",
+            "wrong_target:command/capability_read/rdb.query.read:.orders",
+            "wrong_target:command/capability_read/rdb.query.read:.orders"
+          ]
+        },
+        "jev orders-fix": {
+          "passes": 2,
+          "got": [
+            "asked:clarify/execution_enqueue_once/undefined",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev redesign": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev control": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev place-fact": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "codex_gpt-6-luna_high": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "codex_gpt-6.1-sol_medium": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "holistic_gpt-6-luna_high": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "holistic_gpt-6.1-sol_medium": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        }
+      }
+    },
+    {
+      "id": "h4-db-under-10k",
+      "message": "DB 상품 중에 만원 이하짜리만 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "table": "products"
+        },
+        "tableTransform": [
+          "filter",
+          "filter_sort"
+        ]
+      },
+      "workspace": "basic",
+      "byArm": {
+        "jev original": {
+          "passes": 0,
+          "got": [
+            "wrong_target:command/capability_read/rdb.query.read:.orders",
+            "wrong_target:command/capability_read/rdb.query.read:.orders",
+            "wrong_target:command/capability_read/rdb.query.read:.orders"
+          ]
+        },
+        "jev orders-fix": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev redesign": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev control": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev place-fact": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "codex_gpt-6-luna_high": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "codex_gpt-6.1-sol_medium": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "holistic_gpt-6-luna_high": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "holistic_gpt-6.1-sol_medium": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        }
+      }
+    },
+    {
+      "id": "h4-db-price-sort",
+      "message": "쇼핑몰 DB 상품들 price 높은 거부터 sort 해서 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "table": "products"
+        },
+        "tableTransform": [
+          "sort",
+          "filter_sort"
+        ]
+      },
+      "workspace": "basic",
+      "byArm": {
+        "jev original": {
+          "passes": 2,
+          "got": [
+            "ok",
+            "wrong_target:command/capability_read/rdb.query.read:.orders",
+            "ok"
+          ]
+        },
+        "jev orders-fix": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev redesign": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev control": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev place-fact": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "codex_gpt-6-luna_high": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "codex_gpt-6.1-sol_medium": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "holistic_gpt-6-luna_high": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "holistic_gpt-6.1-sol_medium": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        }
+      }
+    },
+    {
+      "id": "h4-seoul-orders",
+      "message": "서울 사는 고객들 주문만 따로 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "table": "orders"
+        },
+        "join": [
+          "customers"
+        ],
+        "tableTransform": [
+          "filter",
+          "filter_sort"
+        ]
+      },
+      "workspace": "basic",
+      "byArm": {
+        "jev original": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev orders-fix": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev redesign": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev control": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev place-fact": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "codex_gpt-6-luna_high": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "codex_gpt-6.1-sol_medium": {
+          "passes": 1,
+          "got": [
+            "ok",
+            "wrong_target:command/capability_read/rdb.query.read:.orders",
+            "wrong_target:command/capability_read/rdb.query.read:.orders"
+          ]
+        },
+        "holistic_gpt-6-luna_high": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "holistic_gpt-6.1-sol_medium": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        }
+      }
+    },
+    {
+      "id": "h4-api-carts-call",
+      "message": "dummyjson carts 엔드포인트 호출해서 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "http.request",
+        "params": {
+          "path": "carts"
+        }
+      },
+      "workspace": "basic",
+      "byArm": {
+        "jev original": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev orders-fix": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev redesign": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev control": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev place-fact": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "codex_gpt-6-luna_high": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "codex_gpt-6.1-sol_medium": {
+          "passes": 2,
+          "got": [
+            "ok",
+            "declined:fallback//undefined",
+            "ok"
+          ]
+        },
+        "holistic_gpt-6-luna_high": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "holistic_gpt-6.1-sol_medium": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        }
+      }
+    },
+    {
+      "id": "h4-ambiguous-price-list",
+      "message": "판매 중인 아이템들 가격표 좀 뽑아줘",
+      "expected": {
+        "kind": [
+          "clarify"
+        ],
+        "sourceChooser": true
+      },
+      "workspace": "basic",
+      "byArm": {
+        "jev original": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev orders-fix": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev redesign": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev control": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev place-fact": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "codex_gpt-6-luna_high": {
+          "passes": 0,
+          "got": [
+            "over_execute:command/capability_read/rdb.query.read:.products",
+            "over_execute:command/capability_read/rdb.query.read:.products",
+            "over_execute:command/capability_read/rdb.query.read:.products"
+          ]
+        },
+        "codex_gpt-6.1-sol_medium": {
+          "passes": 0,
+          "got": [
+            "over_execute:command/capability_read/rdb.query.read:.products",
+            "over_execute:command/capability_read/rdb.query.read:.products",
+            "over_execute:command/capability_read/rdb.query.read:.products"
+          ]
+        },
+        "holistic_gpt-6-luna_high": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "holistic_gpt-6.1-sol_medium": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        }
+      }
+    },
+    {
+      "id": "h4-slack-mention",
+      "message": "슬랙에서 나 멘션된 메시지 있나 찾아봐",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "slack.messages.search"
+      },
+      "workspace": "basic",
+      "byArm": {
+        "jev original": {
+          "passes": 0,
+          "got": [
+            "asked:parameterized/capability_read",
+            "asked:parameterized/capability_read",
+            "asked:parameterized/capability_read"
+          ]
+        },
+        "jev orders-fix": {
+          "passes": 0,
+          "got": [
+            "asked:parameterized/capability_read",
+            "asked:parameterized/capability_read",
+            "asked:parameterized/capability_read"
+          ]
+        },
+        "jev redesign": {
+          "passes": 0,
+          "got": [
+            "asked:parameterized/capability_read",
+            "asked:parameterized/capability_read",
+            "asked:parameterized/capability_read"
+          ]
+        },
+        "jev control": {
+          "passes": 0,
+          "got": [
+            "asked:parameterized/capability_read",
+            "asked:parameterized/capability_read",
+            "asked:parameterized/capability_read"
+          ]
+        },
+        "jev place-fact": {
+          "passes": 0,
+          "got": [
+            "asked:parameterized/capability_read",
+            "asked:parameterized/capability_read",
+            "asked:parameterized/capability_read"
+          ]
+        },
+        "codex_gpt-6-luna_high": {
+          "passes": 0,
+          "got": [
+            "asked:parameterized/capability_read",
+            "asked:parameterized/capability_read",
+            "asked:parameterized/capability_read"
+          ]
+        },
+        "codex_gpt-6.1-sol_medium": {
+          "passes": 0,
+          "got": [
+            "asked:parameterized/capability_read",
+            "asked:parameterized/capability_read",
+            "asked:parameterized/capability_read"
+          ]
+        },
+        "holistic_gpt-6-luna_high": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "holistic_gpt-6.1-sol_medium": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        }
+      }
+    },
+    {
+      "id": "h4-report-last-week",
+      "message": "지난주 주문 현황 정리한 보고서 작성해줘",
+      "expected": {
+        "kind": [
+          "command",
+          "clarify"
+        ],
+        "route": [
+          "report_generate"
+        ]
+      },
+      "workspace": "basic",
+      "byArm": {
+        "jev original": {
+          "passes": 0,
+          "got": [
+            "wrong_target:command/capability_read/rdb.query.read:.orders",
+            "wrong_target:command/capability_read/rdb.query.read:.orders",
+            "wrong_target:command/capability_read/rdb.query.read:.orders"
+          ]
+        },
+        "jev orders-fix": {
+          "passes": 0,
+          "got": [
+            "wrong_target:command/capability_read/rdb.query.read:.orders",
+            "wrong_target:command/capability_read/rdb.query.read:.orders",
+            "wrong_target:command/capability_read/rdb.query.read:.orders"
+          ]
+        },
+        "jev redesign": {
+          "passes": 0,
+          "got": [
+            "wrong_target:command/capability_read/rdb.query.read:.orders",
+            "wrong_target:command/capability_read/rdb.query.read:.orders",
+            "wrong_target:command/capability_read/rdb.query.read:.orders"
+          ]
+        },
+        "jev control": {
+          "passes": 0,
+          "got": [
+            "wrong_target:command/capability_read/rdb.query.read:.orders",
+            "wrong_target:command/capability_read/rdb.query.read:.orders",
+            "wrong_target:command/capability_read/rdb.query.read:.orders"
+          ]
+        },
+        "jev place-fact": {
+          "passes": 0,
+          "got": [
+            "wrong_target:command/capability_read/rdb.query.read:.orders",
+            "wrong_target:command/capability_read/rdb.query.read:.orders",
+            "wrong_target:command/capability_read/rdb.query.read:.orders"
+          ]
+        },
+        "codex_gpt-6-luna_high": {
+          "passes": 0,
+          "got": [
+            "wrong_target:command/capability_read/rdb.query.read:.orders",
+            "wrong_target:command/capability_read/rdb.query.read:.orders",
+            "wrong_target:command/capability_read/rdb.query.read:.orders"
+          ]
+        },
+        "codex_gpt-6.1-sol_medium": {
+          "passes": 0,
+          "got": [
+            "wrong_target:command/capability_read/rdb.query.read:.orders",
+            "wrong_target:command/capability_read/rdb.query.read:.orders",
+            "wrong_target:command/capability_read/rdb.query.read:.orders"
+          ]
+        },
+        "holistic_gpt-6-luna_high": {
+          "passes": 0,
+          "got": [
+            "wrong_target:command/capability_read/rdb.query.read:.orders",
+            "wrong_target:command/capability_read/rdb.query.read:.orders",
+            "wrong_target:command/capability_read/rdb.query.read:.orders"
+          ]
+        },
+        "holistic_gpt-6.1-sol_medium": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        }
+      }
+    },
+    {
+      "id": "h4-follow-rows",
+      "message": "방금 나온 표 몇 줄이야?",
+      "expected": {
+        "kind": [
+          "previous_result",
+          "reply"
+        ]
+      },
+      "workspace": "basic",
+      "byArm": {
+        "jev original": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev orders-fix": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev redesign": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev control": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev place-fact": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "codex_gpt-6-luna_high": {
+          "passes": 1,
+          "got": [
+            "ok",
+            "declined:fallback//undefined",
+            "declined:fallback//undefined"
+          ]
+        },
+        "codex_gpt-6.1-sol_medium": {
+          "passes": 0,
+          "got": [
+            "declined:fallback//undefined",
+            "declined:fallback//undefined",
+            "declined:fallback//undefined"
+          ]
+        },
+        "holistic_gpt-6-luna_high": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "holistic_gpt-6.1-sol_medium": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        }
+      }
+    },
+    {
+      "id": "h4s-satisfaction",
+      "message": "티켓 처리 후 받은 만족도 점수랑 코멘트 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "support",
+          "table": "satisfaction_surveys"
+        }
+      },
+      "workspace": "scale",
+      "byArm": {
+        "jev original": {
+          "passes": 0,
+          "got": [
+            "asked:clarify/execution_enqueue_once/undefined",
+            "asked:clarify/execution_enqueue_once/undefined",
+            "asked:clarify/execution_enqueue_once/undefined"
+          ]
+        },
+        "jev orders-fix": {
+          "passes": 0,
+          "got": [
+            "asked:clarify/execution_enqueue_once/undefined",
+            "asked:clarify/execution_enqueue_once/undefined",
+            "asked:clarify/execution_enqueue_once/undefined"
+          ]
+        },
+        "jev redesign": {
+          "passes": 1,
+          "got": [
+            "asked:clarify/execution_enqueue_once/undefined",
+            "asked:clarify/execution_enqueue_once/undefined",
+            "ok"
+          ]
+        },
+        "jev control": {
+          "passes": 0,
+          "got": [
+            "asked:clarify/execution_enqueue_once/undefined",
+            "asked:clarify/execution_enqueue_once/undefined",
+            "asked:clarify/execution_enqueue_once/undefined"
+          ]
+        },
+        "jev place-fact": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "codex_gpt-6-luna_high": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "codex_gpt-6.1-sol_medium": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "holistic_gpt-6-luna_high": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "holistic_gpt-6.1-sol_medium": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        }
+      }
+    },
+    {
+      "id": "h4s-shop-brands",
+      "message": "쇼핑몰에 등록된 상품들 브랜드랑 가격 같이 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "shop",
+          "table": "products"
+        }
+      },
+      "workspace": "scale",
+      "byArm": {
+        "jev original": {
+          "passes": 0,
+          "got": [
+            "asked:clarify/execution_enqueue_once/undefined",
+            "asked:clarify/execution_enqueue_once/undefined",
+            "asked:clarify/execution_enqueue_once/undefined"
+          ]
+        },
+        "jev orders-fix": {
+          "passes": 0,
+          "got": [
+            "asked:clarify/execution_enqueue_once/undefined",
+            "asked:clarify/execution_enqueue_once/undefined",
+            "asked:clarify/execution_enqueue_once/undefined"
+          ]
+        },
+        "jev redesign": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev control": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev place-fact": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "codex_gpt-6-luna_high": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "codex_gpt-6.1-sol_medium": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "holistic_gpt-6-luna_high": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "holistic_gpt-6.1-sol_medium": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        }
+      }
+    },
+    {
+      "id": "h4s-carrier-sla",
+      "message": "택배사들 SLA 기준 일수 확인하고 싶어",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "logistics",
+          "table": "carriers"
+        }
+      },
+      "workspace": "scale",
+      "byArm": {
+        "jev original": {
+          "passes": 0,
+          "got": [
+            "wrong_target:command/capability_read/rdb.query.read:logistics.shipments",
+            "wrong_target:command/capability_read/rdb.query.read:logistics.shipments",
+            "wrong_target:command/capability_read/rdb.query.read:logistics.shipments"
+          ]
+        },
+        "jev orders-fix": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev redesign": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev control": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev place-fact": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "codex_gpt-6-luna_high": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "codex_gpt-6.1-sol_medium": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "holistic_gpt-6-luna_high": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "holistic_gpt-6.1-sol_medium": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        }
+      }
+    },
+    {
+      "id": "h4s-overdue-sum",
+      "message": "결제기한 넘긴 인보이스 금액 다 합치면 얼마야?",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "finance",
+          "table": "invoices"
+        },
+        "tableTransform": [
+          "calculate"
+        ]
+      },
+      "workspace": "scale",
+      "byArm": {
+        "jev original": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev orders-fix": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev redesign": {
+          "passes": 0,
+          "got": [
+            "asked:clarify/execution_enqueue_once/undefined",
+            "asked:clarify/execution_enqueue_once/undefined",
+            "asked:clarify/execution_enqueue_once/undefined"
+          ]
+        },
+        "jev control": {
+          "passes": 0,
+          "got": [
+            "asked:clarify/execution_enqueue_once/undefined",
+            "asked:clarify/execution_enqueue_once/undefined",
+            "asked:clarify/execution_enqueue_once/undefined"
+          ]
+        },
+        "jev place-fact": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "codex_gpt-6-luna_high": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "codex_gpt-6.1-sol_medium": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "holistic_gpt-6-luna_high": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "holistic_gpt-6.1-sol_medium": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        }
+      }
+    },
+    {
+      "id": "h4s-warehouse-city",
+      "message": "도시별로 창고가 몇 개씩 있어?",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "logistics",
+          "table": "warehouses"
+        },
+        "tableTransform": [
+          "calculate"
+        ]
+      },
+      "workspace": "scale",
+      "byArm": {
+        "jev original": {
+          "passes": 0,
+          "got": [
+            "wrong_target:command/capability_read/rdb.query.read:logistics.orders",
+            "wrong_target:command/capability_read/rdb.query.read:logistics.orders",
+            "wrong_target:command/capability_read/rdb.query.read:logistics.orders"
+          ]
+        },
+        "jev orders-fix": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev redesign": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev control": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev place-fact": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "codex_gpt-6-luna_high": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "codex_gpt-6.1-sol_medium": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "holistic_gpt-6-luna_high": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "holistic_gpt-6.1-sol_medium": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        }
+      }
+    },
+    {
+      "id": "h4s-agents-by-team",
+      "message": "상담원 팀별 인원수 알려줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "support",
+          "table": "agents"
+        },
+        "tableTransform": [
+          "calculate"
+        ]
+      },
+      "workspace": "scale",
+      "byArm": {
+        "jev original": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev orders-fix": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev redesign": {
+          "passes": 0,
+          "got": [
+            "asked:clarify/execution_enqueue_once/undefined",
+            "asked:clarify/execution_enqueue_once/undefined",
+            "asked:clarify/execution_enqueue_once/undefined"
+          ]
+        },
+        "jev control": {
+          "passes": 0,
+          "got": [
+            "asked:clarify/execution_enqueue_once/undefined",
+            "asked:clarify/execution_enqueue_once/undefined",
+            "asked:clarify/execution_enqueue_once/undefined"
+          ]
+        },
+        "jev place-fact": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "codex_gpt-6-luna_high": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "codex_gpt-6.1-sol_medium": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "holistic_gpt-6-luna_high": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "holistic_gpt-6.1-sol_medium": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        }
+      }
+    },
+    {
+      "id": "h4s-ambiguous-todos",
+      "message": "투두 리스트 데이터 가져와",
+      "expected": {
+        "kind": [
+          "clarify"
+        ],
+        "sourceChooser": true
+      },
+      "workspace": "scale",
+      "byArm": {
+        "jev original": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev orders-fix": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev redesign": {
+          "passes": 0,
+          "got": [
+            "over_execute:command/capability_read/http.request:dummyjson/todos",
+            "over_execute:command/capability_read/http.request:dummyjson/todos",
+            "over_execute:command/capability_read/http.request:dummyjson/todos"
+          ]
+        },
+        "jev control": {
+          "passes": 0,
+          "got": [
+            "over_execute:command/capability_read/http.request:dummyjson/todos",
+            "over_execute:command/capability_read/http.request:dummyjson/todos",
+            "over_execute:command/capability_read/http.request:dummyjson/todos"
+          ]
+        },
+        "jev place-fact": {
+          "passes": 1,
+          "got": [
+            "ok",
+            "over_execute:command/capability_read/http.request:dummyjson/todos",
+            "over_execute:command/capability_read/http.request:dummyjson/todos"
+          ]
+        },
+        "codex_gpt-6-luna_high": {
+          "passes": 0,
+          "got": [
+            "over_execute:command/capability_read/http.request:dummyjson/todos",
+            "over_execute:command/capability_read/http.request:dummyjson/todos",
+            "over_execute:command/capability_read/http.request:dummyjson/todos"
+          ]
+        },
+        "codex_gpt-6.1-sol_medium": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "holistic_gpt-6-luna_high": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "holistic_gpt-6.1-sol_medium": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        }
+      }
+    },
+    {
+      "id": "h4s-ambiguous-customer-regions",
+      "message": "고객 분포를 지역 기준으로 보고 싶어",
+      "expected": {
+        "kind": [
+          "clarify"
+        ],
+        "sourceChooser": true
+      },
+      "workspace": "scale",
+      "byArm": {
+        "jev original": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev orders-fix": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev redesign": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev control": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev place-fact": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "codex_gpt-6-luna_high": {
+          "passes": 0,
+          "got": [
+            "over_execute:command/capability_read/rdb.query.read:shop.customers",
+            "over_execute:command/capability_read/rdb.query.read:shop.customers",
+            "over_execute:command/capability_read/rdb.query.read:shop.customers"
+          ]
+        },
+        "codex_gpt-6.1-sol_medium": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "holistic_gpt-6-luna_high": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "holistic_gpt-6.1-sol_medium": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        }
+      }
+    },
+    {
+      "id": "h4s-ambiguous-partners",
+      "message": "협력업체 리스트 보여줘",
+      "expected": {
+        "kind": [
+          "clarify"
+        ],
+        "sourceChooser": true
+      },
+      "workspace": "scale",
+      "byArm": {
+        "jev original": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev orders-fix": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev redesign": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev control": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev place-fact": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "codex_gpt-6-luna_high": {
+          "passes": 0,
+          "got": [
+            "over_execute:command/capability_read/rdb.query.read:inventory.suppliers",
+            "over_execute:command/capability_read/rdb.query.read:inventory.suppliers",
+            "over_execute:command/capability_read/rdb.query.read:erp.tb_vndr_mst"
+          ]
+        },
+        "codex_gpt-6.1-sol_medium": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "holistic_gpt-6-luna_high": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "holistic_gpt-6.1-sol_medium": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        }
+      }
+    },
+    {
+      "id": "h4s-ambiguous-pageviews",
+      "message": "페이지별 방문수 보여줘",
+      "expected": {
+        "kind": [
+          "clarify"
+        ],
+        "sourceChooser": true
+      },
+      "workspace": "scale",
+      "byArm": {
+        "jev original": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev orders-fix": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev redesign": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev control": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev place-fact": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "codex_gpt-6-luna_high": {
+          "passes": 0,
+          "got": [
+            "over_execute:command/capability_read/rdb.query.read:marketing.web_visits",
+            "over_execute:command/capability_read/rdb.query.read:marketing.web_visits",
+            "over_execute:command/capability_read/rdb.query.read:marketing.web_visits"
+          ]
+        },
+        "codex_gpt-6.1-sol_medium": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "holistic_gpt-6-luna_high": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "holistic_gpt-6.1-sol_medium": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        }
+      }
+    },
+    {
+      "id": "h4s-ambiguous-carts",
+      "message": "장바구니 데이터 좀 불러와",
+      "expected": {
+        "kind": [
+          "clarify"
+        ],
+        "sourceChooser": true
+      },
+      "workspace": "scale",
+      "byArm": {
+        "jev original": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev orders-fix": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev redesign": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev control": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev place-fact": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "codex_gpt-6-luna_high": {
+          "passes": 0,
+          "got": [
+            "over_execute:command/capability_read/rdb.query.read:shop.carts",
+            "over_execute:command/capability_read/rdb.query.read:shop.carts",
+            "over_execute:command/capability_read/rdb.query.read:shop.carts"
+          ]
+        },
+        "codex_gpt-6.1-sol_medium": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "holistic_gpt-6-luna_high": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "holistic_gpt-6.1-sol_medium": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        }
+      }
+    },
+    {
+      "id": "h4s-sales-folder-count",
+      "message": "영업자료 폴더 안 문서들 몇 개나 있어?",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "local_folder.list"
+      },
+      "workspace": "scale",
+      "byArm": {
+        "jev original": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev orders-fix": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev redesign": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev control": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "jev place-fact": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "codex_gpt-6-luna_high": {
+          "passes": 2,
+          "got": [
+            "ok",
+            "wrong_target:command/source_list/undefined",
+            "ok"
+          ]
+        },
+        "codex_gpt-6.1-sol_medium": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "holistic_gpt-6-luna_high": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        },
+        "holistic_gpt-6.1-sol_medium": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        }
+      }
+    },
+    {
+      "id": "h4s-report-hiring",
+      "message": "인사 DB 데이터로 상반기 채용 현황 보고서 만들어줘",
+      "expected": {
+        "kind": [
+          "command",
+          "clarify"
+        ],
+        "route": [
+          "report_generate"
+        ]
+      },
+      "workspace": "scale",
+      "byArm": {
+        "jev original": {
+          "passes": 0,
+          "got": [
+            "wrong_target:command/capability_read/rdb.query.read:hr.payroll",
+            "wrong_target:command/capability_read/rdb.query.read:hr.payroll",
+            "wrong_target:command/capability_read/rdb.query.read:hr.payroll"
+          ]
+        },
+        "jev orders-fix": {
+          "passes": 0,
+          "got": [
+            "wrong_target:command/capability_read/rdb.query.read:hr.employees",
+            "wrong_target:command/capability_read/rdb.query.read:hr.employees",
+            "wrong_target:command/capability_read/rdb.query.read:hr.employees"
+          ]
+        },
+        "jev redesign": {
+          "passes": 0,
+          "got": [
+            "wrong_target:command/capability_read/rdb.query.read:hr.employees",
+            "wrong_target:command/capability_read/rdb.query.read:hr.employees",
+            "wrong_target:command/capability_read/rdb.query.read:hr.employees"
+          ]
+        },
+        "jev control": {
+          "passes": 0,
+          "got": [
+            "wrong_target:command/capability_read/rdb.query.read:hr.employees",
+            "wrong_target:command/capability_read/rdb.query.read:hr.employees",
+            "wrong_target:command/capability_read/rdb.query.read:hr.employees"
+          ]
+        },
+        "jev place-fact": {
+          "passes": 0,
+          "got": [
+            "wrong_target:command/capability_read/rdb.query.read:hr.employees",
+            "wrong_target:command/capability_read/rdb.query.read:hr.employees",
+            "wrong_target:command/capability_read/rdb.query.read:hr.employees"
+          ]
+        },
+        "codex_gpt-6-luna_high": {
+          "passes": 0,
+          "got": [
+            "wrong_target:command/capability_read/rdb.query.read:hr.employees",
+            "wrong_target:command/capability_read/rdb.query.read:hr.employees",
+            "wrong_target:command/capability_read/rdb.query.read:hr.employees"
+          ]
+        },
+        "codex_gpt-6.1-sol_medium": {
+          "passes": 1,
+          "got": [
+            "wrong_target:command/capability_read/rdb.query.read:hr.employees",
+            "ok",
+            "wrong_target:command/capability_read/rdb.query.read:hr.employees"
+          ]
+        },
+        "holistic_gpt-6-luna_high": {
+          "passes": 0,
+          "got": [
+            "wrong_target:command/capability_read/rdb.query.read:hr.employees",
+            "wrong_target:command/capability_read/rdb.query.read:hr.employees",
+            "wrong_target:command/capability_read/rdb.query.read:hr.employees"
+          ]
+        },
+        "holistic_gpt-6.1-sol_medium": {
+          "passes": 3,
+          "got": [
+            "ok",
+            "ok",
+            "ok"
+          ]
+        }
+      }
+    }
+  ]
+}
