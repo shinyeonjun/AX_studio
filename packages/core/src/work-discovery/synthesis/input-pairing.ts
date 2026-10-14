@@ -4,7 +4,7 @@ import type { SourceDescriptor } from '../schema.js';
 type SnapshotsByExample = Record<string, Record<string, TableArtifact>>;
 
 /** Example `exampleId` reads `sourceId`'s table under `sharedId` (the first example's file). */
-export interface InputBinding {
+interface InputBinding {
   exampleId: string;
   sharedId: string;
   sourceId: string;

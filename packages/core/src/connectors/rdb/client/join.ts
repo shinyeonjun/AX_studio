@@ -13,7 +13,7 @@ export interface RdbJoin {
   references: string;
 }
 
-export const MAX_RDB_JOINS = 3;
+const MAX_RDB_JOINS = 3;
 
 export class RdbJoinError extends Error {
   constructor(readonly reason: 'invalid_join' | 'table_not_allowed' | 'join_column_unknown' | 'join_key_not_unique') {

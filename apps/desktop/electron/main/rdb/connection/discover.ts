@@ -3,7 +3,7 @@ import { readRdbSecrets } from './secrets.js';
 import { rdbProbeErrorMessage } from './probe-message.js';
 
 /** More than this is a database to search, not a list to scroll; the rest stay typeable. */
-export const MAX_DISCOVERED_TABLES = 1_000;
+const MAX_DISCOVERED_TABLES = 1_000;
 
 export interface DiscoveredRdbTables {
   tables: string[];

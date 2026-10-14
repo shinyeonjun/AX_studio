@@ -5,7 +5,7 @@ import { ClarificationQuestionSchema } from '../clarification/types.js';
 import { OutputContractSchema } from '../../contracts/output-contract.js';
 import { DiscoveryRecoveryCheckpointSchema, DiscoveryStatusSchema } from './status.js';
 
-export const SourceDescriptorSchema = z.object({
+const SourceDescriptorSchema = z.object({
   id: z.string(),
   connector: z.string(),
   label: z.string(),
@@ -15,7 +15,7 @@ export const SourceDescriptorSchema = z.object({
   metadata: z.record(z.unknown()).optional(),
 });
 
-export const CandidateProgramSchema = z.object({
+const CandidateProgramSchema = z.object({
   id: z.string(),
   observationPath: z.string(),
   expr: TransformExprSchema,
@@ -34,7 +34,7 @@ export const CandidateProgramSchema = z.object({
   status: z.enum(['candidate', 'accepted', 'rejected', 'needs_clarification']).default('candidate'),
 });
 
-export const DiscoveryBlueprintSchema = z.object({
+const DiscoveryBlueprintSchema = z.object({
   id: z.string(),
   sessionId: z.string(),
   name: z.string(),

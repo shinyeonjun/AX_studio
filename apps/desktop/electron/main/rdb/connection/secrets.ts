@@ -2,9 +2,9 @@ import { DEFAULT_RDB_DATABASE_ID } from '@ax-studio/core';
 import { deleteOsSecret, getOsSecret, setOsSecret } from '../../credential-store.js';
 
 /** Every database's connection string, keyed by database id, in one OS secret. */
-export const RDB_SECRET_NAME = 'rdb.connection-strings';
+const RDB_SECRET_NAME = 'rdb.connection-strings';
 /** The single connection string saved before several databases were possible. */
-export const LEGACY_RDB_SECRET_NAME = 'rdb.connection-string';
+const LEGACY_RDB_SECRET_NAME = 'rdb.connection-string';
 
 export type RdbDatabaseSecrets = Record<string, { connectionString: string }>;
 

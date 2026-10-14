@@ -7,9 +7,7 @@ import {
   type TriggerReceiptStatus,
 } from '../../domain/trigger-receipt-state.js';
 
-export { DEFAULT_TRIGGER_RECEIPT_PROCESSING_LEASE_MS } from '../../domain/trigger-receipt-state.js';
 
-export type { TriggerReceiptStatus };
 
 export function claimTriggerReceipt(
   db: AppDatabase,

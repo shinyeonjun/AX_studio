@@ -25,7 +25,7 @@ function formatDetectedAt(iso: string): string {
 }
 
 /** Number of stored rows skipped because they could not be parsed (0 when unknown). */
-export function corruptRowCount(state: AppState | null): number {
+function corruptRowCount(state: AppState | null): number {
   const total = state?.corruptRows?.total;
   return typeof total === 'number' && total > 0 ? total : 0;
 }

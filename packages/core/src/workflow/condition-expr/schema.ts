@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const ConditionValueSchema = z.union([
+const ConditionValueSchema = z.union([
   z.object({ ref: z.string().min(1) }),
   z.object({ lit: z.union([z.string(), z.number(), z.boolean()]) }),
 ]);
@@ -8,10 +8,10 @@ export const ConditionValueSchema = z.union([
 export type ConditionValue = z.infer<typeof ConditionValueSchema>;
 
 /** Maximum JSON nesting accepted for stored/LLM-authored ConditionExpr and TransformExpr trees. */
-export const MAX_EXPRESSION_NESTING_DEPTH = 64;
+const MAX_EXPRESSION_NESTING_DEPTH = 64;
 
 /** Bounded walk: never recurses deeper than the limit, so hostile input cannot overflow the stack. */
-export function exceedsNestingDepth(value: unknown, limit = MAX_EXPRESSION_NESTING_DEPTH): boolean {
+function exceedsNestingDepth(value: unknown, limit = MAX_EXPRESSION_NESTING_DEPTH): boolean {
   if (!value || typeof value !== 'object') return false;
   if (limit <= 0) return true;
   const children = Array.isArray(value) ? value : Object.values(value as Record<string, unknown>);

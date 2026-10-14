@@ -4,7 +4,7 @@ import { appendAppLog, flushAppLogSync } from '@ax-studio/core';
 import { getDesktopLogDirectory } from '../file-log.js';
 import { MAIN_CRASH_POLICY, recordPersistentCrash } from './crash-guard.js';
 
-export const CRASH_HISTORY_FILE = 'crash-history.json';
+const CRASH_HISTORY_FILE = 'crash-history.json';
 
 export function crashHistoryPath(): string {
   return join(getDesktopLogDirectory(), CRASH_HISTORY_FILE);

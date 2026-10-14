@@ -31,20 +31,20 @@ export interface WorkSummary {
 }
 
 /** The core dead-letter record without `workflowId`: the part the screen shows. */
-export type TriggerDeadLetterSummary = Omit<TriggerDeadLetter, 'workflowId'>;
+type TriggerDeadLetterSummary = Omit<TriggerDeadLetter, 'workflowId'>;
 
 /** The core outcome as the screen shows it; `status` is an execution status (`success`, `failed`, ...) or `skipped`. */
-export type SchedulerOccurrenceOutcomeSummary = SchedulerOccurrenceOutcome;
+type SchedulerOccurrenceOutcomeSummary = SchedulerOccurrenceOutcome;
 
 /** Mirrors core `CorruptRowReport`: identifiers and error codes only, never row payloads. */
-export interface CorruptRowEntry {
+interface CorruptRowEntry {
   table: string;
   id: string;
   code: string;
   detectedAt: string;
 }
 
-export interface CorruptRowSummary {
+interface CorruptRowSummary {
   total: number;
   byTable: Record<string, number>;
   /** Newest first, at most 50. */

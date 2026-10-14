@@ -4,7 +4,7 @@
  * one of them, so the rule is stated once and enforced atomically by the database.
  */
 
-export const APPROVAL_STATUSES = ['pending', 'processing', 'approved', 'rejected', 'failed'] as const;
+const APPROVAL_STATUSES = ['pending', 'processing', 'approved', 'rejected', 'failed'] as const;
 export type ApprovalStatus = (typeof APPROVAL_STATUSES)[number];
 
 export type ApprovalTransition =

@@ -1,6 +1,4 @@
 export {
-  RepairCandidateOperationSchema,
-  RepairReplayCaseSchema,
   RepairReplaySummarySchema,
   RepairProposalSchema,
 } from './repair/contract.js';

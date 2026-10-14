@@ -8,7 +8,7 @@ export interface MarkdownSection {
  * entity. Message text is data written for people, so these are escaped: a value that happens to
  * contain `<!channel>` must not notify everyone.
  */
-export function escapeSlackText(text: string): string {
+function escapeSlackText(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 

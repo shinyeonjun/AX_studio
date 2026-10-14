@@ -12,10 +12,6 @@ import { webhookModulePackage } from './webhook.js';
 
 export {
   CAPABILITY_CATALOG,
-  CONNECTOR_CATALOG,
-  CONNECTOR_IDS,
-  getCapability,
-  getCapabilitiesForConnector,
 } from '../../catalog/data.js';
 
 export const ALL_MODULE_PACKAGES: ModulePackage[] = [

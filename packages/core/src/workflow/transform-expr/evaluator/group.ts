@@ -24,7 +24,7 @@ export function groupKeyOf(row: TableArtifact['rows'][number], column: string): 
 type GroupExpr = Extract<TransformExpr, { op: 'group' }>;
 
 /** Key columns of a group expression, outermost first, with their output headers. */
-export function groupKeySpecs(expr: Pick<GroupExpr, 'by' | 'keyAs' | 'thenBy'>): Array<{ by: string; as: string }> {
+function groupKeySpecs(expr: Pick<GroupExpr, 'by' | 'keyAs' | 'thenBy'>): Array<{ by: string; as: string }> {
   return [
     { by: expr.by, as: expr.keyAs ?? expr.by },
     ...(expr.thenBy ?? []).map((entry) => ({ by: entry.by, as: entry.keyAs ?? entry.by })),

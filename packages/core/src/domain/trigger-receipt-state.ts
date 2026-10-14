@@ -4,7 +4,7 @@
  * performs each change as a conditional write, so two workers cannot both win a claim.
  */
 
-export const TRIGGER_RECEIPT_STATUSES = ['processing', 'completed', 'failed', 'dead'] as const;
+const TRIGGER_RECEIPT_STATUSES = ['processing', 'completed', 'failed', 'dead'] as const;
 export type TriggerReceiptStatus = (typeof TRIGGER_RECEIPT_STATUSES)[number];
 
 /** A receipt left in processing longer than this may belong to a crashed worker. */

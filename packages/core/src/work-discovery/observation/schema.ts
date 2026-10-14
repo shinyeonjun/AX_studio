@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const ObservationValueSchema = z.discriminatedUnion('kind', [
+const ObservationValueSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('text'), value: z.string() }),
   z.object({
     kind: z.literal('number'),

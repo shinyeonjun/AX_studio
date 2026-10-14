@@ -2,7 +2,7 @@ import type { AxCommand, AxCommandResult } from '../../schema.js';
 import { gatherHttpPages, gatheredCompleteness } from '../../../../connectors/http/connector/pagination.js';
 import { httpResponseFromResult } from './read-tables.js';
 
-export { MAX_HTTP_PAGES, MAX_HTTP_ROWS, nextHttpPagePath } from '../../../../connectors/http/connector/pagination.js';
+export { MAX_HTTP_ROWS, nextHttpPagePath } from '../../../../connectors/http/connector/pagination.js';
 
 function readableBody(result: AxCommandResult): string | undefined {
   if (result.status !== 'ok') return undefined;

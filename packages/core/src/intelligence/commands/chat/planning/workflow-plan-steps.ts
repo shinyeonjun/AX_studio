@@ -43,7 +43,7 @@ export interface PlannedAction {
   bindings: Record<string, PortBinding>;
 }
 
-export type AiDecisionStep = Extract<Step, { type: 'ai_decision' }>;
+type AiDecisionStep = Extract<Step, { type: 'ai_decision' }>;
 
 export interface PlannedAiDecision {
   kind: 'ai_decision';
@@ -241,7 +241,7 @@ export function initialCandidates(input: {
   ];
 }
 
-export function aiInputPort(type: ContractTypeName): string | undefined {
+function aiInputPort(type: ContractTypeName): string | undefined {
   switch (type) {
     case 'TextArtifact': return 'sourceText';
     case 'DocumentArtifact': return 'document';
@@ -396,7 +396,7 @@ export function reviewStep(step: PlannedStep, request: string) {
       inputs: step.step.inputContracts ?? {}, outputs: { conclusion: 'TextArtifact' }, bindings: step.step.bindings ?? {} };
 }
 
-export function composeQuestion(
+function composeQuestion(
   target: { step: PlannedAction; port: string },
   sources: readonly OutputChoice[],
 ): Record<string, DecisionQuestion> {

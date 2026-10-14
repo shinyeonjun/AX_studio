@@ -3,7 +3,7 @@ import type { TableArtifact } from './table.js';
 /** Column name → the Korean header people read ("total_amount" → "총 금액"). */
 export type ColumnLabels = Record<string, string>;
 
-export const MAX_COLUMN_LABEL_CHARS = 30;
+const MAX_COLUMN_LABEL_CHARS = 30;
 const MAX_REMEMBERED_LABELS = 2_000;
 const HANGUL = /[가-힣]/u;
 const LATIN = /[A-Za-z]/u;

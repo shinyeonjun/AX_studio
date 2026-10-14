@@ -5,7 +5,6 @@ import { listRepairProposals } from './repair-gateway/list.js';
 import { rejectRepairProposal } from './repair-gateway/reject.js';
 export type {
   RepairCommandGateway,
-  RepairCommandResult,
   RepairGatewayOptions,
 } from './repair-gateway/contracts.js';
 import type { RepairCommandGateway, RepairGatewayOptions } from './repair-gateway/contracts.js';

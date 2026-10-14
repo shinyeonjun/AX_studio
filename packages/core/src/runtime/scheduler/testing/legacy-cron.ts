@@ -75,32 +75,6 @@ function hasPossibleCalendarDate(parsed: ParsedCronExpression): boolean {
   });
 }
 
-export function compileCronMatcher(expr: string, timeZone?: string): ((date: Date) => boolean) | undefined {
-  const parsed = parseCronExpression(expr);
-  if (!parsed || !hasPossibleCalendarDate(parsed)) return undefined;
-  const formatter = timeZone ? createCronFormatter(timeZone) : undefined;
-  if (timeZone && !formatter) return undefined;
-
-  return (date) => {
-    const current = formatter
-      ? zonedDateParts(date, formatter)
-      : {
-          minute: date.getMinutes(),
-          hour: date.getHours(),
-          day: date.getDate(),
-          month: date.getMonth() + 1,
-          weekday: date.getDay(),
-        };
-    if (!current) return false;
-
-    return (
-      parsed.minute.has(current.minute) &&
-      parsed.hour.has(current.hour) &&
-      calendarDayMatches(parsed, current.month, current.day, current.weekday)
-    );
-  };
-}
-
 function latestCronMatchOnDate(
   parsed: ParsedCronExpression,
   date: Date,

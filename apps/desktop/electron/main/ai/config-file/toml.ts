@@ -29,7 +29,7 @@ function readBasicString(raw: string): string {
 }
 
 /** Decodes one TOML scalar, ignoring a trailing `# comment`. */
-export function parseTomlValue(raw: string): string {
+function parseTomlValue(raw: string): string {
   const trimmed = raw.trim();
   if (trimmed.startsWith('"')) return readBasicString(trimmed.slice(1));
   if (trimmed.startsWith("'")) {
@@ -102,7 +102,7 @@ export function parseAiToml(content: string): AiTomlConfig {
   return config;
 }
 
-export function escapeTomlString(value: string): string {
+function escapeTomlString(value: string): string {
   const body = value.replace(/[\\"\u0000-\u001f\u007f]/g, (char) => {
     const named = { '\\': '\\\\', '"': '\\"', '\n': '\\n', '\r': '\\r', '\t': '\\t', '\b': '\\b', '\f': '\\f' }[char];
     return named ?? `\\u${char.charCodeAt(0).toString(16).padStart(4, '0')}`;

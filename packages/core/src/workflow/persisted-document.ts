@@ -14,19 +14,19 @@ import { resolveEffectiveSideEffect } from './side-effect-resolve.js';
 
 export const WORKFLOW_DOCUMENT_FORMAT = 'workflow-document@1' as const;
 
-export const GraphActionStepSchema = z.object({
+const GraphActionStepSchema = z.object({
   type: z.literal('action'),
   id: z.string(),
 });
 
-export const GraphStepSchema = z.discriminatedUnion('type', [
+const GraphStepSchema = z.discriminatedUnion('type', [
   GraphActionStepSchema,
   AiDecisionStepSchema,
   IfStepSchema,
   HumanApprovalStepSchema,
 ]);
 
-export const StoredWorkflowDocumentSchema = z.object({
+const StoredWorkflowDocumentSchema = z.object({
   format: z.literal(WORKFLOW_DOCUMENT_FORMAT),
   workflow: WorkflowIRSchema.omit({ steps: true }).extend({
     steps: z.array(GraphStepSchema),
@@ -35,7 +35,6 @@ export const StoredWorkflowDocumentSchema = z.object({
 });
 
 export type StoredWorkflowDocument = z.infer<typeof StoredWorkflowDocumentSchema>;
-export type { ActionInstance };
 
 function enrichActionStep(
   graphStep: z.infer<typeof GraphActionStepSchema>,

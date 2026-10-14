@@ -54,7 +54,7 @@ function readLine(hint: JevReadOperationHint): string {
 }
 
 /** Step 1 for `reads`; `resolve` false asks only about relations (a plan keeps every read). */
-export function readDecisionQuestions(reads: readonly JevReadOperationHint[], resolve: boolean): Record<string, DecisionQuestion> {
+function readDecisionQuestions(reads: readonly JevReadOperationHint[], resolve: boolean): Record<string, DecisionQuestion> {
   const questions: Record<string, DecisionQuestion> = {};
   if (resolve && reads.length >= 2) {
     questions.record_read = {
@@ -109,7 +109,7 @@ export function readDecisionQuestions(reads: readonly JevReadOperationHint[], re
  * as one sentence ("another place holds them and nothing tells which") or as one question over
  * every place, Jev answered near 0.5 even for a request naming the place.
  */
-export function placeQuestions(chosen: JevReadOperationHint, elsewhere: readonly JevReadOperationHint[]): Record<string, DecisionQuestion> {
+function placeQuestions(chosen: JevReadOperationHint, elsewhere: readonly JevReadOperationHint[]): Record<string, DecisionQuestion> {
   return {
     same_records_elsewhere: {
       type: 'boolean',
@@ -156,7 +156,7 @@ function otherPlaces(chosen: JevReadOperationHint, reads: readonly JevReadOperat
  * nothing says which place → ask; no read holds them on its own → plan them all, which asks when
  * they do not fit together.
  */
-export function readOutcome(reads: readonly JevReadOperationHint[], answers: Record<string, DecisionAnswer>): ReadOutcome {
+function readOutcome(reads: readonly JevReadOperationHint[], answers: Record<string, DecisionAnswer>): ReadOutcome {
   if (reads.length === 1) return { kind: 'one', hint: reads[0]! };
   if ((probability(answers.combine_sources) ?? 0) > 0.5) return { kind: 'several', hints: reads };
   const picked = /^read_(\d+)$/u.exec(choiceAnswer(answers.record_read)?.choice ?? '');
@@ -174,7 +174,7 @@ export function readOutcome(reads: readonly JevReadOperationHint[], answers: Rec
 }
 
 /** The read with the relations Jev said the request needs joined on. */
-export function withAttachedRelations(hint: JevReadOperationHint, readIndex: number, answers: Record<string, DecisionAnswer>): JevReadOperationHint {
+function withAttachedRelations(hint: JevReadOperationHint, readIndex: number, answers: Record<string, DecisionAnswer>): JevReadOperationHint {
   const attached = (hint.relations ?? []).filter((_, relationIndex) => (probability(answers[`attach_${readIndex}_${relationIndex}`]) ?? 0) > 0.5);
   if (attached.length === 0) return hint;
   return {

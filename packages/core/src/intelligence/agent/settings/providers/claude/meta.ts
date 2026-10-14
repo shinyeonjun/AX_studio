@@ -17,7 +17,7 @@ export const CLAUDE_CLI_MODELS: CliModelOption[] = [
 ];
 
 /** Exact Anthropic API ids; labels name the model each id resolves to. */
-export const CLAUDE_API_MODELS: CliModelOption[] = [
+const CLAUDE_API_MODELS: CliModelOption[] = [
   claudeModel('claude-sonnet-4-6', 'Sonnet 4.6'),
   claudeModel('claude-sonnet-5-5', 'Sonnet 5.5'),
   claudeModel('claude-opus-5-5', 'Opus 5.5'),
@@ -26,7 +26,7 @@ export const CLAUDE_API_MODELS: CliModelOption[] = [
   claudeModel('claude-haiku-4-5', 'Haiku 4.5'),
 ];
 
-export const CLAUDE_API_DEFAULT_MODEL = 'claude-sonnet-4-6';
+const CLAUDE_API_DEFAULT_MODEL = 'claude-sonnet-4-6';
 
 export const CLAUDE_META = {
   label: 'Claude CLI',
@@ -55,9 +55,4 @@ export function resolveClaudeCliModelId(id: string): string {
   if (aliased) return aliased;
   if (CLAUDE_CLI_MODELS.some((model) => model.id === withoutContext)) return withoutContext;
   return CLAUDE_META.defaultModel;
-}
-
-export function labelClaudeModelId(id: string): CliModelOption {
-  const resolved = resolveClaudeCliModelId(id);
-  return CLAUDE_CLI_MODELS.find((model) => model.id === resolved) ?? claudeModel(resolved, resolved);
 }

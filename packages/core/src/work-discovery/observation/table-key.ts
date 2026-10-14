@@ -6,7 +6,7 @@ export function normalizeCellText(value: unknown): string {
 type KeyedTable = { columns: string[]; rows: Array<Record<string, unknown>> };
 
 /** Search bound, not semantics: report rows are identified by at most this many text columns. */
-export const MAX_TABLE_KEY_COLUMNS = 3;
+const MAX_TABLE_KEY_COLUMNS = 3;
 
 function cellOf(row: Record<string, unknown>, column: string): unknown {
   return Object.hasOwn(row, column) ? row[column] : null;
@@ -20,7 +20,7 @@ export function tableRowKey(row: Record<string, unknown>, columns: readonly stri
 }
 
 /** The first column whose every value is distinct non-empty text: it identifies the table's rows. */
-export function tableKeyColumn(table: KeyedTable): string | undefined {
+function tableKeyColumn(table: KeyedTable): string | undefined {
   return table.columns.find((column) => {
     const keys = table.rows.map((row) => cellOf(row, column));
     if (!keys.every((key) => typeof key === 'string' && normalizeCellText(key) !== '')) return false;

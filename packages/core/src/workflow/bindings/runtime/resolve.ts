@@ -59,7 +59,7 @@ export function resolveAiDecisionBindings(
   return { bound, documentText, emailBody, hasDocumentArtifact, usesExplicitBindings };
 }
 
-export function resolveTriggerOutput(
+function resolveTriggerOutput(
   outputPort: string,
   variables: Record<string, unknown>,
 ): unknown {
@@ -81,7 +81,7 @@ export function resolveTriggerOutput(
   return readOwnPath(variables, [outputPort]);
 }
 
-export function extractStepOutput(
+function extractStepOutput(
   step: Extract<Step, { type: 'action' }>,
   outputPort: string,
   data: unknown,

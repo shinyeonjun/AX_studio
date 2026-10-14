@@ -1,5 +1,4 @@
 export type {
-  DiscoveryExampleRecord,
   DiscoverySnapshotRecord,
   DiscoveryReplayCaseRecord,
 } from './work-discovery-repository/contracts.js';

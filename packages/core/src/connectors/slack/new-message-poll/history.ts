@@ -10,7 +10,7 @@ function isUserMessage(message: { type?: string; subtype?: string; ts?: string; 
   return isMessageWithText(message) && Boolean(message.ts);
 }
 
-export const SLACK_HISTORY_SCAN_LIMIT = 10_000;
+const SLACK_HISTORY_SCAN_LIMIT = 10_000;
 
 export async function collectSlackHistory(
   client: WebClient,

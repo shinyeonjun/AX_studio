@@ -13,7 +13,7 @@ export const AUTO_RESUME_STATUSES: ReadonlySet<DiscoverySessionState['status']> 
 ]);
 
 /** Numbers without the report's own formatting get thousands separators (10479300 -> 10,479,300). */
-export function displayNumber(value: unknown): string {
+function displayNumber(value: unknown): string {
   return typeof value === 'number' && Number.isFinite(value)
     ? value.toLocaleString('ko-KR', { maximumFractionDigits: 6 })
     : String(value ?? '');

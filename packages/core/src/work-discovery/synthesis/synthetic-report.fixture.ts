@@ -7,7 +7,7 @@
 import { buildTableArtifact } from '../../contracts/artifacts/table-build.js';
 import type { TableArtifact } from '../../contracts/artifacts/table.js';
 
-export function mulberry32(seed: number): () => number {
+function mulberry32(seed: number): () => number {
   let state = seed >>> 0;
   return () => {
     state = (state + 0x6d2b79f5) >>> 0;
@@ -64,9 +64,9 @@ const CATEGORY_NAMES = [
 const TOTAL_LABELS = ['합계', 'Total', '총계', '전체', 'ALL', 'Σ', 'Grand total'];
 const MEASURE_HEADERS = ['건수', 'orders', '매출', 'Revenue', '평균금액', 'avg_ticket', '판매량', 'max_sale', '최소수량', '총액'];
 
-export type AggregateFnName = 'count' | 'sum' | 'avg' | 'min' | 'max';
+type AggregateFnName = 'count' | 'sum' | 'avg' | 'min' | 'max';
 
-export interface TrueMeasure {
+interface TrueMeasure {
   header: string;
   fn: AggregateFnName;
   column?: string;

@@ -46,7 +46,7 @@ export function detectCandidateAmbiguity(candidates: CandidateProgram[]): boolea
   return [...byPath.values()].some((keys) => keys.size > 1);
 }
 
-export const CONFIRM_RULE_OPTION_VALUE = 'confirm';
+const CONFIRM_RULE_OPTION_VALUE = 'confirm';
 export const REJECT_RULE_OPTION_VALUE = 'reject';
 
 /**

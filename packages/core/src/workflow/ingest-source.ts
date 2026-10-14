@@ -1,21 +1,21 @@
 import type { PortBinding } from './bindings.js';
 import type { Step } from './schema.js';
 
-export function hasDocumentIngestFileRef(params: Record<string, unknown>): boolean {
+function hasDocumentIngestFileRef(params: Record<string, unknown>): boolean {
   const file = params.file;
   if (!file || typeof file !== 'object' || Array.isArray(file)) return false;
   const path = (file as Record<string, unknown>).path;
   return typeof path === 'string' && path.trim().length > 0;
 }
 
-export function hasConcreteDocumentIngestPath(params: Record<string, unknown>): boolean {
+function hasConcreteDocumentIngestPath(params: Record<string, unknown>): boolean {
   const path = params.path;
   if (typeof path !== 'string' || !path.trim()) return false;
   if (path.includes('{{')) return false;
   return true;
 }
 
-export function hasDocumentIngestBinding(bindings?: Record<string, PortBinding>): boolean {
+function hasDocumentIngestBinding(bindings?: Record<string, PortBinding>): boolean {
   const source = bindings?.source ?? bindings?.path;
   return Boolean(source?.from && source.output.trim());
 }

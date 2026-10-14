@@ -4,7 +4,7 @@ import type { CredentialRef, CredentialStore, OAuthCredential } from '@ax-studio
 import { getCredentialPath, getCredentialsDir, getSecretPath } from './credential-paths.js';
 
 /** Error codes for a stored credential that exists but cannot be used. */
-export const CREDENTIAL_UNAVAILABLE_CODES = new Set([
+const CREDENTIAL_UNAVAILABLE_CODES = new Set([
   'credential_encryption_unavailable',
   'credential_decrypt_failed',
   'invalid_credential_json',
@@ -29,7 +29,7 @@ const CREDENTIAL_DISPLAY_NAMES: Record<string, string> = {
 };
 
 /** A connector or secret name as a person would say it, quoted with a trailing space (or empty); never the raw id. */
-export function credentialDisplayName(connectorOrSecret: string): string {
+function credentialDisplayName(connectorOrSecret: string): string {
   const key = connectorOrSecret.trim().toLowerCase().split(/[./_-]/u)[0] ?? '';
   const name = Object.hasOwn(CREDENTIAL_DISPLAY_NAMES, key) ? CREDENTIAL_DISPLAY_NAMES[key] : undefined;
   return name ? `'${name}' ` : '';

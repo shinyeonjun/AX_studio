@@ -1,4 +1,4 @@
-export const OUTPUT_CONTRACT_FAILURE_CODES = [
+const OUTPUT_CONTRACT_FAILURE_CODES = [
   'source_unavailable',
   'schema_column_missing',
   'schema_type_changed',

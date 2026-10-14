@@ -4,6 +4,5 @@ export {
   type JevTableProjectionRequest,
   type JevTableTransformMode,
   type JevTableTransformRequest,
-  type JevTableTransformResult,
 } from './contract.js';
 export { applyJevTableTransform } from './apply.js';

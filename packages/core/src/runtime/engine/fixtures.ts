@@ -11,15 +11,3 @@ export class NoReadProvider implements ModelProvider {
     return input.user ?? '';
   }
 }
-
-export class RiskProvider implements ModelProvider {
-  readonly name = 'risk-test-agent';
-
-  async generateStructured<T>(input: StructuredGenerateInput<T>): Promise<T> {
-    return input.schema.parse({ needMore: false, riskLevel: 'normal' }) as T;
-  }
-
-  async generateText(input: TextGenerateInput): Promise<string> {
-    return input.user ?? '';
-  }
-}

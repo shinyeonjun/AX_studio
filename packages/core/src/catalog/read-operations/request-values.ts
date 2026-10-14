@@ -3,7 +3,7 @@ import { requestLimitCandidates } from '../request-limit.js';
 import type { JevReadParameterHint } from './types.js';
 
 export const MAX_TEXT_CHARS = 320;
-export const MAX_EXPLICIT_PARAMETER_CHARS = 500;
+const MAX_EXPLICIT_PARAMETER_CHARS = 500;
 const NATURAL_LIMIT_PARAMETER_NAMES = new Set([
   'count',
   'limit',

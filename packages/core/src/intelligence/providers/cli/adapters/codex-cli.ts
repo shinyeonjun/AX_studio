@@ -37,7 +37,7 @@ export interface CodexExecOptions {
  * codex-cli 0.159, a one-word prompt cost 13,604 input tokens with them and 10,060 with this.
  * AX Studio's own prompt already carries the rules; this only states the call's shape.
  */
-export const CODEX_BASE_INSTRUCTIONS = [
+const CODEX_BASE_INSTRUCTIONS = [
   'You are the language model behind AX Studio, called once for a single request.',
   'Follow the instructions in the prompt exactly. You have no tools: do not run commands, read files or browse.',
   'Answer in the language and format the prompt asks for. When an output schema is given, return only JSON that matches it.',

@@ -1,10 +1,10 @@
 import { exactModelOptions } from '../../model-options.js';
 
 /** Shared by Codex CLI and the OpenAI API so both modes start on the same model. */
-export const OPENAI_DEFAULT_MODEL = 'gpt-5.4';
+const OPENAI_DEFAULT_MODEL = 'gpt-5.4';
 
 /** Codex CLI 미탐지 시 fallback */
-export const OPENAI_CLI_MODELS = exactModelOptions([
+const OPENAI_CLI_MODELS = exactModelOptions([
   OPENAI_DEFAULT_MODEL,
   'gpt-5.4-mini',
   'gpt-5.5',
@@ -12,7 +12,7 @@ export const OPENAI_CLI_MODELS = exactModelOptions([
   'gpt-5.1-codex-mini',
 ]);
 
-export const OPENAI_API_MODELS = exactModelOptions([
+const OPENAI_API_MODELS = exactModelOptions([
   OPENAI_DEFAULT_MODEL,
   'gpt-5.4-mini',
   'gpt-5.5',

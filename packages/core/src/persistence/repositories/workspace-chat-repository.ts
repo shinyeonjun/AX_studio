@@ -17,7 +17,7 @@ export {
   WorkspaceChatGeneratedDocumentSchema,
   WorkspaceChatReadResultSchema,
 } from './workspace-chat/contracts.js';
-export { deriveWorkspaceChatTitle, refreshWorkspaceChatTitle } from './workspace-chat/title.js';
+export { refreshWorkspaceChatTitle } from './workspace-chat/title.js';
 export { getWorkspaceChatMemo, updateWorkspaceChatMemo } from './workspace-chat/memo.js';
 export {
   getWorkspaceChat,

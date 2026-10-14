@@ -6,7 +6,7 @@ const CONNECTOR_NAMES: Record<string, string> = {
   rdb: '데이터베이스', http: 'API', openapi: 'API', gmail: 'Gmail', slack: 'Slack', local_folder: '폴더',
 };
 const MAX_CHOICES = 4;
-export const SOURCE_CHOOSER_TITLE = '어디에서 찾을까요?';
+const SOURCE_CHOOSER_TITLE = '어디에서 찾을까요?';
 const CHOICE_SUFFIX = '에서 찾기';
 const MAX_ACTION_VALUE = 500;
 
