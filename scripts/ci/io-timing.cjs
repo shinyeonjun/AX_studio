@@ -36,6 +36,14 @@ if (dir) {
   }
   require('node:module').syncBuiltinESMExports();
 
+  /** The Vitest file and test this worker thread was running, read after a stall ends. */
+  const runningTest = () => {
+    const worker = globalThis.__vitest_worker__;
+    const file = worker?.filepath ?? worker?.ctx?.files?.[0];
+    const test = worker?.current?.name;
+    return { ...(typeof file === 'string' ? { file: path.basename(file) } : {}), ...(typeof test === 'string' ? { test: test.slice(0, 120) } : {}) };
+  };
+
   let last = performance.now();
   const out = path.join(dir, `${process.pid}-${threadId}.json`);
   const flush = () => {
@@ -49,7 +57,7 @@ if (dir) {
     const gap = now - last - LOOP_TICK_MS;
     last = now;
     if (gap > stats.maxLoopGapMs) stats.maxLoopGapMs = Math.round(gap);
-    if (gap >= 1000 && stats.loopGaps.length < 100) stats.loopGaps.push({ ms: Math.round(gap), at: new Date().toISOString() });
+    if (gap >= 1000 && stats.loopGaps.length < 100) stats.loopGaps.push({ ms: Math.round(gap), at: new Date().toISOString(), ...runningTest() });
   }, LOOP_TICK_MS).unref();
   setInterval(flush, 1000).unref();
   process.on('exit', flush);

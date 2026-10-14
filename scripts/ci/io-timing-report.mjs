@@ -38,4 +38,4 @@ console.log(`slow operations (>= 250 ms): ${slow.length}`);
 for (const entry of slow.slice(0, 30)) console.log(`  ${entry.at} ${entry.op} ${entry.target} ${entry.ms} ms (pid ${entry.pid}/${entry.threadId})`);
 const gaps = records.flatMap((record) => record.loopGaps.map((gap) => ({ ...gap, pid: record.pid, threadId: record.threadId }))).sort((a, b) => b.ms - a.ms);
 console.log(`max event-loop stall: ${Math.max(0, ...records.map((record) => record.maxLoopGapMs))} ms; stalls >= 1 s: ${gaps.length}`);
-for (const gap of gaps.slice(0, 20)) console.log(`  ${gap.at} ${gap.ms} ms (pid ${gap.pid}/${gap.threadId})`);
+for (const gap of gaps.slice(0, 20)) console.log(`  ${gap.at} ${gap.ms} ms (pid ${gap.pid}/${gap.threadId}) ${gap.file ?? '?'} > ${gap.test ?? '?'}`);
