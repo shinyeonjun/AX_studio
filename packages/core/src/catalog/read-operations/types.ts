@@ -21,6 +21,21 @@ export interface JevReadOperationHint {
    * job step bound to that output; a read on its own (chat, investigation) cannot call it.
    */
   requiresBinding?: readonly string[];
+  /**
+   * Tables a database read can attach to each of its rows (each order with its customer). The
+   * read's own rows stay the records; the router decides per relation whether the request needs
+   * the related columns.
+   */
+  relations?: readonly JevReadRelation[];
+}
+
+/** A table one read can attach row by row: `on` of the read's table equals `references` of `table`. */
+export interface JevReadRelation {
+  table: string;
+  on: string;
+  references: string;
+  /** The related table's columns, so Jev can tell whether the request needs them. */
+  columns: readonly string[];
 }
 
 export interface JevReadParameterHint {
@@ -44,4 +59,4 @@ export interface JevReadOperationSelection {
 }
 
 export type HintResolution = Pick<JevReadOperationHint, 'params' | 'parameterHints' | 'missingParameterPaths' | 'requiresBinding'>;
-export type HintMetadata = Pick<JevReadOperationHint, 'capabilityId' | 'connector' | 'sourceLabel' | 'label' | 'description'>;
+export type HintMetadata = Pick<JevReadOperationHint, 'capabilityId' | 'connector' | 'sourceLabel' | 'label' | 'description' | 'relations'>;

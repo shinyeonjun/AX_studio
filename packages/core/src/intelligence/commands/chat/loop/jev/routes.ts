@@ -91,7 +91,7 @@ export async function previousResultRoute(turn: JevTurn): Promise<string> {
   }
   if (transformed.status === 'clarify') return transformed.message;
   if (transformed.status === 'unavailable') {
-    return '조건을 확실히 판단하지 못해 이전 결과를 그대로 두었습니다. 어떤 열을 어떻게 바꿀지 조금 더 구체적으로 알려 주세요. 예: "금액 높은 순으로 정렬해 줘"';
+    return '조건을 확실히 판단하지 못해 이전 결과를 그대로 두었습니다. 어떤 열을 어떻게 바꿀지 조금 더 구체적으로 알려 주세요. 예: "단가가 싼 것부터 보여 줘"';
   }
   const reshaped = transformed.status === 'transformed' ? transformed.table : previousReadResult;
   // Headers the earlier answer showed carry over; a new column (a total, a ratio) is labelled too.

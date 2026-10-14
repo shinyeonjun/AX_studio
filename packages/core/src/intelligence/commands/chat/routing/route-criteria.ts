@@ -17,12 +17,12 @@ export const JEV_CHAT_ROUTE_CRITERIA = {
   },
   http_read: {
     what: 'Perform a read-only HTTP GET only when the user explicitly provides the request path.',
-    examples: ['Use the DummyJSON connection and call GET products?limit=10.', 'GET /api/v1/orders?status=paid'],
+    examples: ['Use the connected API and call GET items?limit=10.', 'GET /api/v1/orders?status=paid'],
     not_for: 'Natural-language requests that match a discovered API operation; choose capability_read for those. Never infer a path that the user did not provide.',
   },
   capability_read: {
     what: 'Handle a request for connected HTTP API, database, Gmail emails, Slack messages, or local files using one cataloged read-only operation, or ask for clarification when no relevant operation is available.',
-    examples: ['DummyJSON에서 상품 5개만 가져와서 이름과 가격을 보여줘.', '이번 달 주문 중 결제 완료된 것만 보여줘.', '최근 온 메일 3개 제목 알려줘', 'Slack 메시지 검색', 'Slack 채널 목록 보여줘'],
+    examples: ['Read the five newest invoices from the accounting database.', 'Fetch ten items from a connected API and show their names.', 'Search mail for messages about a contract.', 'Read the latest Slack messages in a channel.'],
     requires: 'Choose only an operation listed in the operation question. If context.read_operation_candidates_deferred is true and read_operation_catalog_size is positive, choose this route for a matching data request; Jev will select from the complete catalog in a follow-up before any command is produced. Otherwise, if the operation question offers only none, do not invent an operation, URL, table, tool, or parameter; ask the user to narrow the request or check the connection.',
     not_for: 'Writes, triggers, operations absent from the connected read catalog, listing the saved works (업무) in AX Studio itself (choose workflow_list), or questions asking to calculate, summarize, or analyze data already retrieved in the conversation (choose answer or previous_result instead).',
   },
@@ -95,7 +95,7 @@ export const JEV_CHAT_ROUTE_CRITERIA = {
   report_generate: {
     what: 'Write the next period report from a completed report attached in the current chat as a PDF or a Word (.docx) file (for example the one for last month), filled with the connected data. A blank PDF template is optional.',
     requires: 'The user asks for a report written like an attached or earlier completed report, for this or another period. When no report file is attached yet, still choose this route: the host asks for the file.',
-    examples: ['지난달 보고서야. 이번 달 걸로 써 줘', '이 보고서 양식대로 9월 보고서 만들어줘', '첨부한 보고서처럼 이번 분기 보고서 작성해줘'],
+    examples: ['Here is the report for the last period; write the one for this period.', 'Write a report for a given month in the form of the attached report.'],
     not_for: 'Explaining a PDF or document, listing files, or asking how report generation works.',
   },
 } satisfies Record<string, DecisionInstruction>;

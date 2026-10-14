@@ -342,6 +342,10 @@ Codex는 질문이 하나뿐이어도 호출 한 번에 5~7초와 약 1만 토�
 - **이 수치는 더 이상 블라인드가 아닙니다.** 홀드아웃 결과를 본 뒤에 고친 것이라, Codex와 다시 비교하거나 다음 수정의 효과를 잴 때는 새 홀드아웃을 만들어야 합니다.
 - 원본: [`jev-vs-codex-decision-runs/after-row-table/`](jev-vs-codex-decision-runs/after-row-table/)
 
+## 이후: 읽기 판단 재설계 (2026-10-14)
+
+위 `orders` 수정을 포함해 사례마다 덧댄 보정을 모두 없애고 판단 구조를 다시 짰습니다. 블라인드 홀드아웃 v3(76건)에서 Jev는 원래 코드 83.3%, `orders` 수정 92.5%, 재설계 94.3%입니다. 엉뚱한 실행 결정은 개발 세트에서 23건 → 0건이 됐습니다. 자세한 내용: [read-decision-redesign.md](read-decision-redesign.md)
+
 ## 다음 할 일 후보
 
 1. ~~**Jev의 `orders` 쏠림**~~: 위에서 고쳤습니다.

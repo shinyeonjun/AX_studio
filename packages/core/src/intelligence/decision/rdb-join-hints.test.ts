@@ -23,21 +23,23 @@ const connection = (allowedTables: string[]) => ({
 });
 
 describe('reads a connected database offers', () => {
-  it('names each table’s columns and offers it with the rows its keys point to', () => {
+  it('offers each table once, with the tables its keys point to as relations', () => {
     const hints = buildJevReadOperationHints([connection(['orders', 'customers', 'products'])], '지역별 매출');
     const reads = hints.filter((hint) => hint.capabilityId === 'rdb.query.read');
-    expect(reads.map((hint) => hint.label)).toEqual([
-      'DB 조회: orders', 'DB 조회: orders + customers', 'DB 조회: orders + products', 'DB 조회: orders + customers + products',
-      'DB 조회: customers', 'DB 조회: products',
-    ]);
+    expect(reads.map((hint) => hint.label)).toEqual(['DB 조회: orders', 'DB 조회: customers', 'DB 조회: products']);
     expect(reads[0]!.description).toContain('열: id, customer_id, product_code, amount');
-    expect(reads[1]!.description).toContain('customers의 열(name, region)');
-    expect(reads[1]!.params).toEqual({ table: 'orders', join: [{ table: 'customers', on: 'customer_id', references: 'id' }] });
+    expect(reads[0]!.description).toContain('연결된 테이블: customers, products');
+    expect(reads[0]!.params).toEqual({ table: 'orders' });
+    expect(reads[0]!.relations).toEqual([
+      { table: 'customers', on: 'customer_id', references: 'id', columns: ['name', 'region'] },
+      { table: 'products', on: 'product_code', references: 'code', columns: ['category'] },
+    ]);
+    expect(reads[1]!.relations).toBeUndefined();
   });
 
-  it('never offers a join onto a table the connection does not allow', () => {
+  it('never relates a table the connection does not allow', () => {
     const hints = buildJevReadOperationHints([connection(['orders', 'products'])], '주문');
-    expect(hints.map((hint) => hint.label)).not.toContain('DB 조회: orders + customers');
-    expect(hints.map((hint) => hint.label)).toContain('DB 조회: orders + products');
+    const orders = hints.find((hint) => hint.label === 'DB 조회: orders');
+    expect(orders?.relations?.map(({ table }) => table)).toEqual(['products']);
   });
 });

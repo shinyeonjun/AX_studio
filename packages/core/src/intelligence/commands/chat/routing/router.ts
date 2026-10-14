@@ -15,10 +15,9 @@ import { selectJevWorkflowTriggerHints } from '../planning/workflow-proposal.js'
 import { selectJevActionHints } from '../shared/action-catalog.js';
 import { buildJevDecisionRequest } from './decision-request.js';
 import { JEV_CHAT_ROUTE_CRITERIA, type JevChatRouteName } from './route-criteria.js';
-import { deriveJevRequestFeatures, type JevRequestFeatures } from '../shared/request-features.js';
+import { deriveJevRequestFeatures } from '../shared/request-features.js';
 import {
   parseParallelToolSelection,
-  requestNamedToolIds,
   type JevParallelToolSelection,
 } from './parallel-tool-selection.js';
 import type { JevChatRequestPlan } from '../shared/request-plan.js';
@@ -27,10 +26,8 @@ export type { JevChatRouterInput, JevChatRouterResult } from './router-contract.
 import { choiceAnswer, fallback } from './router-command.js';
 import { JevRouterTelemetryTracker } from './router-telemetry.js';
 import { dispatchJevRoute, type JevFollowupEvaluator } from './router-routes.js';
-export { rankReadHintsByRelevance } from './router-routes.js';
+import { decideRelations } from './read-decision.js';
 
-/** Lexical request cues may only break ties below this Jev route confidence. */
-const JEV_ROUTE_TIE_BREAK_MAX_CONFIDENCE = 0.6;
 
 const TOOL_SELECTION_ROUTES = new Set<JevChatRouteName>([
   'answer', 'capability_read', 'execution_enqueue_once', 'workflow_create', 'job_propose',
@@ -59,13 +56,12 @@ function normalizeToolSelection(input: {
   route: JevChatRouteName;
   confidence: number;
   routerInput: JevChatRouterInput;
-  requestFeatures: JevRequestFeatures;
   explicitAction?: ChoiceDecisionAnswer;
   toolSelection?: JevParallelToolSelection;
   requestPlan?: JevChatRequestPlan;
   telemetry: JevRouterTelemetryTracker;
 }): ToolSelectionState | JevChatRouterResult {
-  const { toolSelection, requestPlan, telemetry, requestFeatures } = input;
+  const { toolSelection, requestPlan, telemetry } = input;
   let route = input.route;
   const selectedToolIds = new Set(toolSelection?.kind === 'selected'
     ? toolSelection.operationDecisions.filter(({ selected }) => selected).map(({ id }) => id)
@@ -98,22 +94,6 @@ function normalizeToolSelection(input: {
     telemetry.update({ selectedToolCount: selectedToolIds.size, actionCandidateSelected: hasWrites() });
   }
   const hasSelectedWriteTools = hasWrites();
-  // Lexical cues were already sent to Jev as request features; here they only break ties.
-  if (route === 'answer' && !hasSelectedWriteTools && selectedToolIds.size > 0
-    && requestFeatures.previous_context_reference_cue && requestFeatures.calculation_or_summary_cue
-    && (input.routerInput.conversationHistory ?? []).some(({ role }) => role === 'assistant')) {
-    // Jev chose a conversational answer about earlier results; do not re-read sources.
-    selectedToolIds.clear();
-    keepReplyInChat();
-    telemetry.update({ selectedToolCount: 0, actionCandidateSelected: false });
-  }
-  if (input.confidence < JEV_ROUTE_TIE_BREAK_MAX_CONFIDENCE && input.routerInput.previousReadResult
-    && !hasSelectedWriteTools && requestFeatures.table_transform_cue && !requestFeatures.fresh_read_cue
-    && (route === 'answer' || route === 'capability_read')) {
-    selectedToolIds.clear();
-    route = 'previous_result';
-    telemetry.update({ selectedRoute: route, selectedToolCount: 0, actionCandidateSelected: false });
-  }
   return { route, selectedToolIds, hasSelectedWriteTools };
 }
 
@@ -253,7 +233,6 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
       toolSelection = parseParallelToolSelection({
         candidates: parallelToolCandidates,
         answers: evaluation.answers,
-        requestNamed: requestNamedToolIds(parallelToolCandidates, input.userMessage, operationHints),
         telemetry: {
           evaluationCalls: 1,
           providerRequestCount: evaluation.providerRequestCount ?? 1,
@@ -294,7 +273,7 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
       };
     }
     const normalized = normalizeToolSelection({
-      route, confidence, routerInput: input, requestFeatures, explicitAction, toolSelection, requestPlan, telemetry: tracker,
+      route, confidence, routerInput: input, explicitAction, toolSelection, requestPlan, telemetry: tracker,
     });
     if ('kind' in normalized) return withTelemetry(normalized);
     const { selectedToolIds, hasSelectedWriteTools } = normalized;
@@ -325,6 +304,10 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
     }
     const intentGate = mutationIntentGate(selectedRoute, input, evaluation.answers, routeAnswer, route, confidence);
     if (intentGate) return withTelemetry(intentGate);
+    // A plan keeps every selected read; each still needs the relations the request uses attached.
+    const routeReadHints = selectedRoute !== 'capability_read' && selectedReadHints.some((hint) => hint.relations?.length)
+      ? await decideRelations({ routerInput: input, reads: selectedReadHints, evaluate: evaluateFollowup, requestPlan })
+      : selectedReadHints;
 
     return await dispatchJevRoute({
       input,
@@ -336,7 +319,7 @@ export async function routeChatWithJev(input: JevChatRouterInput): Promise<JevCh
       toolSelection,
       get requestPlan() { return requestPlan; },
       connectedConnectors,
-      selectedReadHints,
+      selectedReadHints: routeReadHints,
       selectedActionHints,
       workflowTriggerHints,
       withTelemetry,
