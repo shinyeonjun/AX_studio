@@ -174,8 +174,16 @@ jobs:
       - name: Build Core package for dependent tests
         run: npm run build -w @ax-studio/core
 
+      # Issue #162: record file-operation and event-loop timings around the unchanged tests.
       - name: Desktop tests
         run: npm run test:desktop
+        env:
+          AX_IO_TIMING_DIR: ${{ runner.temp }}/io-timing
+          NODE_OPTIONS: --require ${{ github.workspace }}/scripts/ci/io-timing.cjs
+
+      - name: Desktop test timings (issue 162)
+        if: always()
+        run: node scripts/ci/io-timing-report.mjs "${{ runner.temp }}/io-timing"
 
       - name: Desktop type check
         run: npm run typecheck:desktop
