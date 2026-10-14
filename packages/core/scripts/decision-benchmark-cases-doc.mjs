@@ -12,6 +12,7 @@ const jiti = createJiti(import.meta.url);
 const cases = await jiti.import(join(evalDir, 'routing-eval.cases.ts'));
 const holdout = await jiti.import(join(evalDir, 'routing-eval.holdout-cases.ts'));
 const holdout3 = await jiti.import(join(evalDir, 'routing-eval.holdout3-cases.ts'));
+const holdout4 = await jiti.import(join(evalDir, 'routing-eval.holdout4-cases.ts'));
 const { BASIC_CONNECTIONS } = await jiti.import(join(evalDir, 'routing-eval.workspace.ts'));
 const { SCALE_CONNECTIONS } = await jiti.import(join(evalDir, 'routing-eval.scale-fixture.ts'));
 
@@ -24,6 +25,8 @@ const SETS = [
   { name: '홀드아웃 v2 scale', set: 'holdout-v2', workspace: 'scale', list: holdout.HOLDOUT2_SCALE_CASES ?? [] },
   { name: '홀드아웃 v3 basic', set: 'holdout-v3', workspace: 'basic', list: holdout3.HOLDOUT3_BASIC_CASES },
   { name: '홀드아웃 v3 scale', set: 'holdout-v3', workspace: 'scale', list: holdout3.HOLDOUT3_SCALE_CASES },
+  { name: '홀드아웃 v4 basic', set: 'holdout-v4', workspace: 'basic', list: holdout4.HOLDOUT4_BASIC_CASES },
+  { name: '홀드아웃 v4 scale', set: 'holdout-v4', workspace: 'scale', list: holdout4.HOLDOUT4_SCALE_CASES },
 ];
 
 const KIND = { reply: 'AI 답변', command: '실행 결정', clarify: '되묻기', previous_result: '이전 표로 답', fallback: '처리 안 함', parameterized: '값 입력 요청' };
@@ -100,6 +103,7 @@ const setGroups = [
   ['홀드아웃 v1', (testCase) => testCase.entry.set === 'holdout-v1'],
   ['홀드아웃 v2', (testCase) => testCase.entry.set === 'holdout-v2'],
   ['홀드아웃 v3', (testCase) => testCase.entry.set === 'holdout-v3'],
+  ['홀드아웃 v4', (testCase) => testCase.entry.set === 'holdout-v4'],
 ];
 
 const out = [
@@ -124,6 +128,7 @@ const out = [
   `| 홀드아웃 v1 basic / scale | ${holdout.HOLDOUT_BASIC_CASES.length} / ${holdout.HOLDOUT_SCALE_CASES.length} | 2026-10-13, 어느 엔진도 돌리기 전에 작성. 이후 수정 없음 |`,
   `| 홀드아웃 v2 basic / scale | ${(holdout.HOLDOUT2_BASIC_CASES ?? []).length} / ${(holdout.HOLDOUT2_SCALE_CASES ?? []).length} | 2026-10-14, 결과를 보지 않은 별도 작성자(에이전트)가 미리 정한 분류별 할당량대로 작성. 별도 검토 후 실행 전에 커밋 |`,
   `| 홀드아웃 v3 basic / scale | ${holdout3.HOLDOUT3_BASIC_CASES.length} / ${holdout3.HOLDOUT3_SCALE_CASES.length} | 2026-10-14, 라우터 재설계 전에 v2와 같은 방식(결과를 보지 않은 별도 작성자 + 별도 검토, 수정 0건)으로 작성하고 실행 전에 커밋. 재설계를 한 사람은 내용을 보지 않음 |`,
+  `| 홀드아웃 v4 basic / scale | ${holdout4.HOLDOUT4_BASIC_CASES.length} / ${holdout4.HOLDOUT4_SCALE_CASES.length} | 2026-10-14, v3와 같은 방식과 같은 분류별 할당량(결과를 보지 않은 별도 작성자 + 별도 검토, 수정 0건)으로 작성하고 실행 전에 커밋 |`,
   '',
   '## 분류별 건수',
   '',
