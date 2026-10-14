@@ -1,0 +1,3304 @@
+{
+  "engine": "codex:gpt-6.1-sol:medium",
+  "at": "2026-10-13T18:52:29.503Z",
+  "outcomes": [
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h2-bye",
+      "message": "오늘은 여기까지 할게 ㅎㅎ",
+      "expected": {
+        "kind": [
+          "reply"
+        ]
+      },
+      "passed": true,
+      "kind": "reply",
+      "route": "answer",
+      "serviceError": false,
+      "durationMs": 12619,
+      "calls": [
+        {
+          "questions": 28,
+          "durationMs": 12603.5689,
+          "requestBytes": 20972,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 15954,
+          "cachedInputTokens": 0,
+          "outputTokens": 345,
+          "reasoningTokens": 56
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h2-howto-slack",
+      "message": "슬랙 연결은 어디서 하는 거예요?",
+      "expected": {
+        "kind": [
+          "reply"
+        ]
+      },
+      "passed": true,
+      "kind": "reply",
+      "route": "answer",
+      "serviceError": false,
+      "durationMs": 10467,
+      "calls": [
+        {
+          "questions": 28,
+          "durationMs": 10458.9984,
+          "requestBytes": 20976,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 15959,
+          "cachedInputTokens": 0,
+          "outputTokens": 284,
+          "reasoningTokens": 0
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h2-howto-report",
+      "message": "보고서 자동 작성은 어떻게 쓰는 거야?",
+      "expected": {
+        "kind": [
+          "reply"
+        ]
+      },
+      "passed": true,
+      "kind": "reply",
+      "route": "answer",
+      "serviceError": false,
+      "durationMs": 10081,
+      "calls": [
+        {
+          "questions": 28,
+          "durationMs": 10077.0896,
+          "requestBytes": 20979,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 15962,
+          "cachedInputTokens": 0,
+          "outputTokens": 284,
+          "reasoningTokens": 0
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h2-orders-list",
+      "message": "주문 내역 쭉 뽑아줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "table": "orders"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "table": "orders"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 18558,
+      "calls": [
+        {
+          "questions": 28,
+          "durationMs": 18555.002099999998,
+          "requestBytes": 20969,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 15959,
+          "cachedInputTokens": 0,
+          "outputTokens": 373,
+          "reasoningTokens": 29
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h2-orders-shop",
+      "message": "쇼핑몰 주문 데이터 보여주세요",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "table": "orders"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "table": "orders"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 12091,
+      "calls": [
+        {
+          "questions": 28,
+          "durationMs": 12089.428,
+          "requestBytes": 20974,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 15959,
+          "cachedInputTokens": 0,
+          "outputTokens": 375,
+          "reasoningTokens": 31
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h2-orders-casual",
+      "message": "들어온 주문들 좀 보자",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "table": "orders"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "table": "orders"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 16041,
+      "calls": [
+        {
+          "questions": 28,
+          "durationMs": 16039.521199999988,
+          "requestBytes": 20970,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 15956,
+          "cachedInputTokens": 9344,
+          "outputTokens": 407,
+          "reasoningTokens": 63
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h2-customers-list",
+      "message": "고객 명단 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "table": "customers"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "table": "customers"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 11740,
+      "calls": [
+        {
+          "questions": 28,
+          "durationMs": 11737.69690000001,
+          "requestBytes": 20967,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 15952,
+          "cachedInputTokens": 0,
+          "outputTokens": 352,
+          "reasoningTokens": 56
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h2-customers-info",
+      "message": "우리 고객 정보 다 보여줘요",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "table": "customers"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "table": "customers"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 13340,
+      "calls": [
+        {
+          "questions": 28,
+          "durationMs": 13338.9611,
+          "requestBytes": 20973,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 15957,
+          "cachedInputTokens": 0,
+          "outputTokens": 312,
+          "reasoningTokens": 16
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h2-products-table",
+      "message": "쇼핑몰 DB 상품 테이블 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "table": "products"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "table": "products"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 12235,
+      "calls": [
+        {
+          "questions": 28,
+          "durationMs": 12231.420600000012,
+          "requestBytes": 20975,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 15963,
+          "cachedInputTokens": 0,
+          "outputTokens": 333,
+          "reasoningTokens": 35
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h2-products-db",
+      "message": "DB에 등록된 제품 리스트 줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "table": "products"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "table": "products"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 11823,
+      "calls": [
+        {
+          "questions": 28,
+          "durationMs": 11819.983200000002,
+          "requestBytes": 20974,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 15955,
+          "cachedInputTokens": 0,
+          "outputTokens": 345,
+          "reasoningTokens": 56
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h2-cancel-count",
+      "message": "취소된 주문 몇 건이야?",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "table": "orders"
+        },
+        "tableTransform": [
+          "calculate"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "table": "orders"
+        },
+        "tableTransform": "calculate"
+      },
+      "durationMs": 11089,
+      "calls": [
+        {
+          "questions": 28,
+          "durationMs": 11087.084800000011,
+          "requestBytes": 20971,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 15956,
+          "cachedInputTokens": 0,
+          "outputTokens": 336,
+          "reasoningTokens": 32
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h2-month-total",
+      "message": "이번 달 주문 금액 총합 얼마나 돼?",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "table": "orders"
+        },
+        "tableTransform": [
+          "calculate"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "table": "orders"
+        },
+        "tableTransform": "calculate"
+      },
+      "durationMs": 16096,
+      "calls": [
+        {
+          "questions": 28,
+          "durationMs": 16093.424999999988,
+          "requestBytes": 21011,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 15966,
+          "cachedInputTokens": 0,
+          "outputTokens": 402,
+          "reasoningTokens": 100
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h2-recent-ten",
+      "message": "최근 주문부터 순서대로 10건 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "table": "orders"
+        },
+        "tableTransform": [
+          "sort",
+          "filter_sort"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "table": "orders",
+          "limit": 10
+        },
+        "tableTransform": "sort"
+      },
+      "durationMs": 16972,
+      "calls": [
+        {
+          "questions": 29,
+          "durationMs": 11773.409199999995,
+          "requestBytes": 21586,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 16115,
+          "cachedInputTokens": 0,
+          "outputTokens": 343,
+          "reasoningTokens": 24
+        },
+        {
+          "questions": 1,
+          "durationMs": 5195.861499999999,
+          "requestBytes": 2367,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 11201,
+          "cachedInputTokens": 0,
+          "outputTokens": 26,
+          "reasoningTokens": 0
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h2-seoul-count",
+      "message": "서울 고객이 몇 명이야?",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "table": "customers"
+        },
+        "tableTransform": [
+          "calculate"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "table": "customers"
+        },
+        "tableTransform": "calculate"
+      },
+      "durationMs": 12873,
+      "calls": [
+        {
+          "questions": 28,
+          "durationMs": 12871.189600000012,
+          "requestBytes": 20971,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 15959,
+          "cachedInputTokens": 0,
+          "outputTokens": 327,
+          "reasoningTokens": 31
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h2-cheapest-db",
+      "message": "DB 상품 중에 제일 싼 거 3개만 뽑아줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "table": "products"
+        },
+        "tableTransform": [
+          "sort",
+          "filter_sort"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "table": "products"
+        },
+        "tableTransform": "sort"
+      },
+      "durationMs": 12152,
+      "calls": [
+        {
+          "questions": 29,
+          "durationMs": 12150.121899999998,
+          "requestBytes": 21587,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 16116,
+          "cachedInputTokens": 0,
+          "outputTokens": 356,
+          "reasoningTokens": 53
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h2-category-avg",
+      "message": "쇼핑몰 DB 상품 카테고리별 평균 가격 알려줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "table": "products"
+        },
+        "tableTransform": [
+          "calculate"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "table": "products"
+        },
+        "tableTransform": "calculate"
+      },
+      "durationMs": 11211,
+      "calls": [
+        {
+          "questions": 28,
+          "durationMs": 11209.202500000014,
+          "requestBytes": 21016,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 15967,
+          "cachedInputTokens": 0,
+          "outputTokens": 319,
+          "reasoningTokens": 27
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h2-api-users",
+      "message": "더미제이슨 유저 데이터 좀 불러와",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "http.request",
+        "params": {
+          "path": "users"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "http.request",
+        "params": {
+          "method": "GET",
+          "path": "users",
+          "connectionId": "dummyjson"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 13469,
+      "calls": [
+        {
+          "questions": 28,
+          "durationMs": 13466.685400000017,
+          "requestBytes": 20976,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 15962,
+          "cachedInputTokens": 0,
+          "outputTokens": 340,
+          "reasoningTokens": 49
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h2-api-carts",
+      "message": "API 쪽 장바구니 데이터 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "http.request",
+        "params": {
+          "path": "carts"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "http.request",
+        "params": {
+          "method": "GET",
+          "path": "carts",
+          "connectionId": "dummyjson"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 13208,
+      "calls": [
+        {
+          "questions": 29,
+          "durationMs": 13205.491799999989,
+          "requestBytes": 21345,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 16075,
+          "cachedInputTokens": 0,
+          "outputTokens": 344,
+          "reasoningTokens": 43
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h2-api-products",
+      "message": "DummyJSON 상품 리스트 20개만 가져와",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "http.request",
+        "params": {
+          "path": "products"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "http.request",
+        "params": {
+          "method": "GET",
+          "path": "products?limit=20",
+          "connectionId": "dummyjson"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 17501,
+      "calls": [
+        {
+          "questions": 30,
+          "durationMs": 12614.861399999994,
+          "requestBytes": 21960,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 16220,
+          "cachedInputTokens": 0,
+          "outputTokens": 366,
+          "reasoningTokens": 51
+        },
+        {
+          "questions": 1,
+          "durationMs": 4883.990499999985,
+          "requestBytes": 2444,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 11210,
+          "cachedInputTokens": 0,
+          "outputTokens": 26,
+          "reasoningTokens": 0
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h2-mail-unread",
+      "message": "안 읽은 메일 있으면 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "gmail.messages.search"
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "gmail.messages.search",
+        "params": {},
+        "tableTransform": "filter"
+      },
+      "durationMs": 12421,
+      "calls": [
+        {
+          "questions": 28,
+          "durationMs": 12419.386299999984,
+          "requestBytes": 20973,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 15957,
+          "cachedInputTokens": 0,
+          "outputTokens": 348,
+          "reasoningTokens": 56
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h2-slack-channel-read",
+      "message": "#ax테스트 채널에 최근에 올라온 거 10개 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "slack.messages.read"
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "slack.messages.read",
+        "params": {
+          "channel": "#ax테스트",
+          "limit": 10
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 17058,
+      "calls": [
+        {
+          "questions": 29,
+          "durationMs": 12373.511799999978,
+          "requestBytes": 21594,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 16115,
+          "cachedInputTokens": 0,
+          "outputTokens": 351,
+          "reasoningTokens": 46
+        },
+        {
+          "questions": 1,
+          "durationMs": 4682.039199999999,
+          "requestBytes": 2365,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 11211,
+          "cachedInputTokens": 0,
+          "outputTokens": 26,
+          "reasoningTokens": 0
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h2-slack-channels",
+      "message": "우리 슬랙 채널 뭐뭐 있지?",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "slack.channels.list"
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "slack.channels.list",
+        "params": {},
+        "tableTransform": "none"
+      },
+      "durationMs": 13816,
+      "calls": [
+        {
+          "questions": 28,
+          "durationMs": 13814.524800000014,
+          "requestBytes": 20973,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 15960,
+          "cachedInputTokens": 0,
+          "outputTokens": 318,
+          "reasoningTokens": 28
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h2-ambiguous-products",
+      "message": "상품 목록 보여줘",
+      "expected": {
+        "kind": [
+          "clarify"
+        ],
+        "sourceChooser": true
+      },
+      "passed": true,
+      "kind": "clarify",
+      "route": "execution_enqueue_once",
+      "serviceError": false,
+      "decided": {
+        "message": "쇼핑몰 DB, DummyJSON에 모두 관련 자료가 있어 어느 쪽에서 찾을지 정하지 못했습니다. 한 곳을 골라 주세요. 둘을 함께 비교하려면 \"두 자료를 비교해 줘\"처럼 말씀해 주세요. 아직 아무것도 실행하지 않았습니다.",
+        "chooser": "어디에서 찾을까요?"
+      },
+      "durationMs": 19228,
+      "calls": [
+        {
+          "questions": 28,
+          "durationMs": 14137.500900000043,
+          "requestBytes": 20967,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 15949,
+          "cachedInputTokens": 0,
+          "outputTokens": 398,
+          "reasoningTokens": 54
+        },
+        {
+          "questions": 2,
+          "durationMs": 5087.03250000003,
+          "requestBytes": 4247,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 11644,
+          "cachedInputTokens": 0,
+          "outputTokens": 39,
+          "reasoningTokens": 0
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h2-ambiguous-price",
+      "message": "가격 비싼 상품부터 순서대로 보여줘",
+      "expected": {
+        "kind": [
+          "clarify"
+        ],
+        "sourceChooser": true
+      },
+      "passed": false,
+      "miss": "kind command",
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "table": "products"
+        },
+        "tableTransform": "sort"
+      },
+      "durationMs": 11858,
+      "calls": [
+        {
+          "questions": 28,
+          "durationMs": 11856.303900000057,
+          "requestBytes": 20977,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 15954,
+          "cachedInputTokens": 0,
+          "outputTokens": 378,
+          "reasoningTokens": 38
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h2-follow-exclude",
+      "message": "거기서 취소된 건 빼고 보여줘",
+      "expected": {
+        "kind": [
+          "previous_result"
+        ]
+      },
+      "passed": true,
+      "kind": "previous_result",
+      "route": "previous_result",
+      "serviceError": false,
+      "durationMs": 11489,
+      "calls": [
+        {
+          "questions": 28,
+          "durationMs": 11486.623699999996,
+          "requestBytes": 21583,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 16108,
+          "cachedInputTokens": 0,
+          "outputTokens": 336,
+          "reasoningTokens": 35
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h2-follow-group",
+      "message": "이거 지역별로 금액 합쳐줘",
+      "expected": {
+        "kind": [
+          "previous_result",
+          "reply"
+        ]
+      },
+      "passed": true,
+      "kind": "previous_result",
+      "route": "previous_result",
+      "serviceError": false,
+      "durationMs": 11564,
+      "calls": [
+        {
+          "questions": 28,
+          "durationMs": 11562.800199999998,
+          "requestBytes": 21581,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 16112,
+          "cachedInputTokens": 0,
+          "outputTokens": 332,
+          "reasoningTokens": 37
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h2-weekly-mail",
+      "message": "매주 금요일 오후 5시에 이번 주 주문 합계를 내 메일로 보내줘",
+      "expected": {
+        "kind": [
+          "command",
+          "clarify"
+        ],
+        "route": [
+          "workflow_create",
+          "job_propose"
+        ]
+      },
+      "passed": true,
+      "kind": "clarify",
+      "route": "job_propose",
+      "serviceError": false,
+      "decided": {
+        "message": "업무 계획을 확정하지 못했습니다. 요청한 내용 중 계획에 빠진 부분이 있습니다. 대상·조건·실행 시점을 더 구체적으로 알려주세요. 아무 반복 업무도 저장하거나 활성화하지 않았습니다.",
+        "chooser": "업무 계획을 확정하지 못했습니다"
+      },
+      "durationMs": 40588,
+      "calls": [
+        {
+          "questions": 29,
+          "durationMs": 13363.78489999997,
+          "requestBytes": 21633,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 16127,
+          "cachedInputTokens": 0,
+          "outputTokens": 416,
+          "reasoningTokens": 63
+        },
+        {
+          "questions": 7,
+          "durationMs": 7535.25079999998,
+          "requestBytes": 9731,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 15346,
+          "cachedInputTokens": 0,
+          "outputTokens": 107,
+          "reasoningTokens": 0
+        },
+        {
+          "questions": 7,
+          "durationMs": 6513.331399999966,
+          "requestBytes": 2496,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 11294,
+          "cachedInputTokens": 0,
+          "outputTokens": 77,
+          "reasoningTokens": 0
+        },
+        {
+          "questions": 1,
+          "durationMs": 6367.018199999991,
+          "requestBytes": 1891,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 11029,
+          "cachedInputTokens": 0,
+          "outputTokens": 26,
+          "reasoningTokens": 0
+        },
+        {
+          "questions": 2,
+          "durationMs": 6768.141500000027,
+          "requestBytes": 2295,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 11146,
+          "cachedInputTokens": 0,
+          "outputTokens": 78,
+          "reasoningTokens": 40
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h2-slack-trigger",
+      "message": "슬랙에 새 메시지 올라오면 내용 정리해서 메일로 보내주는 업무 만들어줘",
+      "expected": {
+        "kind": [
+          "command",
+          "clarify"
+        ],
+        "route": [
+          "workflow_create",
+          "job_propose"
+        ]
+      },
+      "passed": true,
+      "kind": "clarify",
+      "route": "job_propose",
+      "serviceError": false,
+      "decided": {
+        "message": "조회에 필요한 값(채널)이 요청에 없습니다. 이 값을 알려 주세요. 아무 반복 업무도 저장하거나 활성화하지 않았습니다.",
+        "chooser": "실행 전 계획 확인"
+      },
+      "durationMs": 17816,
+      "calls": [
+        {
+          "questions": 28,
+          "durationMs": 17812.665000000037,
+          "requestBytes": 21031,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 15976,
+          "cachedInputTokens": 9344,
+          "outputTokens": 430,
+          "reasoningTokens": 84
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h2-connected-apis",
+      "message": "지금 연결된 API 뭐 있어?",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "route": [
+          "connection_list",
+          "source_list",
+          "resource_list"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "connection_list",
+      "serviceError": false,
+      "decided": {
+        "command": "http.list"
+      },
+      "durationMs": 11342,
+      "calls": [
+        {
+          "questions": 29,
+          "durationMs": 11340.089800000016,
+          "requestBytes": 21343,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 16072,
+          "cachedInputTokens": 0,
+          "outputTokens": 327,
+          "reasoningTokens": 25
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h2-remember-date",
+      "message": "앞으로 날짜는 2026.10.14 이런 식으로 써줘. 기억해 둬",
+      "expected": {
+        "kind": [
+          "command",
+          "clarify"
+        ],
+        "route": [
+          "context_remember"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "context_remember",
+      "serviceError": false,
+      "decided": {
+        "command": "ui.present"
+      },
+      "durationMs": 11919,
+      "calls": [
+        {
+          "questions": 29,
+          "durationMs": 11917.211699999985,
+          "requestBytes": 21621,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 16131,
+          "cachedInputTokens": 0,
+          "outputTokens": 345,
+          "reasoningTokens": 40
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h2s-thanks",
+      "message": "고마워요, 덕분에 빨리 끝났네요",
+      "expected": {
+        "kind": [
+          "reply"
+        ]
+      },
+      "passed": true,
+      "kind": "reply",
+      "route": "answer",
+      "serviceError": false,
+      "durationMs": 47485,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 47420.70140000002,
+          "requestBytes": 78948,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 33600,
+          "cachedInputTokens": 0,
+          "outputTokens": 1710,
+          "reasoningTokens": 104
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h2s-howto-once",
+      "message": "반복 업무랑 한 번만 실행하는 거랑 차이가 뭐야?",
+      "expected": {
+        "kind": [
+          "reply"
+        ]
+      },
+      "passed": true,
+      "kind": "reply",
+      "route": "answer",
+      "serviceError": false,
+      "durationMs": 56330,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 56289.90429999994,
+          "requestBytes": 78958,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 33622,
+          "cachedInputTokens": 33408,
+          "outputTokens": 1600,
+          "reasoningTokens": 0
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h2s-howto-folder",
+      "message": "폴더를 연결하면 파일 내용까지 다 올라가는 거예요?",
+      "expected": {
+        "kind": [
+          "reply"
+        ]
+      },
+      "passed": true,
+      "kind": "reply",
+      "route": "answer",
+      "serviceError": false,
+      "durationMs": 35587,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 35580.640799999936,
+          "requestBytes": 78959,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 33610,
+          "cachedInputTokens": 12160,
+          "outputTokens": 1625,
+          "reasoningTokens": 23
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h2s-warehouses",
+      "message": "창고 어디어디 있는지 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "logistics",
+          "table": "warehouses"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "logistics",
+          "table": "warehouses"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 36941,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 36934.19100000011,
+          "requestBytes": 78946,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 33598,
+          "cachedInputTokens": 0,
+          "outputTokens": 1660,
+          "reasoningTokens": 38
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h2s-carriers",
+      "message": "같이 일하는 택배사 리스트 줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "logistics",
+          "table": "carriers"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "logistics",
+          "table": "carriers"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 46377,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 46371.150999999954,
+          "requestBytes": 78947,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 33606,
+          "cachedInputTokens": 12160,
+          "outputTokens": 1654,
+          "reasoningTokens": 38
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h2s-payments",
+      "message": "회계 DB 결제 내역 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "finance",
+          "table": "payments"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "finance",
+          "table": "payments"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 43746,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 43739.96360000002,
+          "requestBytes": 78946,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 33600,
+          "cachedInputTokens": 0,
+          "outputTokens": 2005,
+          "reasoningTokens": 50
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h2s-tax-filings",
+      "message": "세금 신고 이력 좀 볼 수 있을까요?",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "finance",
+          "table": "tax_filings"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "finance",
+          "table": "tax_filings"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 35830,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 35823.4889,
+          "requestBytes": 78951,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 33603,
+          "cachedInputTokens": 3200,
+          "outputTokens": 1631,
+          "reasoningTokens": 25
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h2s-trainings",
+      "message": "직원들 교육 이수 기록 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "hr",
+          "table": "trainings"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "hr",
+          "table": "trainings"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 37102,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 37093.326699999976,
+          "requestBytes": 78947,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 33592,
+          "cachedInputTokens": 12160,
+          "outputTokens": 1656,
+          "reasoningTokens": 46
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h2s-evaluations",
+      "message": "인사평가 점수 목록 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "hr",
+          "table": "evaluations"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "hr",
+          "table": "evaluations"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 50506,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 50441.672900000005,
+          "requestBytes": 78945,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 33594,
+          "cachedInputTokens": 12160,
+          "outputTokens": 1735,
+          "reasoningTokens": 127
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h2s-departments",
+      "message": "회사 부서 목록 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "hr",
+          "table": "departments"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "hr",
+          "table": "departments"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 37283,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 37238.90979999991,
+          "requestBytes": 78943,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 33591,
+          "cachedInputTokens": 12160,
+          "outputTokens": 1634,
+          "reasoningTokens": 28
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h2s-leads",
+      "message": "CRM 리드 목록 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "crm",
+          "table": "leads"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "crm",
+          "table": "leads"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 37193,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 37186.598800000036,
+          "requestBytes": 78944,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 33591,
+          "cachedInputTokens": 0,
+          "outputTokens": 1646,
+          "reasoningTokens": 40
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h2s-contracts",
+      "message": "고객사랑 맺은 계약 목록 보여줘요",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "crm",
+          "table": "contracts"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "crm",
+          "table": "contracts",
+          "join": [
+            {
+              "table": "customers",
+              "on": "customer_id",
+              "references": "id"
+            }
+          ]
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 35469,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 35461.469900000026,
+          "requestBytes": 78949,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 33606,
+          "cachedInputTokens": 0,
+          "outputTokens": 1651,
+          "reasoningTokens": 41
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h2s-newsletter",
+      "message": "뉴스레터 구독자 명단 뽑아줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "marketing",
+          "table": "newsletter_subscribers"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "marketing",
+          "table": "newsletter_subscribers"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 37909,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 37903.454899999895,
+          "requestBytes": 78946,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 33603,
+          "cachedInputTokens": 0,
+          "outputTokens": 1657,
+          "reasoningTokens": 51
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h2s-faq",
+      "message": "FAQ 문서 목록 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "support",
+          "table": "faq_articles"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "support",
+          "table": "faq_articles"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 35497,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 35492.38779999991,
+          "requestBytes": 78944,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 33594,
+          "cachedInputTokens": 0,
+          "outputTokens": 1635,
+          "reasoningTokens": 25
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h2s-support-agents",
+      "message": "고객지원 상담원 명단 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "support",
+          "table": "agents"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "support",
+          "table": "agents"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 37064,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 37058.70289999992,
+          "requestBytes": 78946,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 33597,
+          "cachedInputTokens": 3200,
+          "outputTokens": 1645,
+          "reasoningTokens": 39
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h2s-coupons",
+      "message": "쇼핑몰 쿠폰 목록 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "shop",
+          "table": "coupons"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "shop",
+          "table": "coupons"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 36159,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 36154.01659999997,
+          "requestBytes": 78944,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 33600,
+          "cachedInputTokens": 3200,
+          "outputTokens": 1642,
+          "reasoningTokens": 37
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h2s-reviews",
+      "message": "상품 리뷰 올라온 거 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "shop",
+          "table": "reviews"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "shop",
+          "table": "reviews"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 41185,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 41179.71750000003,
+          "requestBytes": 78946,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 33604,
+          "cachedInputTokens": 0,
+          "outputTokens": 1748,
+          "reasoningTokens": 124
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h2s-erp-tax-invoices",
+      "message": "ERP 세금계산서 목록 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "erp",
+          "table": "tb_tax_inv"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "erp",
+          "table": "tb_tax_inv"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 36291,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 36284.37480000011,
+          "requestBytes": 78980,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 33604,
+          "cachedInputTokens": 3200,
+          "outputTokens": 1635,
+          "reasoningTokens": 29
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h2s-carrier-count",
+      "message": "택배사별 배송 건수 알려줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "logistics",
+          "table": "shipments"
+        },
+        "tableTransform": [
+          "calculate"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "logistics",
+          "table": "shipments",
+          "join": [
+            {
+              "table": "carriers",
+              "on": "carrier",
+              "references": "id"
+            }
+          ]
+        },
+        "tableTransform": "calculate"
+      },
+      "durationMs": 37967,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 37961.360600000015,
+          "requestBytes": 78945,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 33599,
+          "cachedInputTokens": 0,
+          "outputTokens": 1690,
+          "reasoningTokens": 66
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h2s-expense-sum",
+      "message": "지난달 부서별 경비 합계 얼마야?",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "finance",
+          "table": "expenses"
+        },
+        "tableTransform": [
+          "calculate"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "finance",
+          "table": "expenses"
+        },
+        "tableTransform": "calculate"
+      },
+      "durationMs": 50539,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 50533.68069999991,
+          "requestBytes": 78982,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 33604,
+          "cachedInputTokens": 0,
+          "outputTokens": 2374,
+          "reasoningTokens": 55
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h2s-top-evaluations",
+      "message": "평가 점수 제일 높은 직원 5명 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "hr",
+          "table": "evaluations"
+        },
+        "tableTransform": [
+          "sort",
+          "filter_sort"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "hr",
+          "table": "evaluations",
+          "limit": 5
+        },
+        "tableTransform": "sort"
+      },
+      "durationMs": 59344,
+      "calls": [
+        {
+          "questions": 175,
+          "durationMs": 47108.82709999988,
+          "requestBytes": 79558,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 33757,
+          "cachedInputTokens": 0,
+          "outputTokens": 1670,
+          "reasoningTokens": 45
+        },
+        {
+          "questions": 1,
+          "durationMs": 6706.161499999929,
+          "requestBytes": 8879,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 13203,
+          "cachedInputTokens": 0,
+          "outputTokens": 27,
+          "reasoningTokens": 0
+        },
+        {
+          "questions": 1,
+          "durationMs": 5521.212700000033,
+          "requestBytes": 7797,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 12947,
+          "cachedInputTokens": 0,
+          "outputTokens": 26,
+          "reasoningTokens": 0
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h2s-hot-leads",
+      "message": "점수 80점 넘는 리드만 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "crm",
+          "table": "leads"
+        },
+        "tableTransform": [
+          "filter",
+          "filter_sort"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "crm",
+          "table": "leads"
+        },
+        "tableTransform": "filter"
+      },
+      "durationMs": 40697,
+      "calls": [
+        {
+          "questions": 175,
+          "durationMs": 35611.15969999996,
+          "requestBytes": 79556,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 33753,
+          "cachedInputTokens": 0,
+          "outputTokens": 1644,
+          "reasoningTokens": 27
+        },
+        {
+          "questions": 1,
+          "durationMs": 5079.453199999873,
+          "requestBytes": 7782,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 12940,
+          "cachedInputTokens": 0,
+          "outputTokens": 24,
+          "reasoningTokens": 0
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h2s-supplier-lead-time",
+      "message": "공급업체 리드타임 긴 순으로 정렬해서 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "inventory",
+          "table": "suppliers"
+        },
+        "tableTransform": [
+          "sort",
+          "filter_sort"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "inventory",
+          "table": "suppliers"
+        },
+        "tableTransform": "sort"
+      },
+      "durationMs": 36243,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 36238.26520000002,
+          "requestBytes": 78981,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 33611,
+          "cachedInputTokens": 0,
+          "outputTokens": 1643,
+          "reasoningTokens": 33
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h2s-delay-average",
+      "message": "배송 지연 평균 몇 시간이야?",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "logistics",
+          "table": "delivery_delays"
+        },
+        "tableTransform": [
+          "calculate"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "logistics",
+          "table": "delivery_delays"
+        },
+        "tableTransform": "calculate"
+      },
+      "durationMs": 50650,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 50645.2006000001,
+          "requestBytes": 78980,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 33604,
+          "cachedInputTokens": 3200,
+          "outputTokens": 1710,
+          "reasoningTokens": 86
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h2s-big-contracts",
+      "message": "계약 금액 1억 넘는 계약만 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "crm",
+          "table": "contracts"
+        },
+        "tableTransform": [
+          "filter",
+          "filter_sort"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "crm",
+          "table": "contracts"
+        },
+        "tableTransform": "filter"
+      },
+      "durationMs": 48655,
+      "calls": [
+        {
+          "questions": 175,
+          "durationMs": 43550.53209999995,
+          "requestBytes": 79556,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 33755,
+          "cachedInputTokens": 0,
+          "outputTokens": 2024,
+          "reasoningTokens": 54
+        },
+        {
+          "questions": 1,
+          "durationMs": 5097.104999999981,
+          "requestBytes": 7790,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 12945,
+          "cachedInputTokens": 0,
+          "outputTokens": 24,
+          "reasoningTokens": 0
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h2s-ticket-status",
+      "message": "고객 문의 티켓 상태별로 몇 건이야?",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "support",
+          "table": "tickets"
+        },
+        "tableTransform": [
+          "calculate"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "support",
+          "table": "tickets"
+        },
+        "tableTransform": "calculate"
+      },
+      "durationMs": 36648,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 36643.74050000007,
+          "requestBytes": 78951,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 33603,
+          "cachedInputTokens": 0,
+          "outputTokens": 1642,
+          "reasoningTokens": 34
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h2s-headlines",
+      "message": "오늘 주요 뉴스 헤드라인 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "http.request",
+        "params": {
+          "connectionId": "news-api",
+          "path": "headlines"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "http.request",
+        "params": {
+          "method": "GET",
+          "path": "headlines",
+          "connectionId": "news-api"
+        },
+        "tableTransform": "filter"
+      },
+      "durationMs": 37503,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 37493.82620000001,
+          "requestBytes": 78948,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 33595,
+          "cachedInputTokens": 3200,
+          "outputTokens": 1698,
+          "reasoningTokens": 85
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h2s-stock-quote",
+      "message": "삼성전자 주가 지금 얼마야?",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "http.request",
+        "params": {
+          "connectionId": "stocks-api",
+          "path": "quotes"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "http.request",
+        "params": {
+          "method": "GET",
+          "path": "quotes",
+          "connectionId": "stocks-api"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 46134,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 46127.47840000014,
+          "requestBytes": 78979,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 33609,
+          "cachedInputTokens": 0,
+          "outputTokens": 1651,
+          "reasoningTokens": 40
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h2s-calendar",
+      "message": "사내 캘린더에 잡힌 일정 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "http.request",
+        "params": {
+          "connectionId": "calendar-api",
+          "path": "events"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "http.request",
+        "params": {
+          "method": "GET",
+          "path": "events",
+          "connectionId": "calendar-api"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 35400,
+      "calls": [
+        {
+          "questions": 175,
+          "durationMs": 35394.556300000055,
+          "requestBytes": 79318,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 33707,
+          "cachedInputTokens": 0,
+          "outputTokens": 1657,
+          "reasoningTokens": 39
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h2s-notices",
+      "message": "그룹웨어 공지 올라온 거 있어?",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "http.request",
+        "params": {
+          "connectionId": "hr-api",
+          "path": "notices"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "http.request",
+        "params": {
+          "method": "GET",
+          "path": "notices",
+          "connectionId": "hr-api"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 35918,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 35912.532200000016,
+          "requestBytes": 78948,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 33596,
+          "cachedInputTokens": 0,
+          "outputTokens": 1652,
+          "reasoningTokens": 43
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h2s-pos-stores",
+      "message": "POS에 등록된 매장 목록 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "http.request",
+        "params": {
+          "connectionId": "pos-api",
+          "path": "stores"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "http.request",
+        "params": {
+          "method": "GET",
+          "path": "stores",
+          "connectionId": "pos-api"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 46324,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 46318.72689999989,
+          "requestBytes": 78949,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 33598,
+          "cachedInputTokens": 12160,
+          "outputTokens": 1643,
+          "reasoningTokens": 34
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h2s-traffic-sources",
+      "message": "웹사이트 유입 경로 데이터 가져와",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "http.request",
+        "params": {
+          "connectionId": "analytics-api",
+          "path": "sources"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "http.request",
+        "params": {
+          "method": "GET",
+          "path": "sources",
+          "connectionId": "analytics-api"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 36250,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 36246.49640000006,
+          "requestBytes": 78949,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 33598,
+          "cachedInputTokens": 12160,
+          "outputTokens": 1657,
+          "reasoningTokens": 48
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h2s-mail-senders",
+      "message": "어제 받은 메일들 보낸 사람이랑 제목만 정리해줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "gmail.messages.search"
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "gmail.messages.search",
+        "params": {
+          "includeMetadata": true
+        },
+        "tableTransform": "filter"
+      },
+      "durationMs": 42451,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 42447.48310000007,
+          "requestBytes": 78990,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 33610,
+          "cachedInputTokens": 12160,
+          "outputTokens": 1773,
+          "reasoningTokens": 163
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h2s-slack-notice-channel",
+      "message": "#공지 채널에 최근 올라온 메시지 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "slack.messages.read"
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "slack.messages.read",
+        "params": {
+          "channel": "#공지"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 35610,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 35606.49649999989,
+          "requestBytes": 78953,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 33600,
+          "cachedInputTokens": 0,
+          "outputTokens": 1642,
+          "reasoningTokens": 36
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h2s-sales-folder",
+      "message": "영업자료 폴더 안에 있는 파일들 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "local_folder.list"
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "local_folder.list",
+        "params": {
+          "folderId": "f-sales",
+          "limit": 20
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 46932,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 46927.774800000014,
+          "requestBytes": 78952,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 33599,
+          "cachedInputTokens": 3200,
+          "outputTokens": 1647,
+          "reasoningTokens": 39
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h2s-ambiguous-issues",
+      "message": "이슈 목록 보여줘",
+      "expected": {
+        "kind": [
+          "clarify"
+        ],
+        "sourceChooser": true
+      },
+      "passed": true,
+      "kind": "clarify",
+      "route": "execution_enqueue_once",
+      "serviceError": false,
+      "decided": {
+        "message": "GitHub, Jira에 모두 관련 자료가 있어 어느 쪽에서 찾을지 정하지 못했습니다. 한 곳을 골라 주세요. 둘을 함께 비교하려면 \"두 자료를 비교해 줘\"처럼 말씀해 주세요. 아직 아무것도 실행하지 않았습니다.",
+        "chooser": "어디에서 찾을까요?"
+      },
+      "durationMs": 54340,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 49075.12829999998,
+          "requestBytes": 78940,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 33593,
+          "cachedInputTokens": 12160,
+          "outputTokens": 1751,
+          "reasoningTokens": 131
+        },
+        {
+          "questions": 2,
+          "durationMs": 5260.11400000006,
+          "requestBytes": 9546,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 13366,
+          "cachedInputTokens": 0,
+          "outputTokens": 35,
+          "reasoningTokens": 0
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h2s-ambiguous-returns",
+      "message": "반품 목록 보여줘",
+      "expected": {
+        "kind": [
+          "clarify"
+        ],
+        "sourceChooser": true
+      },
+      "passed": true,
+      "kind": "clarify",
+      "route": "execution_enqueue_once",
+      "serviceError": false,
+      "decided": {
+        "message": "주문 API, 물류 DB에 모두 관련 자료가 있어 어느 쪽에서 찾을지 정하지 못했습니다. 한 곳을 골라 주세요. 둘을 함께 비교하려면 \"두 자료를 비교해 줘\"처럼 말씀해 주세요. 아직 아무것도 실행하지 않았습니다.",
+        "chooser": "어디에서 찾을까요?"
+      },
+      "durationMs": 50723,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 45241.0074,
+          "requestBytes": 78940,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 33590,
+          "cachedInputTokens": 3200,
+          "outputTokens": 2042,
+          "reasoningTokens": 58
+        },
+        {
+          "questions": 2,
+          "durationMs": 5478.2054000000935,
+          "requestBytes": 9666,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 13404,
+          "cachedInputTokens": 0,
+          "outputTokens": 39,
+          "reasoningTokens": 0
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h2s-ambiguous-campaigns",
+      "message": "캠페인 목록 보여줘",
+      "expected": {
+        "kind": [
+          "clarify"
+        ],
+        "sourceChooser": true
+      },
+      "passed": true,
+      "kind": "clarify",
+      "route": "execution_enqueue_once",
+      "serviceError": false,
+      "decided": {
+        "message": "광고 API, 마케팅 DB에 모두 관련 자료가 있어 어느 쪽에서 찾을지 정하지 못했습니다. 한 곳을 골라 주세요. 둘을 함께 비교하려면 \"두 자료를 비교해 줘\"처럼 말씀해 주세요. 아직 아무것도 실행하지 않았습니다.",
+        "chooser": "어디에서 찾을까요?"
+      },
+      "durationMs": 65073,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 60315.545800000196,
+          "requestBytes": 78941,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 33596,
+          "cachedInputTokens": 3200,
+          "outputTokens": 2377,
+          "reasoningTokens": 47
+        },
+        {
+          "questions": 2,
+          "durationMs": 4753.179500000086,
+          "requestBytes": 9711,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 13426,
+          "cachedInputTokens": 0,
+          "outputTokens": 39,
+          "reasoningTokens": 0
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h2s-ambiguous-products",
+      "message": "상품 목록 좀 보여줘",
+      "expected": {
+        "kind": [
+          "clarify"
+        ],
+        "sourceChooser": true
+      },
+      "passed": true,
+      "kind": "clarify",
+      "route": "execution_enqueue_once",
+      "serviceError": false,
+      "decided": {
+        "message": "쇼핑몰 DB, 재고 DB, DummyJSON에 모두 관련 자료가 있어 어느 쪽에서 찾을지 정하지 못했습니다. 한 곳을 골라 주세요. 둘을 함께 비교하려면 \"두 자료를 비교해 줘\"처럼 말씀해 주세요. 아직 아무것도 실행하지 않았습니다.",
+        "chooser": "어디에서 찾을까요?"
+      },
+      "durationMs": 50776,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 45702.05889999983,
+          "requestBytes": 78942,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 33594,
+          "cachedInputTokens": 12160,
+          "outputTokens": 2079,
+          "reasoningTokens": 124
+        },
+        {
+          "questions": 2,
+          "durationMs": 5070.353600000031,
+          "requestBytes": 9940,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 13488,
+          "cachedInputTokens": 0,
+          "outputTokens": 39,
+          "reasoningTokens": 0
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h2s-monthly-expense",
+      "message": "매달 1일에 지난달 부서별 경비 합계를 메일로 보내줘",
+      "expected": {
+        "kind": [
+          "command",
+          "clarify"
+        ],
+        "route": [
+          "workflow_create",
+          "job_propose"
+        ]
+      },
+      "passed": true,
+      "kind": "clarify",
+      "route": "job_propose",
+      "serviceError": false,
+      "decided": {
+        "message": "업무 계획을 확정하지 못했습니다. 요청한 내용 중 계획에 빠진 부분이 있습니다. 대상·조건·실행 시점을 더 구체적으로 알려주세요. 아무 반복 업무도 저장하거나 활성화하지 않았습니다.",
+        "chooser": "업무 계획을 확정하지 못했습니다"
+      },
+      "durationMs": 70722,
+      "calls": [
+        {
+          "questions": 175,
+          "durationMs": 45817.088200000115,
+          "requestBytes": 79600,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 33774,
+          "cachedInputTokens": 0,
+          "outputTokens": 1656,
+          "reasoningTokens": 33
+        },
+        {
+          "questions": 7,
+          "durationMs": 5918.617199999746,
+          "requestBytes": 9725,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 15350,
+          "cachedInputTokens": 0,
+          "outputTokens": 104,
+          "reasoningTokens": 0
+        },
+        {
+          "questions": 2,
+          "durationMs": 5220.043000000063,
+          "requestBytes": 2693,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 11743,
+          "cachedInputTokens": 0,
+          "outputTokens": 41,
+          "reasoningTokens": 0
+        },
+        {
+          "questions": 1,
+          "durationMs": 5199.2047000001185,
+          "requestBytes": 1879,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 11034,
+          "cachedInputTokens": 0,
+          "outputTokens": 26,
+          "reasoningTokens": 0
+        },
+        {
+          "questions": 2,
+          "durationMs": 8556.386700000148,
+          "requestBytes": 2230,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 11125,
+          "cachedInputTokens": 0,
+          "outputTokens": 124,
+          "reasoningTokens": 86
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h2s-folder-trigger",
+      "message": "영업자료 폴더에 새 파일 들어오면 슬랙 #ax테스트에 알려주는 업무 만들어줘",
+      "expected": {
+        "kind": [
+          "command",
+          "clarify"
+        ],
+        "route": [
+          "workflow_create",
+          "job_propose"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "job_propose",
+      "serviceError": false,
+      "decided": {
+        "command": "job.propose"
+      },
+      "durationMs": 54630,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 48891.03420000011,
+          "requestBytes": 78975,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 33606,
+          "cachedInputTokens": 0,
+          "outputTokens": 1663,
+          "reasoningTokens": 45
+        },
+        {
+          "questions": 2,
+          "durationMs": 5733.105700000189,
+          "requestBytes": 1793,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 11001,
+          "cachedInputTokens": 0,
+          "outputTokens": 58,
+          "reasoningTokens": 20
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h2s-daily-fx",
+      "message": "평일 오전 9시마다 달러 환율 확인해서 #ax테스트에 올려줘",
+      "expected": {
+        "kind": [
+          "command",
+          "clarify"
+        ],
+        "route": [
+          "workflow_create",
+          "job_propose"
+        ]
+      },
+      "passed": true,
+      "kind": "clarify",
+      "route": "job_propose",
+      "serviceError": false,
+      "decided": {
+        "message": "업무 계획을 확정하지 못했습니다. 계획이 요청을 모두 담았는지 판단하지 못했습니다. 대상·조건·실행 시점을 더 구체적으로 알려주세요. 아무 반복 업무도 저장하거나 활성화하지 않았습니다.",
+        "chooser": "업무 계획을 확정하지 못했습니다"
+      },
+      "durationMs": 64464,
+      "calls": [
+        {
+          "questions": 175,
+          "durationMs": 36186.066999999806,
+          "requestBytes": 79570,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 33760,
+          "cachedInputTokens": 0,
+          "outputTokens": 1677,
+          "reasoningTokens": 53
+        },
+        {
+          "questions": 7,
+          "durationMs": 6398.954300000332,
+          "requestBytes": 9729,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 15346,
+          "cachedInputTokens": 0,
+          "outputTokens": 108,
+          "reasoningTokens": 0
+        },
+        {
+          "questions": 1,
+          "durationMs": 4886.1724000000395,
+          "requestBytes": 1709,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 10974,
+          "cachedInputTokens": 0,
+          "outputTokens": 26,
+          "reasoningTokens": 0
+        },
+        {
+          "questions": 1,
+          "durationMs": 5401.794000000227,
+          "requestBytes": 1691,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 10979,
+          "cachedInputTokens": 0,
+          "outputTokens": 52,
+          "reasoningTokens": 21
+        },
+        {
+          "questions": 1,
+          "durationMs": 4768.706899999641,
+          "requestBytes": 1287,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 10878,
+          "cachedInputTokens": 0,
+          "outputTokens": 26,
+          "reasoningTokens": 0
+        },
+        {
+          "questions": 2,
+          "durationMs": 6811.511500000022,
+          "requestBytes": 2691,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 11322,
+          "cachedInputTokens": 0,
+          "outputTokens": 101,
+          "reasoningTokens": 62
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h2s-api-connections",
+      "message": "연결해 둔 API 목록 좀 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "route": [
+          "connection_list",
+          "source_list",
+          "resource_list"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "connection_list",
+      "serviceError": false,
+      "decided": {
+        "command": "http.list"
+      },
+      "durationMs": 32901,
+      "calls": [
+        {
+          "questions": 175,
+          "durationMs": 32896.8228000002,
+          "requestBytes": 79319,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 33714,
+          "cachedInputTokens": 0,
+          "outputTokens": 1641,
+          "reasoningTokens": 27
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h2s-works",
+      "message": "등록된 업무들 뭐 있는지 보자",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "route": [
+          "workflow_list"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "workflow_list",
+      "serviceError": false,
+      "decided": {
+        "command": "workflow.list"
+      },
+      "durationMs": 34475,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 34472.22170000011,
+          "requestBytes": 78947,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 33604,
+          "cachedInputTokens": 0,
+          "outputTokens": 1635,
+          "reasoningTokens": 30
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h2s-remember-comma",
+      "message": "숫자 보여줄 때 항상 천 단위 콤마 찍어줘. 기억해",
+      "expected": {
+        "kind": [
+          "command",
+          "clarify"
+        ],
+        "route": [
+          "context_remember"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "context_remember",
+      "serviceError": false,
+      "decided": {
+        "command": "ui.present"
+      },
+      "durationMs": 35351,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 35347.95069999993,
+          "requestBytes": 78959,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 33609,
+          "cachedInputTokens": 0,
+          "outputTokens": 1641,
+          "reasoningTokens": 35
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h2s-send-once",
+      "message": "#ax테스트 채널에 '오늘 배포 완료'라고 한 번만 보내줘",
+      "expected": {
+        "kind": [
+          "command",
+          "clarify"
+        ],
+        "route": [
+          "execution_enqueue_once"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "execution_enqueue_once",
+      "serviceError": false,
+      "decided": {
+        "command": "execution.enqueue_once"
+      },
+      "durationMs": 41699,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 36826.85900000017,
+          "requestBytes": 78963,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 33606,
+          "cachedInputTokens": 0,
+          "outputTokens": 1673,
+          "reasoningTokens": 66
+        },
+        {
+          "questions": 2,
+          "durationMs": 4866.570199999958,
+          "requestBytes": 1644,
+          "providerRequests": 1,
+          "model": "gpt-6.1-sol",
+          "inputTokens": 10963,
+          "cachedInputTokens": 0,
+          "outputTokens": 36,
+          "reasoningTokens": 0
+        }
+      ]
+    }
+  ]
+}
