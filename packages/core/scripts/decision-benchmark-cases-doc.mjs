@@ -93,7 +93,7 @@ const all = SETS.flatMap((entry) => entry.list.map((testCase) => ({ ...testCase,
 const categories = [...new Set(all.map(category))];
 const countRow = (filter) => categories.map((name) => all.filter((testCase) => filter(testCase) && category(testCase) === name).length);
 const setGroups = [
-  ['기존 (49)', (testCase) => testCase.entry.set === 'main'],
+  ['기존', (testCase) => testCase.entry.set === 'main'],
   ['홀드아웃 v1', (testCase) => testCase.entry.set === 'holdout-v1'],
   ['홀드아웃 v2', (testCase) => testCase.entry.set === 'holdout-v2'],
 ];

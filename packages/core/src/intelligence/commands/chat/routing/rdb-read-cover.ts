@@ -14,6 +14,39 @@ function tablesRead(hint: JevReadOperationHint): Set<string> | undefined {
 }
 
 /**
+ * Every table the selected reads touch, base or joined, when they are all reads of one database.
+ * Undefined when any read is of something else.
+ */
+export function rdbTablesRead(selected: readonly JevReadOperationHint[]): string[] | undefined {
+  if (selected.length === 0) return undefined;
+  const source = databaseOf(selected[0]!);
+  const tables = new Set<string>();
+  for (const hint of selected) {
+    const read = tablesRead(hint);
+    if (!read || databaseOf(hint) !== source) return undefined;
+    for (const table of read) tables.add(table);
+  }
+  return [...tables];
+}
+
+/**
+ * The selected reads narrowed to those returning `table`'s own rows. When only a join brought the
+ * table in ("orders + customers" for a customer list), its plain read from the catalog instead.
+ */
+export function readsOfRowTable(
+  selected: readonly JevReadOperationHint[],
+  catalog: readonly JevReadOperationHint[],
+  table: string,
+): JevReadOperationHint[] {
+  const own = selected.filter((hint) => hint.params.table === table);
+  if (own.length > 0) return own;
+  const source = databaseOf(selected[0]!);
+  const plain = catalog.find((hint) => hint.capabilityId === 'rdb.query.read' && hint.params.table === table
+    && !Array.isArray(hint.params.join) && databaseOf(hint) === source);
+  return plain ? [plain] : [...selected];
+}
+
+/**
  * One database read holding everything several selected reads would: a question about orders by
  * customer region selects the orders and customers tables, and the catalog's "orders +
  * customers" read already has both, row by row. The smallest such read of the same connection
