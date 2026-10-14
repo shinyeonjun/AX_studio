@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { JevReadOperationHint } from '../../../decision/read-operation-catalog.js';
-import { coveringRdbRead } from './rdb-read-cover.js';
+import { coveringRdbRead, rdbTablesRead, readsOfRowTable } from './rdb-read-cover.js';
 
 const read = (key: string, table: string, joins: string[] = [], sourceLabel = '쇼핑몰 DB'): JevReadOperationHint => ({
   key, capabilityId: 'rdb.query.read', connector: 'rdb', sourceLabel, label: key, description: key,
@@ -26,5 +26,22 @@ describe('one read for tables asked about together', () => {
     expect(coveringRdbRead([orders], catalog)).toBeUndefined();
     expect(coveringRdbRead([orders, { ...customers, capabilityId: 'http.request' }], catalog)).toBeUndefined();
     expect(coveringRdbRead([orders, read('c', 'customers', [], '다른 DB')], catalog)).toBeUndefined();
+  });
+});
+
+describe('the table whose records the answer is made of', () => {
+  it('lists every table the selected reads touch, joined ones included', () => {
+    expect(rdbTablesRead([products, read('orders+products', 'orders', ['products'])])).toEqual(['products', 'orders']);
+    expect(rdbTablesRead([ordersCustomers])).toEqual(['orders', 'customers']);
+    expect(rdbTablesRead([orders, { ...customers, capabilityId: 'http.request' }])).toBeUndefined();
+  });
+
+  it('keeps the reads of that table, or its plain read when only a join brought it in', () => {
+    // Real: a product price list selected products and the "orders + products" join next to it.
+    expect(readsOfRowTable([products, all], catalog, 'products')).toEqual([products]);
+    expect(readsOfRowTable([orders, ordersCustomers, all], catalog, 'orders')).toEqual([orders, ordersCustomers, all]);
+    // A customer email list selected only "orders + customers".
+    expect(readsOfRowTable([ordersCustomers], catalog, 'customers')).toEqual([customers]);
+    expect(readsOfRowTable([ordersCustomers], [ordersCustomers], 'customers')).toEqual([ordersCustomers]);
   });
 });

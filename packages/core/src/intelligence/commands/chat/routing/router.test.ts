@@ -3311,6 +3311,47 @@ describe('routeChatWithJev', () => {
     expect(result).not.toMatchObject({ kind: 'command', route: 'capability_read' });
   });
 
+  it('reads the table whose records the request is about, not a join that merely holds its columns', async () => {
+    // Real: "쇼핑몰 DB 상품 가격 목록 보여줘" selected products and also "orders + products",
+    // and merging them read every order with its product.
+    const products: JevReadOperationHint = { key: 'op_0', capabilityId: 'rdb.query.read', connector: 'rdb', sourceLabel: '쇼핑몰 DB', label: 'DB 조회: products', description: '허용된 테이블 products 읽기 · 열: code, name, price', params: { table: 'products' } };
+    const ordersProducts: JevReadOperationHint = {
+      key: 'op_1', capabilityId: 'rdb.query.read', connector: 'rdb', sourceLabel: '쇼핑몰 DB', label: 'DB 조회: orders + products', description: 'orders의 각 행에 products의 열(name, price)을 붙여 함께 읽기',
+      params: { table: 'orders', join: [{ table: 'products', on: 'product_code', references: 'code' }] },
+    };
+    const route = async (rowTable: string) => {
+      const rowTableQuestions: unknown[] = [];
+      const result = await routeChatWithJev({
+        decisionEngine: {
+          evaluate: async (request): Promise<DecisionEvaluationResult> => {
+            if (request.questions.row_table) rowTableQuestions.push(request.questions.row_table);
+            return {
+              answers: {
+                route: { type: 'choice', choice: 'capability_read', probabilities: { capability_read: 0.9 }, confidence: 0.9 },
+                ...parallelToolAnswersForTest(request, { needsNaturalLanguageAnswer: false, select: (candidate) => candidate.kind === 'read' && candidate.id.startsWith('read:op_') }),
+                row_table: { type: 'choice', choice: rowTable, probabilities: { [rowTable]: 0.9 }, confidence: 0.9 },
+                table_transform: { type: 'choice', choice: 'none', probabilities: { none: 0.9 }, confidence: 0.9 },
+              },
+            };
+          },
+        },
+        connectedConnectors: ['rdb'],
+        readOperationHints: [products, ordersProducts],
+        userMessage: '쇼핑몰 DB 상품 가격 목록 보여줘',
+      });
+      return { result, rowTableQuestions };
+    };
+
+    const listed = await route('table_0');
+    expect(listed.rowTableQuestions).toHaveLength(1);
+    expect(listed.result).toMatchObject({ kind: 'command', command: { args: { id: 'rdb.query.read', params: { table: 'products' } } } });
+    expect(listed.result.kind === 'command' && listed.result.command.args.params).not.toHaveProperty('join');
+    // Not told: the selected reads are merged as before.
+    expect((await route('unclear')).result).toMatchObject({
+      kind: 'command', command: { args: { params: { table: 'orders', join: [{ table: 'products' }] } } },
+    });
+  });
+
   describe('rankReadHintsByRelevance', () => {
     const productsHint: JevReadOperationHint = {
       key: 'op_0',

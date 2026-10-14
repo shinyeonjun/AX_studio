@@ -37,6 +37,12 @@ export const JEV_ROUTING_CASES: readonly JevRoutingCase[] = [
   { id: 'db-category-sum', message: '상품 카테고리별 매출 합계 보여줘', expect: { kind: ['command'], capabilityId: 'rdb.query.read', params: { table: 'orders' }, join: ['products'], tableTransform: ['calculate'] } },
   { id: 'db-multi-filter', message: '완료된 주문 중에 5만원 넘는 것만 보여줘', expect: { kind: ['command'], capabilityId: 'rdb.query.read', params: { table: 'orders' }, tableTransform: ['filter', 'filter_sort'] } },
   { id: 'db-top-amount', message: '주문 금액이 가장 큰 5건 보여줘', expect: { kind: ['command'], capabilityId: 'rdb.query.read', params: { table: 'orders' }, tableTransform: ['sort', 'filter_sort'] } },
+  // Products and customers are their own records, not orders with their columns joined on.
+  { id: 'db-product-prices', message: '쇼핑몰 DB 상품 가격 목록 보여줘', expect: { kind: ['command'], capabilityId: 'rdb.query.read', params: { table: 'products' } } },
+  { id: 'db-low-stock', message: 'DB 상품 중 재고 10개 미만인 거 보여줘', expect: { kind: ['command'], capabilityId: 'rdb.query.read', params: { table: 'products' }, tableTransform: ['filter', 'filter_sort'] } },
+  { id: 'db-customer-emails', message: '가입한 고객 이메일 목록 보여줘', expect: { kind: ['command'], capabilityId: 'rdb.query.read', params: { table: 'customers' } } },
+  { id: 'db-daegu-customers', message: '쇼핑몰 DB 고객 중에 대구 사는 사람 보여줘', expect: { kind: ['command'], capabilityId: 'rdb.query.read', params: { table: 'customers' }, tableTransform: ['filter', 'filter_sort'] } },
+  { id: 'db-customer-totals', message: '고객별 주문 금액 합계 알려줘', expect: { kind: ['command'], capabilityId: 'rdb.query.read', params: { table: 'orders' }, join: ['customers'], tableTransform: ['calculate'] } },
   { id: 'api-products', message: 'DummyJSON에서 상품 5개 보여줘', expect: { kind: ['command'], capabilityId: 'http.request', params: { path: 'products' } } },
   { id: 'api-top-rated', message: 'DummyJSON 상품 중 평점 높은 순으로 10개 보여줘', expect: { kind: ['command'], capabilityId: 'http.request', params: { path: 'products' }, tableTransform: ['sort', 'filter_sort'] } },
   { id: 'two-sources', message: '화장품 상품 찾아줘', expect: { kind: ['clarify'], sourceChooser: true } },
