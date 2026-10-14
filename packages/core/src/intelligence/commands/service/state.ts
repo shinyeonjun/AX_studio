@@ -11,7 +11,7 @@ import type {
 import type { PendingJobDraft } from '../job-registration/contract.js';
 
 /** Pending drafts and confirmations kept per conversation; the oldest goes past this many. */
-export const MAX_PENDING_PER_KIND = 128;
+const MAX_PENDING_PER_KIND = 128;
 
 export function createCommandServiceState(
   store: WorkflowStore,

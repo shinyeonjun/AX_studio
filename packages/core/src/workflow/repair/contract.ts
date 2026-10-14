@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { MAX_SOURCE_ID_LENGTH } from '../../contracts/output-contract.js';
 
-export const RepairColumnNameSchema = z.string().trim().min(1).max(200);
+const RepairColumnNameSchema = z.string().trim().min(1).max(200);
 
 export const RepairCandidateOperationSchema = z.object({
   id: z.string().trim().min(1).max(120),
@@ -17,7 +17,7 @@ export const RepairCandidateOperationSchema = z.object({
 
 export type RepairCandidateOperation = z.infer<typeof RepairCandidateOperationSchema>;
 
-export const RepairReplayCaseSchema = z.object({
+const RepairReplayCaseSchema = z.object({
   caseId: z.string().trim().min(1).max(200),
   exampleId: z.string().trim().min(1).max(200),
   pass: z.boolean(),

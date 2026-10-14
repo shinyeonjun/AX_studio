@@ -3,7 +3,7 @@ import { join, sep } from 'node:path';
 import { redactLogText, sortAppLogFilesNewestFirst } from '@ax-studio/core';
 
 /** Upper bound for log text copied into one diagnostics bundle. */
-export const DIAGNOSTICS_LOG_BUDGET_BYTES = 2 * 1024 * 1024;
+const DIAGNOSTICS_LOG_BUDGET_BYTES = 2 * 1024 * 1024;
 
 export interface DiagnosticsInput {
   generatedAt: Date;

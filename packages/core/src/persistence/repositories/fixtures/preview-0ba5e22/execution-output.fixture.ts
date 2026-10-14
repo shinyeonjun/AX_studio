@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 /** User-facing calculated results, stored separately from diagnostic/agent logs. */
-export const ExecutionOutputSchema = z.object({
+const ExecutionOutputSchema = z.object({
   version: z.literal(1),
   fields: z.array(z.object({
     path: z.string().min(1).max(512),

@@ -22,7 +22,7 @@ export async function readAiToml(): Promise<AiTomlConfig> {
   return parseAiToml(content);
 }
 
-export async function writeAiToml(config: AiTomlConfig): Promise<void> {
+async function writeAiToml(config: AiTomlConfig): Promise<void> {
   const path = getAiConfigPath();
   const temporaryPath = `${path}.${randomUUID()}.tmp`;
   try {

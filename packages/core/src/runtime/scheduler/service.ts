@@ -33,7 +33,7 @@ function occurrenceAcknowledged(fired: string | undefined, occurrenceKey: string
 
 
 /** A one-time job this late is skipped (and recorded) instead of running unexpectedly. */
-export const ONCE_MAX_LATENESS_MS = 24 * 60 * 60 * 1_000;
+const ONCE_MAX_LATENESS_MS = 24 * 60 * 60 * 1_000;
 
 type PendingOccurrence = {
   workflowId: string;

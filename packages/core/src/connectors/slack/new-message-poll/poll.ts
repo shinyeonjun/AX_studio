@@ -7,7 +7,7 @@ import type {
 import { collectSlackHistory } from './history.js';
 
 /** New messages turned into events by one poll. */
-export const SLACK_POLL_BATCH = 1_000;
+const SLACK_POLL_BATCH = 1_000;
 import { toSlackNewMessageEvent } from './message.js';
 
 export async function pollSlackNewMessages(

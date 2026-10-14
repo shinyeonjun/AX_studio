@@ -1,6 +1,5 @@
 import { displayColumns, formatTableNumber } from '../../../../contracts/artifacts/table-display.js';
 import { boundedDisplayTable, MAX_DISPLAY_TABLE_COLUMNS, MAX_DISPLAY_TABLE_ROWS } from '../../../../contracts/artifacts/table-bounds.js';
-import type { ColumnLabels } from '../../../../contracts/artifacts/column-labels.js';
 import type { TableArtifact } from '../../../../contracts/artifacts/table.js';
 
 function markdownCell(value: unknown): string {
@@ -98,35 +97,6 @@ export function shownColumns(table: TableArtifact, hiddenColumns: readonly strin
 
 /** Keep only the bounded, visible table needed for an immediate follow-up. */
 export const boundedChatReadResult = boundedDisplayTable;
-
-export function rowsToMarkdown(rows: Record<string, unknown>[], labels: ColumnLabels = {}): string {
-  const headerSet = new Set<string>();
-  for (const row of rows) {
-    for (const key of Object.keys(row)) {
-      headerSet.add(key);
-      if (headerSet.size > MAX_CHAT_TABLE_COLUMNS) break;
-    }
-    if (headerSet.size > MAX_CHAT_TABLE_COLUMNS) break;
-  }
-  const allHeaders = [...headerSet];
-  const headers = allHeaders.slice(0, MAX_CHAT_TABLE_COLUMNS);
-  const displayedRows = rows.slice(0, MAX_CHAT_TABLE_ROWS);
-  if (headers.length === 0) return '조회 결과가 비어 있습니다.';
-  const headerLines = [
-    `| ${headers.map((header) => markdownCell(labels[header] || header)).join(' | ')} |`,
-    `| ${headers.map(() => '---').join(' | ')} |`,
-  ];
-  const rowLines = rowLinesWithinBudget(headerLines,
-    displayedRows.map((row) => `| ${headers.map((header) => markdownCell(row[header])).join(' | ')} |`));
-  const lines = [...headerLines, ...rowLines];
-  if (allHeaders.length > headers.length) {
-    lines.push('', `열이 많아 화면에는 처음 ${headers.length}열만 표시했습니다.`);
-  }
-  if (rows.length > rowLines.length) {
-    lines.push('', `화면에는 전체 ${rows.length}행 중 처음 ${rowLines.length}행만 표시했습니다.`);
-  }
-  return lines.join('\n');
-}
 
 const SUMMARY_BOILERPLATE_COLUMNS = new Set([
   'images', 'thumbnail', 'photo', 'avatar', 'picture', 'icon',

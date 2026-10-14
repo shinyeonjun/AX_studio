@@ -2,7 +2,6 @@ import type { ContractTypeName } from '../../contracts/capability-io.js';
 import { contractTypesCompatible } from '../../contracts/compatibility.js';
 import {
   actionInputTypes,
-  actionOutputTypes,
   triggerCapabilityId,
   triggerOutputTypes,
 } from '../../catalog/capability-contracts.js';
@@ -58,12 +57,6 @@ export function bindingsSatisfyInputs(
   }
 
   return true;
-}
-
-export function stepProducesOutputTypes(step: Step): ContractTypeName[] {
-  if (step.type === 'action') return actionOutputTypes(step.connector, step.action);
-  if (step.type === 'ai_decision') return [...new Set(aiDecisionOutputPorts(step).map((port) => port.type))];
-  return [];
 }
 
 export function triggerAvailableTypes(trigger: Trigger | undefined, inputs: string[]): ContractTypeName[] {

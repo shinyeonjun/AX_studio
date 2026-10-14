@@ -9,7 +9,7 @@ import {
   parseJsonRecordValue,
 } from '../../action-instance.js';
 import { MAX_WORKFLOW_STEPS } from '../../schema.js';
-export { ActionInstanceSchema, type ActionInstance } from '../../action-instance.js';
+export { type ActionInstance } from '../../action-instance.js';
 
 export { parseBindingsRecord, parseJsonRecordValue } from '../../action-instance.js';
 

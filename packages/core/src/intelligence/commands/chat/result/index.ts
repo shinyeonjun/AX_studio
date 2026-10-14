@@ -9,7 +9,6 @@ export {
   httpTableConversion,
   selectedColumnsFromHttpPath,
   tableForJevTransform,
-  type HttpTableConversion,
 } from './read-tables.js';
 export { deterministicCapabilityReadChatReply, deterministicHttpChatReply } from './read-replies.js';
 export {

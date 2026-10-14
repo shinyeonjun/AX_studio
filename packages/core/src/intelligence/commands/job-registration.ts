@@ -8,9 +8,5 @@ export {
 } from './job-registration/contract.js';
 export type {
   AxJobProposeArgs,
-  NormalizedJobSpec,
-  PendingJobDraft,
-  JobProposeReadResult,
-  ListSlackChannels,
 } from './job-registration/contract.js';
 export { compileScheduledHttpSlackJob } from './job-registration/compile.js';

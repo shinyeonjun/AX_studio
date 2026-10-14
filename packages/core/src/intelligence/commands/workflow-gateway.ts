@@ -17,9 +17,7 @@ import {
 } from './workflow-gateway/read.js';
 
 export type {
-  AxEnqueueOnceOptions,
   AxWorkflowCommandGateway,
-  AxWorkflowCommandResult,
 } from './workflow-gateway/contract.js';
 
 export function createWorkflowCommandGateway(

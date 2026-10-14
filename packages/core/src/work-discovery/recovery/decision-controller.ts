@@ -5,7 +5,7 @@ import {
 } from '../../contracts/decision-context.js';
 import type { DiscoveryRecoveryCheckpoint, DiscoverySessionState } from '../schema.js';
 
-export type DiscoveryRecoveryAction =
+type DiscoveryRecoveryAction =
   | 'retry_checkpoint'
   | 'expand_source_search'
   | 'ask_human'

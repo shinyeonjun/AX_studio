@@ -15,7 +15,7 @@ export function isActionParamFilled(value: unknown): boolean {
   if (file && typeof file === 'object' && !Array.isArray(file) && typeof (file as Record<string, unknown>).path === 'string') return true;
   return Object.keys(record).length > 0;
 }
-export function isActionParamBound(binding: PortBinding | undefined): boolean {
+function isActionParamBound(binding: PortBinding | undefined): boolean {
   return Boolean(binding?.from && binding.output.trim());
 }
 export function actionStepParamFilled(step: Extract<Step, { type: 'action' }>, name: string): boolean {

@@ -1,5 +1,4 @@
 export {
-  INVESTIGATION_LIMIT_MESSAGE,
   documentTextFromRun,
   emailBodyFromRun,
   buildInvestigationUser,

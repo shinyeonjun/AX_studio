@@ -44,7 +44,7 @@ const GroupAggregateSchema = z.object({
 export type GroupAggregate = z.infer<typeof GroupAggregateSchema>;
 
 /** Bounds the nesting of one group expression (region → category → ...), not a business rule. */
-export const MAX_GROUP_THEN_BY = 2;
+const MAX_GROUP_THEN_BY = 2;
 
 /**
  * Pivot-style grouping: one output row per distinct (trimmed, non-empty) value of `by`, in

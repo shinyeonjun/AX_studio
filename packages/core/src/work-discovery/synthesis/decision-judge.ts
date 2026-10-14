@@ -6,8 +6,8 @@ import {
 import { sourceIdFromExpr } from '../compile/blueprint.js';
 import type { CandidateProgram, SourceDescriptor } from '../schema.js';
 
-export const DISCOVERY_JEV_MAX_AMBIGUOUS_PATHS = 8;
-export const DISCOVERY_JEV_MAX_CANDIDATES_PER_PATH = 32;
+const DISCOVERY_JEV_MAX_AMBIGUOUS_PATHS = 8;
+const DISCOVERY_JEV_MAX_CANDIDATES_PER_PATH = 32;
 const DISCOVERY_JEV_MAX_VALUE_DEPTH = 8;
 const DISCOVERY_JEV_MAX_ARRAY_ITEMS = 32;
 const DISCOVERY_JEV_MAX_OBJECT_KEYS = 32;

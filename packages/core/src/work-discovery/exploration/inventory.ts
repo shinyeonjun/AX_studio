@@ -9,7 +9,7 @@ import {
 import type { DiscoverySourceContext } from '../sources/types.js';
 import type { DiscoverySourceRegistry } from '../sources/registry.js';
 
-export interface InventorySnapshot {
+interface InventorySnapshot {
   id: string;
   exampleId: string;
   sourceId: string;

@@ -114,6 +114,10 @@ jobs:
       - name: Architecture check
         run: npm run arch:check
 
+      # Unused files, exports and dependencies; exceptions live in knip.config.ts with a reason each.
+      - name: Unused code check
+        run: npm run knip
+
       - name: Deterministic product smoke
         run: xvfb-run --auto-servernum npm run test:product-qa -- --mode deterministic --tier smoke --strict --skip-build
 

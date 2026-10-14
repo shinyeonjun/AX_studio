@@ -1,52 +1,24 @@
 /** @type {import('knip').KnipConfig} */
 export default {
   ignoreIssues: {
-    'packages/core/src/index.ts': ['exports', 'types'],
-    'packages/core/src/**/index.ts': ['exports', 'types'],
-    'packages/core/src/connectors/packages/catalog.ts': ['exports'],
-    'packages/core/src/catalog/data.ts': ['exports'],
-    'packages/core/src/persistence/rows.ts': ['types'],
-    'packages/core/src/persistence/repositories/**': ['exports', 'types'],
-    'packages/core/src/connectors/module-package.ts': ['exports'],
-    'packages/core/src/connectors/local-sheet/**': ['exports'],
-    'packages/core/src/contracts/artifacts/table-build.ts': ['exports'],
-    // Contract types are intentionally surfaced through the discovery/source-resolver facades.
-    'packages/core/src/contracts/discovery-source.ts': ['types'],
-    'packages/core/src/runtime/source-resolver/contracts.ts': ['types'],
-    'packages/core/src/intelligence/design-tools/**': ['exports', 'types'],
-    'packages/core/src/intelligence/agent/commands/schema.ts': ['duplicates'],
-    'packages/core/src/documents/write/**': ['exports'],
-    'packages/core/src/workflow/**': ['exports', 'types'],
-    'packages/core/src/work-discovery/**': ['exports', 'types'],
-    'packages/core/src/triggers/**': ['exports'],
-    'packages/core/src/runtime/**': ['exports'],
-    'packages/core/src/intelligence/agent/settings/providers/**': ['exports'],
-    // These files are deliberate public facades for consumers outside the workspace.
-    'packages/core/src/intelligence/agent/commands/discovery-gateway.ts': ['types'],
-    'packages/core/src/intelligence/agent/commands/job-registration.ts': ['types'],
-    'packages/core/src/intelligence/agent/commands/repair-gateway.ts': ['types'],
-    'packages/core/src/intelligence/agent/commands/workflow-gateway.ts': ['types'],
-    'packages/core/src/runtime/condition-expr.ts': ['types'],
-    'packages/core/src/runtime/source-resolver.ts': ['types'],
-    'packages/core/src/triggers/slack/new-message/socket-mode.ts': ['types'],
-    'apps/desktop/electron/main/ai/config-file.ts': ['types'],
-    'apps/desktop/electron/main/e2e-test-seam.ts': ['types'],
-    'packages/core/src/intelligence/agent/commands/schema/workflow-args.ts': ['duplicates'],
-    'apps/desktop/src/**': ['exports', 'types'],
-    'apps/desktop/electron/**': ['exports'],
+    // AxExecutionEnqueueOnceArgsSchema is the create schema under the name its command uses.
+    'packages/core/src/intelligence/commands/schema/workflow-args.ts': ['duplicates'],
   },
   ignoreBinaries: ['where.exe', 'taskkill.exe'],
   workspaces: {
     '.': {
       entry: ['test/product-qa/specs/**/*.ts'],
       project: ['test/product-qa/**/*.ts'],
-      ignoreDependencies: ['electron', 'xlsx'],
+      // Root scripts and QA runners use the build tools installed for apps/desktop.
+      ignoreDependencies: ['electron', 'xlsx', 'vite', 'electron-vite', 'esbuild', '@vitejs/plugin-react'],
     },
     'packages/core': {
       entry: [
         'src/application/bootstrap.ts',
         'src/**/*.test.ts',
         'src/testing/**/*.ts',
+        // Maintainer scripts run by hand (evaluation reports).
+        'scripts/**/*.mjs',
       ],
       project: ['src/**/*.ts', 'scripts/**/*.mjs'],
     },
@@ -60,11 +32,12 @@ export default {
         'electron/main/**/connection.ts',
       ],
       project: ['electron/**/*.ts', 'src/**/*.{ts,tsx}'],
+      // Core's connector runtimes, declared here so the packaged app ships them (electron.vite.config.ts).
       ignoreDependencies: [
+        '@googleapis/gmail',
         '@slack/socket-mode',
         '@slack/web-api',
         'google-auth-library',
-        'googleapis',
         'mysql2',
         'pg',
         'undici',

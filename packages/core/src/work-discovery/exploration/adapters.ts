@@ -7,7 +7,7 @@ function tokenize(text: string): string[] {
   return text.toLowerCase().split(/[^a-z0-9가-힣]+/).filter(Boolean);
 }
 
-export function scoreSourceRelevance(source: SourceDescriptor, observations: DiscoveryObservationRef[]): number {
+function scoreSourceRelevance(source: SourceDescriptor, observations: DiscoveryObservationRef[]): number {
   const labels = observations.flatMap((observation) => [observation.label, observation.path].filter(Boolean) as string[]);
   const haystack = `${source.id} ${source.label} ${source.profileSummary ?? ''}`.toLowerCase();
   let score = 0;

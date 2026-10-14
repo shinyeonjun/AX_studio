@@ -8,7 +8,7 @@ import type { WorkflowGraphProps } from './contracts.js';
 type WorkflowGraphModel = ReturnType<typeof draftToFlow>;
 
 /** Below this zoom the step labels cannot be read; a tall flow scrolls instead of shrinking further. */
-export const READABLE_ZOOM = 0.8;
+const READABLE_ZOOM = 0.8;
 
 export interface WorkflowGraphState {
   graph: WorkflowGraphModel;

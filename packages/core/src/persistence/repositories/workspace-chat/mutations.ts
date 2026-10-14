@@ -151,7 +151,7 @@ export function saveWorkspaceChat(
  * second delivery of the same execution to grow the transcript.
  */
 /** Results of one scheduled job this close together replace each other in the chat. */
-export const SUCCESSIVE_RESULT_WINDOW_MS = 60 * 60 * 1000;
+const SUCCESSIVE_RESULT_WINDOW_MS = 60 * 60 * 1000;
 
 /**
  * True when the chat ends with a finished result of an earlier run of `workflowId` that finished

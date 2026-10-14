@@ -21,7 +21,7 @@ export function legacyPlaintextConnectionString(config: unknown): string | undef
 }
 
 /** The stored databases with each one's connection string merged in (never persisted). */
-export function mergeRdbSecrets(
+function mergeRdbSecrets(
   entries: readonly RdbDatabaseEntry[],
   secrets: RdbDatabaseSecrets,
 ): { databases: Array<RdbDatabaseEntry & { connectionString?: string }> } {

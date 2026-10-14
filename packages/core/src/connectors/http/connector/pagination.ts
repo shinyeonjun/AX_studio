@@ -1,5 +1,5 @@
 /** Pages and rows one read may gather; beyond them the read says it saw part of the data. */
-export const MAX_HTTP_PAGES = 10;
+const MAX_HTTP_PAGES = 10;
 export const MAX_HTTP_ROWS = 1_000;
 
 const TOTAL_KEYS = ['total', 'totalCount', 'total_count', 'count'] as const;
@@ -24,7 +24,7 @@ function finiteNumber(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
 }
 
-export function parseHttpPage(body: string): HttpPage | undefined {
+function parseHttpPage(body: string): HttpPage | undefined {
   let json: unknown;
   try {
     json = JSON.parse(body) as unknown;

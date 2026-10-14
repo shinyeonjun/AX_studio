@@ -10,7 +10,7 @@ export function truncate(text: string, max = 28): string {
   return `${trimmed.slice(0, max - 1)}…`;
 }
 
-export function slotFilled(slots: CompletenessResult['slots'] | undefined, slotId: string): boolean {
+function slotFilled(slots: CompletenessResult['slots'] | undefined, slotId: string): boolean {
   return slots?.find((slot) => slot.slot === slotId)?.filled ?? false;
 }
 

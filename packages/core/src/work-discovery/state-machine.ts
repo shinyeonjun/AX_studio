@@ -24,7 +24,7 @@ const TRANSITIONS: Record<DiscoveryStatus, DiscoveryStatus[]> = {
   cancelled: [],
 };
 
-export function canTransition(from: DiscoveryStatus, to: DiscoveryStatus): boolean {
+function canTransition(from: DiscoveryStatus, to: DiscoveryStatus): boolean {
   return TRANSITIONS[from]?.includes(to) ?? false;
 }
 

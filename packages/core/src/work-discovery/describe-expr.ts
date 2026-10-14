@@ -2,10 +2,9 @@ import type { ConditionExpr } from '../workflow/condition-expr/schema.js';
 import { describeCondition } from '../workflow/condition-expr/describe.js';
 import type { TransformExpr } from '../workflow/transform-expr/dsl.js';
 
-export { describeCondition } from '../workflow/condition-expr/describe.js';
 
 /** Row conditions applied below an expression's input chain, outermost last. */
-export function rowConditions(expr: TransformExpr): ConditionExpr[] {
+function rowConditions(expr: TransformExpr): ConditionExpr[] {
   if (expr.op === 'source' || expr.op === 'ratio') return [];
   const inner = rowConditions(expr.input);
   return expr.op === 'filter' ? [...inner, expr.where] : inner;

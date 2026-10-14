@@ -86,7 +86,7 @@ const POLL_FAILURES_NEEDING_ACTION = new Set([
 const POLL_FAILURE_GRACE_MS = 5 * 60 * 1000;
 
 /** A job whose "새 메일이 오면 …" check keeps failing would otherwise look healthy and never run. */
-export function visiblePollFailure(work: Pick<WorkSummary, 'triggerPollFailure'>): WorkSummary['triggerPollFailure'] {
+function visiblePollFailure(work: Pick<WorkSummary, 'triggerPollFailure'>): WorkSummary['triggerPollFailure'] {
   const failure = work.triggerPollFailure;
   if (!failure) return undefined;
   const lasted = Date.parse(failure.lastFailedAt) - Date.parse(failure.firstFailedAt);

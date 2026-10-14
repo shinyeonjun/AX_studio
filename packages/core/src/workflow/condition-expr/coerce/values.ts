@@ -1,6 +1,6 @@
 import type { ConditionValue } from '../schema.js';
 
-export function coerceConditionValue(value: unknown): ConditionValue | undefined {
+function coerceConditionValue(value: unknown): ConditionValue | undefined {
   if (value == null) return undefined;
   if (typeof value === 'string') {
     const trimmed = value.trim();
@@ -36,7 +36,7 @@ export function coerceConditionValue(value: unknown): ConditionValue | undefined
   return undefined;
 }
 
-export function coerceConditionRef(value: unknown): ConditionValue | undefined {
+function coerceConditionRef(value: unknown): ConditionValue | undefined {
   if (value != null && typeof value === 'object') return coerceConditionValue(value);
   if (typeof value === 'string') {
     const trimmed = value.trim();

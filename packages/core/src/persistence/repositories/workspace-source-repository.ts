@@ -150,7 +150,7 @@ export function getWorkspaceSource(db: AppDatabase, sessionId: string, id: strin
   return row ? toRecord(row) : null;
 }
 
-export function getWorkspaceSourceById(db: AppDatabase, id: string): WorkspaceSourceRecord | null {
+function getWorkspaceSourceById(db: AppDatabase, id: string): WorkspaceSourceRecord | null {
   const row = db.prepare('SELECT * FROM workspace_chat_sources WHERE id = ?').get(id);
   return row ? toRecord(row) : null;
 }

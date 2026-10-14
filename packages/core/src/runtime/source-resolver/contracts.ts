@@ -6,7 +6,7 @@ export interface SourceConnection {
   config?: Record<string, unknown>;
 }
 
-export interface ResolveFileRefResult {
+interface ResolveFileRefResult {
   ok: true;
   path: string;
   file: FileRef;

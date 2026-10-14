@@ -6,8 +6,8 @@ import type { ExecutionResult } from '../types.js';
 
 /** A trigger event is attempted at most this many times before it is dead-lettered. */
 export const MAX_TRIGGER_ATTEMPTS = 5;
-export const TRIGGER_RETRY_BASE_MS = 30_000;
-export const TRIGGER_RETRY_MAX_MS = 30 * 60_000;
+const TRIGGER_RETRY_BASE_MS = 30_000;
+const TRIGGER_RETRY_MAX_MS = 30 * 60_000;
 const MAX_DEAD_LETTERS = 100;
 
 const ATTEMPT_SETTING_PREFIX = 'trigger.receiptAttempt:';
@@ -57,7 +57,7 @@ export function clearTriggerAttempts(store: TriggerEngineStore, dedupeKey: strin
  * external action completed, or started and then timed out/was cancelled
  * (outcome unknown). Such a run is never retried automatically.
  */
-export function externalEffectPossible(result: Partial<ExecutionResult> | undefined, workflow: WorkflowIR): boolean {
+function externalEffectPossible(result: Partial<ExecutionResult> | undefined, workflow: WorkflowIR): boolean {
   if (!result?.log) return false;
   const steps = new Map(workflow.steps.map((step) => [step.id, step]));
   const unknownOutcome = result.errorCode === 'step_timeout' || result.errorCode === 'cancelled' || result.status === 'cancelled';

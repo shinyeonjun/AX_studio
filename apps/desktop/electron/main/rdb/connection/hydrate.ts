@@ -52,7 +52,7 @@ export async function hydrateRdbConnector(store: WorkflowStore, runtime: Workflo
   }
 }
 
-export async function fillRdbSchema(store: WorkflowStore, database: RdbDatabase, read: RdbDatabaseEntry): Promise<void> {
+async function fillRdbSchema(store: WorkflowStore, database: RdbDatabase, read: RdbDatabaseEntry): Promise<void> {
   const schema = await summarizeRdbSchema(database).catch(() => undefined);
   if (!schema) return;
   await withRdbConnectionLock(async () => {

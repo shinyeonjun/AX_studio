@@ -5,7 +5,7 @@ import type { WorkflowIR, Step } from '../../../workflow/schema.js';
 import { resolveAiDecisionBindings } from '../../../workflow/bindings.js';
 import { documentVisualsFromRun } from './visuals/summary.js';
 
-export const INVESTIGATION_LIMIT_MESSAGE = 'Max investigation reads reached';
+const INVESTIGATION_LIMIT_MESSAGE = 'Max investigation reads reached';
 const MAX_UNTRUSTED_EMAIL_CHARS = 12_000;
 const MAX_UNTRUSTED_METADATA_CHARS = 2_000;
 const MAX_BOUND_INPUT_CHARS = 24_000;

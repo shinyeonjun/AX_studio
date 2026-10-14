@@ -1,10 +1,6 @@
 export type {
   DiscoverySourceContext,
-  DiscoverySourceDescriptor,
   DiscoverySourceProvider,
-  ExplorationBudget,
-  SourceProfileResult,
-  WorkbookMaterializer,
 } from '../../contracts/discovery-source.js';
 
 export interface InputArtifactDiscoverySourceOptions {

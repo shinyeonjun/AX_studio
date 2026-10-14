@@ -1,7 +1,7 @@
 import { exactModelOptions } from '../../model-options.js';
 
 /** 로컬 Ollama OpenAI-compatible API */
-export const OLLAMA_API_MODELS = exactModelOptions(['llama3.3', 'qwen2.5']);
+const OLLAMA_API_MODELS = exactModelOptions(['llama3.3', 'qwen2.5']);
 
 export const OLLAMA_META = {
   label: 'Ollama',

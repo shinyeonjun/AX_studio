@@ -14,7 +14,7 @@ import type { ModelTokenUsage } from '../../../../providers/provider.js';
  * Codex CLI receives the exact `state` and `questions` the router sends Jev and answers in Jev's
  * shapes, so everything before and after the decision is the same code.
  */
-export const CODEX_DECISION_SYSTEM = [
+const CODEX_DECISION_SYSTEM = [
   'You are a decision function inside AX Studio. You receive JSON with `state` (the context of one user request) and `questions`.',
   'Answer every question independently, judging only from `state` and the question itself.',
   'Question types:',

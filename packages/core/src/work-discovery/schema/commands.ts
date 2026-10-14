@@ -29,9 +29,6 @@ export const DiscoveryRetryArgsSchema = z.object({
 });
 
 export type DiscoveryStartArgs = z.infer<typeof DiscoveryStartArgsSchema>;
-export type DiscoveryInspectArgs = z.infer<typeof DiscoveryInspectArgsSchema>;
-export type DiscoveryCancelArgs = z.infer<typeof DiscoveryCancelArgsSchema>;
-export type DiscoveryRetryArgs = z.infer<typeof DiscoveryRetryArgsSchema>;
 
 export const DiscoveryAnswerArgsSchema = z.object({
   sessionId: z.string().trim().min(1),
@@ -47,6 +44,3 @@ export const DiscoveryPublishArgsSchema = z.object({
   /** The schedule form's answer (description + token); without it the work runs when asked. */
   schedule: z.string().trim().min(1).max(4_000).optional(),
 });
-
-export type DiscoveryAnswerArgs = z.infer<typeof DiscoveryAnswerArgsSchema>;
-export type DiscoveryPublishArgs = z.infer<typeof DiscoveryPublishArgsSchema>;

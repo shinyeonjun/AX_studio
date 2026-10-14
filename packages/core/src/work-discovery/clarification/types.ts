@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const ClarificationOptionSchema = z.object({
+const ClarificationOptionSchema = z.object({
   id: z.string(),
   label: z.string(),
   candidateIds: z.array(z.string()).min(1),
@@ -24,5 +24,4 @@ export const ClarificationQuestionSchema = z.object({
   createdAt: z.string(),
 });
 
-export type ClarificationOption = z.infer<typeof ClarificationOptionSchema>;
 export type ClarificationQuestion = z.infer<typeof ClarificationQuestionSchema>;

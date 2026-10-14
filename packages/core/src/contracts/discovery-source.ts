@@ -7,7 +7,7 @@ export interface ExplorationBudget {
   sourceReadsMax: number;
 }
 
-export interface DiscoverySourceDescriptor {
+interface DiscoverySourceDescriptor {
   id: string;
   connector: string;
   label: string;

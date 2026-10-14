@@ -30,7 +30,7 @@ function acceptedCandidates(candidates: CandidateProgram[]): CandidateProgram[] 
   return candidates.filter((candidate) => candidate.status === 'accepted');
 }
 
-export function requiredObservationPaths(observations: OutputObservation[]): string[] {
+function requiredObservationPaths(observations: OutputObservation[]): string[] {
   const paths = new Set<string>();
   for (const observation of observations) {
     if (observation.required) paths.add(observation.path);
@@ -38,7 +38,7 @@ export function requiredObservationPaths(observations: OutputObservation[]): str
   return [...paths];
 }
 
-export function replayGateSummary(session: DiscoverySessionState): DiscoveryBlueprint['replaySummary'] {
+function replayGateSummary(session: DiscoverySessionState): DiscoveryBlueprint['replaySummary'] {
   const winners = acceptedCandidates(session.candidates);
   const total = session.candidates.length;
   const passed = winners.length;
@@ -50,7 +50,7 @@ export function replayGateSummary(session: DiscoverySessionState): DiscoveryBlue
 }
 
 /** Distinct example documents that produced this session's observations. */
-export function discoveryExampleCount(session: Pick<DiscoverySessionState, 'exampleIds' | 'observations'>): number {
+function discoveryExampleCount(session: Pick<DiscoverySessionState, 'exampleIds' | 'observations'>): number {
   return new Set([
     ...session.exampleIds,
     ...session.observations.map((observation) => observation.exampleId),
@@ -61,7 +61,7 @@ export function discoveryExampleCount(session: Pick<DiscoverySessionState, 'exam
  * A mapping replayed against a single example is a guess about the rule; publishing it
  * needs a second example or an explicit human confirmation.
  */
-export const DISCOVERY_MIN_EXAMPLES_FOR_AUTO_PUBLISH = 2;
+const DISCOVERY_MIN_EXAMPLES_FOR_AUTO_PUBLISH = 2;
 
 export function needsHumanConfirmation(
   session: Pick<DiscoverySessionState, 'exampleIds' | 'observations' | 'humanConfirmedAt'>,

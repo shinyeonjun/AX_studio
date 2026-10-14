@@ -8,7 +8,7 @@ export interface SourceChoice {
   place: string;
 }
 
-export const MAX_SOURCE_CHOICES = 30;
+const MAX_SOURCE_CHOICES = 30;
 const MAX_REQUEST_CHARS = 200;
 const MAX_PLACE_CHARS = 80;
 

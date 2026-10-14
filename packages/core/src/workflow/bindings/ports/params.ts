@@ -5,7 +5,7 @@ export function isConcreteParamValue(value: unknown): boolean {
   return typeof value === 'string' && value.trim().length > 0 && !value.includes('{{');
 }
 
-export function isDeferredParamValue(value: unknown): boolean {
+function isDeferredParamValue(value: unknown): boolean {
   return Boolean(
     value &&
       typeof value === 'object' &&
