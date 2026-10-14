@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-13T16:24:23.950Z",
+  "generatedAt": "2026-10-14T04:58:52.616Z",
   "prices": {
     "jev-1.13.0": {
       "input": 0.042,
@@ -32,92 +32,143 @@
       ],
       "accuracy": {
         "all": {
-          "mean": 0.9406392694063926,
-          "min": 0.9315068493150684,
-          "max": 0.9452054794520548,
-          "cases": 73
+          "mean": 0.9351230425055927,
+          "min": 0.9328859060402684,
+          "max": 0.9395973154362416,
+          "cases": 149,
+          "ci95": [
+            0.8836343839717955,
+            0.964738484845769
+          ]
         },
         "main": {
           "mean": 0.9523809523809524,
           "min": 0.9387755102040817,
           "max": 0.9591836734693877,
-          "cases": 49
+          "cases": 49,
+          "ci95": [
+            0.853320967226072,
+            0.9856644785842998
+          ]
         },
         "holdout": {
-          "mean": 0.9166666666666666,
-          "min": 0.9166666666666666,
-          "max": 0.9166666666666666,
-          "cases": 24
+          "mean": 0.9266666666666666,
+          "min": 0.92,
+          "max": 0.94,
+          "cases": 100,
+          "ci95": [
+            0.8583165271045039,
+            0.9634479038493078
+          ]
         },
         "main/basic": {
           "mean": 1,
           "min": 1,
           "max": 1,
-          "cases": 20
+          "cases": 20,
+          "ci95": [
+            0.8388698745050667,
+            1
+          ]
         },
         "main/scale": {
           "mean": 0.9195402298850573,
           "min": 0.896551724137931,
           "max": 0.9310344827586207,
-          "cases": 29
+          "cases": 29,
+          "ci95": [
+            0.7652853688433218,
+            0.9756448335016713
+          ]
         },
         "holdout/basic": {
-          "mean": 0.9285714285714285,
-          "min": 0.9285714285714286,
-          "max": 0.9285714285714286,
-          "cases": 14
+          "mean": 0.9545454545454546,
+          "min": 0.9318181818181818,
+          "max": 0.9772727272727273,
+          "cases": 44,
+          "ci95": [
+            0.8486472847469684,
+            0.9874451536330189
+          ]
         },
         "holdout/scale": {
-          "mean": 0.9,
-          "min": 0.9,
-          "max": 0.9,
-          "cases": 10
+          "mean": 0.9047619047619048,
+          "min": 0.8928571428571429,
+          "max": 0.9107142857142857,
+          "cases": 56,
+          "ci95": [
+            0.7999943973879085,
+            0.9575611046931412
+          ]
+        },
+        "holdout-v1": {
+          "mean": 0.9166666666666666,
+          "min": 0.9166666666666666,
+          "max": 0.9166666666666666,
+          "cases": 24,
+          "ci95": [
+            0.741507847985494,
+            0.9768416721570266
+          ]
+        },
+        "holdout-v2": {
+          "mean": 0.9298245614035087,
+          "min": 0.9210526315789473,
+          "max": 0.9473684210526315,
+          "cases": 76,
+          "ci95": [
+            0.8494168028276006,
+            0.9688700718509293
+          ]
         }
       },
       "consistency": {
-        "sameVerdictAllRuns": 0.9863013698630136,
-        "sameDecisionAllRuns": 0.8767123287671232,
+        "sameVerdictAllRuns": 0.9731543624161074,
+        "sameDecisionAllRuns": 0.8993288590604027,
         "flakyCases": [
+          "holdout/basic/h2-seoul-count",
+          "holdout/basic/h2-ambiguous-price",
+          "holdout/scale/h2s-ambiguous-returns",
           "main/scale/scale-ambiguous-orders"
         ]
       },
       "failures": {
-        "total": 13,
-        "wrongCommand": 9,
-        "askedOrDeclined": 1,
+        "total": 29,
+        "wrongCommand": 21,
+        "askedOrDeclined": 5,
         "serviceError": 0
       },
       "latencyMs": {
         "perCase": {
-          "mean": 19132.40182648402,
-          "p50": 14220,
-          "p95": 44072,
+          "mean": 15499.527964205816,
+          "p50": 12441,
+          "p95": 39249,
           "max": 141166
         },
         "perCall": {
-          "mean": 14492.8449515571,
-          "p50": 11439.133799999952,
-          "p95": 42786.75919999997
+          "mean": 11678.497568634064,
+          "p50": 10055.041999999958,
+          "p95": 37046.87189999991
         },
-        "perCaseBasic": 10278,
-        "perCaseScale": 16114
+        "perCaseBasic": 8614,
+        "perCaseScale": 14109
       },
-      "callsPerCase": 1.3196347031963471,
-      "providerRequestsPerCase": 1.3196347031963471,
+      "callsPerCase": 1.3266219239373602,
+      "providerRequestsPerCase": 1.3266219239373602,
       "tokensPerCase": {
-        "input": 26474.890410958906,
-        "cachedInput": 3378.264840182648,
-        "output": 1243.296803652968,
-        "reasoning": 129.986301369863,
-        "requestBytes": 53402.333333333336
+        "input": 27176.666666666668,
+        "cachedInput": 3889.2527964205815,
+        "output": 1294.9821029082775,
+        "reasoning": 126.20581655480984,
+        "requestBytes": 55510.75167785235
       },
       "costUsd": {
-        "perCase": 0.0061788465753424655,
-        "per1000Requests": 6.178846575342465,
-        "allRuns": 1.3531674
+        "perCase": 0.006289246353467565,
+        "per1000Requests": 6.289246353467565,
+        "allRuns": 2.8112931200000015
       },
       "firstAttempt": {
-        "accuracy": 0.9406392694063926,
+        "accuracy": 0.9351230425055929,
         "serviceFailureRate": 0,
         "failedCallRate": 0,
         "serviceFailures": 0,
@@ -126,11 +177,18 @@
       "retriedCases": 0,
       "stillServiceFailedAfterRetry": 0,
       "missedCases": [
+        "holdout/basic/h2-ambiguous-price",
+        "holdout/scale/h2s-top-evaluations",
+        "holdout/scale/h2s-ambiguous-issues",
+        "holdout/scale/h2s-ambiguous-returns",
+        "holdout/scale/h2s-ambiguous-campaigns",
+        "holdout/scale/h2s-ambiguous-products",
         "main/scale/scale-erp-vendors",
         "main/scale/scale-remembered-similar",
         "holdout/basic/h-slack-search",
         "holdout/scale/hs-ambiguous-customers",
-        "main/scale/scale-ambiguous-orders"
+        "main/scale/scale-ambiguous-orders",
+        "holdout/basic/h2-seoul-count"
       ]
     },
     {
@@ -141,94 +199,145 @@
       ],
       "accuracy": {
         "all": {
-          "mean": 0.9086757990867579,
-          "min": 0.9041095890410958,
-          "max": 0.9178082191780822,
-          "cases": 73
+          "mean": 0.9105145413870246,
+          "min": 0.9060402684563759,
+          "max": 0.9194630872483222,
+          "cases": 149,
+          "ci95": [
+            0.8537812815763218,
+            0.946611630650018
+          ]
         },
         "main": {
           "mean": 0.9047619047619048,
           "min": 0.8979591836734694,
           "max": 0.9183673469387755,
-          "cases": 49
+          "cases": 49,
+          "ci95": [
+            0.7908942984953935,
+            0.9597768898612549
+          ]
         },
         "holdout": {
-          "mean": 0.9166666666666666,
-          "min": 0.9166666666666666,
-          "max": 0.9166666666666666,
-          "cases": 24
+          "mean": 0.9133333333333334,
+          "min": 0.91,
+          "max": 0.92,
+          "cases": 100,
+          "ci95": [
+            0.8418090159635181,
+            0.9542752765229872
+          ]
         },
         "main/basic": {
           "mean": 0.9499999999999998,
           "min": 0.95,
           "max": 0.95,
-          "cases": 20
+          "cases": 20,
+          "ci95": [
+            0.763864106487433,
+            0.9911187805671269
+          ]
         },
         "main/scale": {
           "mean": 0.8735632183908045,
           "min": 0.8620689655172413,
           "max": 0.896551724137931,
-          "cases": 29
+          "cases": 29,
+          "ci95": [
+            0.7080908797960239,
+            0.9516414921549974
+          ]
         },
         "holdout/basic": {
-          "mean": 0.9285714285714285,
-          "min": 0.9285714285714286,
-          "max": 0.9285714285714286,
-          "cases": 14
+          "mean": 0.9393939393939393,
+          "min": 0.9318181818181818,
+          "max": 0.9545454545454546,
+          "cases": 44,
+          "ci95": [
+            0.8278454757214405,
+            0.980377214712547
+          ]
         },
         "holdout/scale": {
-          "mean": 0.9,
-          "min": 0.9,
-          "max": 0.9,
-          "cases": 10
+          "mean": 0.8928571428571428,
+          "min": 0.875,
+          "max": 0.9107142857142857,
+          "cases": 56,
+          "ci95": [
+            0.785313132483386,
+            0.9499613254188091
+          ]
+        },
+        "holdout-v1": {
+          "mean": 0.9166666666666666,
+          "min": 0.9166666666666666,
+          "max": 0.9166666666666666,
+          "cases": 24,
+          "ci95": [
+            0.741507847985494,
+            0.9768416721570266
+          ]
+        },
+        "holdout-v2": {
+          "mean": 0.912280701754386,
+          "min": 0.9078947368421053,
+          "max": 0.9210526315789473,
+          "cases": 76,
+          "ci95": [
+            0.8272983858696685,
+            0.9575890245362686
+          ]
         }
       },
       "consistency": {
-        "sameVerdictAllRuns": 0.958904109589041,
-        "sameDecisionAllRuns": 0.8904109589041096,
+        "sameVerdictAllRuns": 0.959731543624161,
+        "sameDecisionAllRuns": 0.9060402684563759,
         "flakyCases": [
+          "holdout/basic/h2-products-table",
+          "holdout/scale/h2s-top-evaluations",
+          "holdout/scale/h2s-supplier-lead-time",
           "main/scale/scale-logistics-orders",
           "main/scale/scale-ambiguous-orders",
           "main/scale/scale-remembered-orders"
         ]
       },
       "failures": {
-        "total": 20,
-        "wrongCommand": 16,
-        "askedOrDeclined": 1,
+        "total": 40,
+        "wrongCommand": 35,
+        "askedOrDeclined": 2,
         "serviceError": 0
       },
       "latencyMs": {
         "perCase": {
-          "mean": 19237.118721461185,
-          "p50": 16251,
-          "p95": 40000,
+          "mean": 16361.619686800896,
+          "p50": 14241,
+          "p95": 37724,
           "max": 141524
         },
         "perCall": {
-          "mean": 15315.264545090924,
+          "mean": 13365.942950091403,
           "p50": 12011.168599999975,
-          "p95": 37085.22989999992
+          "p95": 36022.44850000003
         },
-        "perCaseBasic": 9478,
-        "perCaseScale": 18451
+        "perCaseBasic": 8208,
+        "perCaseScale": 16390
       },
-      "callsPerCase": 1.2557077625570776,
-      "providerRequestsPerCase": 1.2557077625570776,
+      "callsPerCase": 1.2237136465324385,
+      "providerRequestsPerCase": 1.2237136465324385,
       "tokensPerCase": {
-        "input": 28696.269406392694,
-        "cachedInput": 3332.675799086758,
-        "output": 1044.4977168949772,
-        "reasoning": 0.1461187214611872,
-        "requestBytes": 53251.25570776256
+        "input": 29047.418344519017,
+        "cachedInput": 4436.187919463087,
+        "output": 1105.0738255033557,
+        "reasoning": 0.3691275167785235,
+        "requestBytes": 55176.08053691275
       },
       "costUsd": {
-        "perCase": 0.0030919349771689505,
-        "per1000Requests": 3.0919349771689504,
-        "allRuns": 0.6771337600000001
+        "perCase": 0.003058021834451901,
+        "per1000Requests": 3.058021834451901,
+        "allRuns": 1.3669357599999998
       },
       "firstAttempt": {
-        "accuracy": 0.908675799086758,
+        "accuracy": 0.9105145413870246,
         "serviceFailureRate": 0,
         "failedCallRate": 0,
         "serviceFailures": 0,
@@ -237,12 +346,20 @@
       "retriedCases": 0,
       "stillServiceFailedAfterRetry": 0,
       "missedCases": [
+        "holdout/basic/h2-products-table",
+        "holdout/basic/h2-ambiguous-price",
+        "holdout/scale/h2s-ambiguous-issues",
+        "holdout/scale/h2s-ambiguous-returns",
+        "holdout/scale/h2s-ambiguous-campaigns",
+        "holdout/scale/h2s-ambiguous-products",
         "main/basic/two-sources",
         "main/scale/scale-ambiguous-orders",
         "main/scale/scale-erp-vendors",
         "main/scale/scale-remembered-similar",
         "holdout/basic/h-slack-search",
         "holdout/scale/hs-ambiguous-customers",
+        "holdout/scale/h2s-top-evaluations",
+        "holdout/scale/h2s-supplier-lead-time",
         "main/scale/scale-logistics-orders",
         "main/scale/scale-remembered-orders"
       ]
@@ -255,94 +372,142 @@
       ],
       "accuracy": {
         "all": {
-          "mean": 0.9680365296803654,
-          "min": 0.958904109589041,
-          "max": 0.9726027397260274,
-          "cases": 73
+          "mean": 0.970917225950783,
+          "min": 0.9664429530201343,
+          "max": 0.9731543624161074,
+          "cases": 149,
+          "ci95": [
+            0.9299292756740531,
+            0.9882326209125656
+          ]
         },
         "main": {
           "mean": 0.9931972789115647,
           "min": 0.9795918367346939,
           "max": 1,
-          "cases": 49
+          "cases": 49,
+          "ci95": [
+            0.9151893628382656,
+            0.9994940179324404
+          ]
         },
         "holdout": {
-          "mean": 0.9166666666666666,
-          "min": 0.9166666666666666,
-          "max": 0.9166666666666666,
-          "cases": 24
+          "mean": 0.96,
+          "min": 0.96,
+          "max": 0.96,
+          "cases": 100,
+          "ci95": [
+            0.9016278276739262,
+            0.984336949448152
+          ]
         },
         "main/basic": {
           "mean": 1,
           "min": 1,
           "max": 1,
-          "cases": 20
+          "cases": 20,
+          "ci95": [
+            0.8388698745050667,
+            1
+          ]
         },
         "main/scale": {
           "mean": 0.9885057471264368,
           "min": 0.9655172413793104,
           "max": 1,
-          "cases": 29
+          "cases": 29,
+          "ci95": [
+            0.863582140576487,
+            0.9991448073594642
+          ]
         },
         "holdout/basic": {
-          "mean": 0.8571428571428571,
-          "min": 0.8571428571428571,
-          "max": 0.8571428571428571,
-          "cases": 14
+          "mean": 0.9318181818181818,
+          "min": 0.9318181818181818,
+          "max": 0.9318181818181818,
+          "cases": 44,
+          "ci95": [
+            0.8177467866338279,
+            0.9765410298271597
+          ]
         },
         "holdout/scale": {
-          "mean": 1,
-          "min": 1,
-          "max": 1,
-          "cases": 10
+          "mean": 0.9821428571428571,
+          "min": 0.9821428571428571,
+          "max": 0.9821428571428571,
+          "cases": 56,
+          "ci95": [
+            0.9055414182080672,
+            0.9968408710355361
+          ]
+        },
+        "holdout-v1": {
+          "mean": 0.9166666666666666,
+          "min": 0.9166666666666666,
+          "max": 0.9166666666666666,
+          "cases": 24,
+          "ci95": [
+            0.741507847985494,
+            0.9768416721570266
+          ]
+        },
+        "holdout-v2": {
+          "mean": 0.9736842105263158,
+          "min": 0.9736842105263158,
+          "max": 0.9736842105263158,
+          "cases": 76,
+          "ci95": [
+            0.9090320424906206,
+            0.9927534928693922
+          ]
         }
       },
       "consistency": {
-        "sameVerdictAllRuns": 0.9863013698630136,
-        "sameDecisionAllRuns": 0.9041095890410958,
+        "sameVerdictAllRuns": 0.9932885906040269,
+        "sameDecisionAllRuns": 0.9194630872483222,
         "flakyCases": [
           "main/scale/scale-folder"
         ]
       },
       "failures": {
-        "total": 7,
-        "wrongCommand": 1,
-        "askedOrDeclined": 3,
+        "total": 13,
+        "wrongCommand": 4,
+        "askedOrDeclined": 6,
         "serviceError": 0
       },
       "latencyMs": {
         "perCase": {
-          "mean": 46294.24657534246,
-          "p50": 48034,
-          "p95": 85038,
+          "mean": 40971.017897091726,
+          "p50": 43119,
+          "p95": 80826,
           "max": 134941
         },
         "perCall": {
-          "mean": 34833.97380378006,
-          "p50": 22602.8665,
-          "p95": 81808.33070000028
+          "mean": 30672.03040603017,
+          "p50": 20994.0728000002,
+          "p95": 70421.21579999989
         },
-        "perCaseBasic": 20349,
-        "perCaseScale": 60190
+        "perCaseBasic": 17203,
+        "perCaseScale": 52973
       },
-      "callsPerCase": 1.3287671232876712,
-      "providerRequestsPerCase": 1.3287671232876712,
+      "callsPerCase": 1.3355704697986577,
+      "providerRequestsPerCase": 1.3355704697986577,
       "tokensPerCase": {
-        "input": 29372.173515981736,
-        "cachedInput": 1659.324200913242,
-        "output": 1505.1552511415525,
-        "reasoning": 182.70319634703196,
-        "requestBytes": 53673.48401826484
+        "input": 30118.257270693513,
+        "cachedInput": 2619.2751677852348,
+        "output": 1563.7673378076063,
+        "reasoning": 169.4496644295302,
+        "requestBytes": 55793.73378076062
       },
       "costUsd": {
-        "perCase": 0.07064318356164384,
-        "per1000Requests": 70.64318356164384,
-        "allRuns": 15.470857200000001
+        "perCase": 0.07089756510067113,
+        "per1000Requests": 70.89756510067113,
+        "allRuns": 31.691211599999995
       },
       "firstAttempt": {
-        "accuracy": 0.9497716894977168,
-        "serviceFailureRate": 0.0182648401826484,
-        "failedCallRate": 0.01730103806228374,
+        "accuracy": 0.9619686800894854,
+        "serviceFailureRate": 0.008948545861297539,
+        "failedCallRate": 0.008403361344537815,
         "serviceFailures": 4,
         "errors": [
           "Codex CLI 호출에 실패했습니다. (Selected model is at capacity. Please try a different model.)"
@@ -351,6 +516,8 @@
       "retriedCases": 4,
       "stillServiceFailedAfterRetry": 0,
       "missedCases": [
+        "holdout/basic/h2-ambiguous-price",
+        "holdout/scale/h2s-ambiguous-issues",
         "main/scale/scale-folder",
         "holdout/basic/h-slack-search",
         "holdout/basic/h-follow-sum"
@@ -364,92 +531,140 @@
       ],
       "accuracy": {
         "all": {
-          "mean": 0.9726027397260274,
-          "min": 0.9726027397260274,
-          "max": 0.9726027397260274,
-          "cases": 73
+          "mean": 0.9731543624161074,
+          "min": 0.9731543624161074,
+          "max": 0.9731543624161074,
+          "cases": 149,
+          "ci95": [
+            0.9330117272497277,
+            0.989511983572457
+          ]
         },
         "main": {
           "mean": 1,
           "min": 1,
           "max": 1,
-          "cases": 49
+          "cases": 49,
+          "ci95": [
+            0.9272997032640949,
+            0.9999999999999999
+          ]
         },
         "holdout": {
-          "mean": 0.9166666666666666,
-          "min": 0.9166666666666666,
-          "max": 0.9166666666666666,
-          "cases": 24
+          "mean": 0.96,
+          "min": 0.96,
+          "max": 0.96,
+          "cases": 100,
+          "ci95": [
+            0.9016278276739262,
+            0.984336949448152
+          ]
         },
         "main/basic": {
           "mean": 1,
           "min": 1,
           "max": 1,
-          "cases": 20
+          "cases": 20,
+          "ci95": [
+            0.8388698745050667,
+            1
+          ]
         },
         "main/scale": {
           "mean": 1,
           "min": 1,
           "max": 1,
-          "cases": 29
+          "cases": 29,
+          "ci95": [
+            0.8830264055344442,
+            1
+          ]
         },
         "holdout/basic": {
-          "mean": 0.8571428571428571,
-          "min": 0.8571428571428571,
-          "max": 0.8571428571428571,
-          "cases": 14
+          "mean": 0.9318181818181818,
+          "min": 0.9318181818181818,
+          "max": 0.9318181818181818,
+          "cases": 44,
+          "ci95": [
+            0.8177467866338279,
+            0.9765410298271597
+          ]
         },
         "holdout/scale": {
-          "mean": 1,
-          "min": 1,
-          "max": 1,
-          "cases": 10
+          "mean": 0.9821428571428571,
+          "min": 0.9821428571428571,
+          "max": 0.9821428571428571,
+          "cases": 56,
+          "ci95": [
+            0.9055414182080672,
+            0.9968408710355361
+          ]
+        },
+        "holdout-v1": {
+          "mean": 0.9166666666666666,
+          "min": 0.9166666666666666,
+          "max": 0.9166666666666666,
+          "cases": 24,
+          "ci95": [
+            0.741507847985494,
+            0.9768416721570266
+          ]
+        },
+        "holdout-v2": {
+          "mean": 0.9736842105263158,
+          "min": 0.9736842105263158,
+          "max": 0.9736842105263158,
+          "cases": 76,
+          "ci95": [
+            0.9090320424906206,
+            0.9927534928693922
+          ]
         }
       },
       "consistency": {
         "sameVerdictAllRuns": 1,
-        "sameDecisionAllRuns": 0.9315068493150684,
+        "sameDecisionAllRuns": 0.959731543624161,
         "flakyCases": []
       },
       "failures": {
-        "total": 6,
-        "wrongCommand": 0,
-        "askedOrDeclined": 3,
+        "total": 12,
+        "wrongCommand": 3,
+        "askedOrDeclined": 6,
         "serviceError": 0
       },
       "latencyMs": {
         "perCase": {
-          "mean": 38014.9497716895,
-          "p50": 39419,
-          "p95": 90841,
+          "mean": 32192.926174496642,
+          "p50": 31749,
+          "p95": 72824,
           "max": 143383
         },
         "perCall": {
-          "mean": 28602.346696907218,
-          "p50": 17131.36480000004,
-          "p95": 82483.70179999992
+          "mean": 24098.573138023447,
+          "p50": 15977.955700000006,
+          "p95": 56340.0205000001
         },
-        "perCaseBasic": 16811,
-        "perCaseScale": 43753
+        "perCaseBasic": 13311,
+        "perCaseScale": 39580
       },
-      "callsPerCase": 1.3287671232876712,
-      "providerRequestsPerCase": 1.3287671232876712,
+      "callsPerCase": 1.3355704697986577,
+      "providerRequestsPerCase": 1.3355704697986577,
       "tokensPerCase": {
-        "input": 29431.54794520548,
-        "cachedInput": 1569.8995433789955,
-        "output": 1046.5296803652968,
-        "reasoning": 26.465753424657535,
-        "requestBytes": 53697.3196347032
+        "input": 30152.116331096197,
+        "cachedInput": 2341.2259507829976,
+        "output": 1089.6845637583892,
+        "reasoning": 23.619686800894854,
+        "requestBytes": 55822.044742729304
       },
       "costUsd": {
-        "perCase": 0.06634558356164383,
-        "per1000Requests": 66.34558356164383,
-        "allRuns": 14.529682799999998
+        "perCase": 0.0667527489932886,
+        "per1000Requests": 66.7527489932886,
+        "allRuns": 29.838478800000004
       },
       "firstAttempt": {
-        "accuracy": 0.958904109589041,
-        "serviceFailureRate": 0.0182648401826484,
-        "failedCallRate": 0.013745704467353952,
+        "accuracy": 0.9664429530201343,
+        "serviceFailureRate": 0.008948545861297539,
+        "failedCallRate": 0.006700167504187605,
         "serviceFailures": 4,
         "errors": [
           "Codex CLI 호출에 실패했습니다."
@@ -458,6 +673,8 @@
       "retriedCases": 4,
       "stillServiceFailedAfterRetry": 0,
       "missedCases": [
+        "holdout/basic/h2-ambiguous-price",
+        "holdout/scale/h2s-ambiguous-issues",
         "holdout/basic/h-slack-search",
         "holdout/basic/h-follow-sum"
       ]
@@ -470,92 +687,143 @@
       ],
       "accuracy": {
         "all": {
-          "mean": 0.9726027397260274,
-          "min": 0.9726027397260274,
-          "max": 0.9726027397260274,
-          "cases": 73
+          "mean": 0.9776286353467561,
+          "min": 0.9731543624161074,
+          "max": 0.9798657718120806,
+          "cases": 149,
+          "ci95": [
+            0.9392829520312567,
+            0.9919643872620596
+          ]
         },
         "main": {
           "mean": 1,
           "min": 1,
           "max": 1,
-          "cases": 49
+          "cases": 49,
+          "ci95": [
+            0.9272997032640949,
+            0.9999999999999999
+          ]
         },
         "holdout": {
-          "mean": 0.9166666666666666,
-          "min": 0.9166666666666666,
-          "max": 0.9166666666666666,
-          "cases": 24
+          "mean": 0.9666666666666667,
+          "min": 0.96,
+          "max": 0.97,
+          "cases": 100,
+          "ci95": [
+            0.9108004930344046,
+            0.9880043533213271
+          ]
         },
         "main/basic": {
           "mean": 1,
           "min": 1,
           "max": 1,
-          "cases": 20
+          "cases": 20,
+          "ci95": [
+            0.8388698745050667,
+            1
+          ]
         },
         "main/scale": {
           "mean": 1,
           "min": 1,
           "max": 1,
-          "cases": 29
+          "cases": 29,
+          "ci95": [
+            0.8830264055344442,
+            1
+          ]
         },
         "holdout/basic": {
-          "mean": 0.8571428571428571,
-          "min": 0.8571428571428571,
-          "max": 0.8571428571428571,
-          "cases": 14
+          "mean": 0.9393939393939393,
+          "min": 0.9318181818181818,
+          "max": 0.9545454545454546,
+          "cases": 44,
+          "ci95": [
+            0.8278454757214405,
+            0.980377214712547
+          ]
         },
         "holdout/scale": {
-          "mean": 1,
-          "min": 1,
+          "mean": 0.9880952380952381,
+          "min": 0.9821428571428571,
           "max": 1,
-          "cases": 10
+          "cases": 56,
+          "ci95": [
+            0.9150846642275988,
+            0.9984381471054317
+          ]
+        },
+        "holdout-v1": {
+          "mean": 0.9166666666666666,
+          "min": 0.9166666666666666,
+          "max": 0.9166666666666666,
+          "cases": 24,
+          "ci95": [
+            0.741507847985494,
+            0.9768416721570266
+          ]
+        },
+        "holdout-v2": {
+          "mean": 0.9824561403508771,
+          "min": 0.9736842105263158,
+          "max": 0.9868421052631579,
+          "cases": 76,
+          "ci95": [
+            0.9222536469140992,
+            0.9962316205822102
+          ]
         }
       },
       "consistency": {
-        "sameVerdictAllRuns": 1,
-        "sameDecisionAllRuns": 0.9315068493150684,
-        "flakyCases": []
+        "sameVerdictAllRuns": 0.9865771812080537,
+        "sameDecisionAllRuns": 0.9261744966442953,
+        "flakyCases": [
+          "holdout/basic/h2-ambiguous-price",
+          "holdout/scale/h2s-ambiguous-issues"
+        ]
       },
       "failures": {
-        "total": 6,
-        "wrongCommand": 0,
-        "askedOrDeclined": 3,
+        "total": 10,
+        "wrongCommand": 2,
+        "askedOrDeclined": 5,
         "serviceError": 0
       },
       "latencyMs": {
         "perCase": {
-          "mean": 37601.46118721461,
-          "p50": 40626,
-          "p95": 87861,
+          "mean": 32483.63087248322,
+          "p50": 32048,
+          "p95": 62030,
           "max": 97341
         },
         "perCall": {
-          "mean": 28195.01483732877,
-          "p50": 18898.42349999999,
-          "p95": 58318.001000000164
+          "mean": 24154.85226322793,
+          "p50": 17107.50270000007,
+          "p95": 54219.99939999997
         },
-        "perCaseBasic": 17654,
-        "perCaseScale": 43603
+        "perCaseBasic": 14994,
+        "perCaseScale": 41129
       },
-      "callsPerCase": 1.3333333333333333,
-      "providerRequestsPerCase": 1.3333333333333333,
+      "callsPerCase": 1.3445190156599554,
+      "providerRequestsPerCase": 1.3445190156599554,
       "tokensPerCase": {
-        "input": 29492.62100456621,
-        "cachedInput": 1234.9954337899544,
-        "output": 1109.958904109589,
-        "reasoning": 59.397260273972606,
-        "requestBytes": 53742.12785388128
+        "input": 30262.639821029083,
+        "cachedInput": 2295.9821029082773,
+        "output": 1145.9955257270694,
+        "reasoning": 54.8076062639821,
+        "requestBytes": 55878.149888143176
       },
       "costUsd": {
-        "perCase": 0.06773833972602737,
-        "per1000Requests": 67.73833972602738,
-        "allRuns": 14.834696399999993
+        "perCase": 0.06762286890380313,
+        "per1000Requests": 67.62286890380314,
+        "allRuns": 30.227422400000002
       },
       "firstAttempt": {
-        "accuracy": 0.958904109589041,
-        "serviceFailureRate": 0.0136986301369863,
-        "failedCallRate": 0.010309278350515464,
+        "accuracy": 0.970917225950783,
+        "serviceFailureRate": 0.006711409395973154,
+        "failedCallRate": 0.005,
         "serviceFailures": 3,
         "errors": [
           "Codex CLI 호출에 실패했습니다."
@@ -564,8 +832,10 @@
       "retriedCases": 3,
       "stillServiceFailedAfterRetry": 0,
       "missedCases": [
+        "holdout/basic/h2-ambiguous-price",
         "holdout/basic/h-slack-search",
-        "holdout/basic/h-follow-sum"
+        "holdout/basic/h-follow-sum",
+        "holdout/scale/h2s-ambiguous-issues"
       ]
     },
     {
@@ -576,92 +846,142 @@
       ],
       "accuracy": {
         "all": {
-          "mean": 0.9406392694063926,
-          "min": 0.9315068493150684,
-          "max": 0.9452054794520548,
-          "cases": 73
+          "mean": 0.894854586129754,
+          "min": 0.8926174496644296,
+          "max": 0.8993288590604027,
+          "cases": 149,
+          "ci95": [
+            0.8352974707786215,
+            0.9345627417987573
+          ]
         },
         "main": {
           "mean": 1,
           "min": 1,
           "max": 1,
-          "cases": 49
+          "cases": 49,
+          "ci95": [
+            0.9272997032640949,
+            0.9999999999999999
+          ]
         },
         "holdout": {
-          "mean": 0.8194444444444445,
-          "min": 0.7916666666666666,
-          "max": 0.8333333333333334,
-          "cases": 24
+          "mean": 0.8433333333333333,
+          "min": 0.84,
+          "max": 0.85,
+          "cases": 100,
+          "ci95": [
+            0.7595743020821814,
+            0.9016892634509638
+          ]
         },
         "main/basic": {
           "mean": 1,
           "min": 1,
           "max": 1,
-          "cases": 20
+          "cases": 20,
+          "ci95": [
+            0.8388698745050667,
+            1
+          ]
         },
         "main/scale": {
           "mean": 1,
           "min": 1,
           "max": 1,
-          "cases": 29
+          "cases": 29,
+          "ci95": [
+            0.8830264055344442,
+            1
+          ]
         },
         "holdout/basic": {
-          "mean": 0.7142857142857143,
-          "min": 0.7142857142857143,
-          "max": 0.7142857142857143,
-          "cases": 14
+          "mean": 0.7575757575757575,
+          "min": 0.75,
+          "max": 0.7727272727272727,
+          "cases": 44,
+          "ci95": [
+            0.6137062180299108,
+            0.8600794970520819
+          ]
         },
         "holdout/scale": {
-          "mean": 0.9666666666666667,
-          "min": 0.9,
-          "max": 1,
-          "cases": 10
+          "mean": 0.9107142857142857,
+          "min": 0.9107142857142857,
+          "max": 0.9107142857142857,
+          "cases": 56,
+          "ci95": [
+            0.807437601433565,
+            0.9612584227369118
+          ]
+        },
+        "holdout-v1": {
+          "mean": 0.8194444444444445,
+          "min": 0.7916666666666666,
+          "max": 0.8333333333333334,
+          "cases": 24,
+          "ci95": [
+            0.6258422565724646,
+            0.9248923755368013
+          ]
+        },
+        "holdout-v2": {
+          "mean": 0.850877192982456,
+          "min": 0.8421052631578947,
+          "max": 0.868421052631579,
+          "cases": 76,
+          "ci95": [
+            0.7540563182717389,
+            0.9139329671801221
+          ]
         }
       },
       "consistency": {
-        "sameVerdictAllRuns": 0.9863013698630136,
-        "sameDecisionAllRuns": 0.9315068493150684,
+        "sameVerdictAllRuns": 0.9798657718120806,
+        "sameDecisionAllRuns": 0.9194630872483222,
         "flakyCases": [
+          "holdout/basic/h2-follow-group",
+          "holdout/scale/h2s-support-agents",
           "holdout/scale/hs-unpaid-invoices"
         ]
       },
       "failures": {
-        "total": 13,
-        "wrongCommand": 6,
-        "askedOrDeclined": 4,
+        "total": 47,
+        "wrongCommand": 23,
+        "askedOrDeclined": 21,
         "serviceError": 0
       },
       "latencyMs": {
         "perCase": {
-          "mean": 428.1187214611872,
-          "p50": 439,
-          "p95": 739,
-          "max": 1370
+          "mean": 435.07158836689035,
+          "p50": 431,
+          "p95": 749,
+          "max": 1436
         },
         "perCall": {
-          "mean": 257.43789889196677,
-          "p50": 238.48749999999927,
-          "p95": 339.65110000000277
+          "mean": 257.79076737967927,
+          "p50": 237.83349999999882,
+          "p95": 348.47310000000107
         },
-        "perCaseBasic": 241,
-        "perCaseScale": 520
+        "perCaseBasic": 239,
+        "perCaseScale": 519
       },
-      "callsPerCase": 1.6484018264840183,
-      "providerRequestsPerCase": 2.182648401826484,
+      "callsPerCase": 1.6733780760626398,
+      "providerRequestsPerCase": 2.243847874720358,
       "tokensPerCase": {
-        "input": 20829.429223744293,
+        "input": 21663.88143176734,
         "cachedInput": 0,
-        "output": 2638.4109589041095,
+        "output": 2751.0425055928413,
         "reasoning": 0,
-        "requestBytes": 62974.50228310502
+        "requestBytes": 65388.08277404922
       },
       "costUsd": {
-        "perCase": 0.0008748360273972601,
-        "per1000Requests": 0.8748360273972601,
-        "allRuns": 0.19158908999999996
+        "perCase": 0.0009098830201342281,
+        "per1000Requests": 0.9098830201342281,
+        "allRuns": 0.40671770999999995
       },
       "firstAttempt": {
-        "accuracy": 0.9406392694063926,
+        "accuracy": 0.8948545861297539,
         "serviceFailureRate": 0,
         "failedCallRate": 0,
         "serviceFailures": 0,
@@ -670,6 +990,18 @@
       "retriedCases": 0,
       "stillServiceFailedAfterRetry": 0,
       "missedCases": [
+        "holdout/basic/h2-customers-list",
+        "holdout/basic/h2-customers-info",
+        "holdout/basic/h2-products-db",
+        "holdout/basic/h2-seoul-count",
+        "holdout/basic/h2-cheapest-db",
+        "holdout/basic/h2-category-avg",
+        "holdout/basic/h2-follow-group",
+        "holdout/scale/h2s-thanks",
+        "holdout/scale/h2s-carriers",
+        "holdout/scale/h2s-trainings",
+        "holdout/scale/h2s-support-agents",
+        "holdout/scale/h2s-supplier-lead-time",
         "holdout/basic/h-db-busan-customers",
         "holdout/basic/h-db-products",
         "holdout/basic/h-slack-search",
@@ -681,25 +1013,84 @@
   "versusJev": [
     {
       "engine": "codex:gpt-5.6-luna:low",
-      "bothPass": 66,
+      "cases": 149,
+      "bothPass": 125,
       "onlyJev": [
+        "holdout/basic/h2-ambiguous-price",
+        "holdout/scale/h2s-top-evaluations",
+        "holdout/scale/h2s-ambiguous-issues",
+        "holdout/scale/h2s-ambiguous-campaigns",
+        "holdout/scale/h2s-ambiguous-products",
         "main/scale/scale-erp-vendors",
         "main/scale/scale-remembered-similar",
         "holdout/scale/hs-ambiguous-customers"
       ],
       "onlyEngine": [
+        "holdout/basic/h2-customers-list",
+        "holdout/basic/h2-customers-info",
+        "holdout/basic/h2-products-db",
+        "holdout/basic/h2-seoul-count",
+        "holdout/basic/h2-cheapest-db",
+        "holdout/basic/h2-category-avg",
+        "holdout/basic/h2-follow-group",
+        "holdout/scale/h2s-thanks",
+        "holdout/scale/h2s-carriers",
+        "holdout/scale/h2s-trainings",
+        "holdout/scale/h2s-support-agents",
+        "holdout/scale/h2s-supplier-lead-time",
         "holdout/basic/h-db-busan-customers",
         "holdout/basic/h-db-products",
         "holdout/basic/h-follow-sum"
       ],
       "bothFail": [
         "holdout/basic/h-slack-search"
-      ]
+      ],
+      "mcnemarP": 0.21003961563110352,
+      "holdout": {
+        "cases": 100,
+        "bothPass": 78,
+        "onlyJev": [
+          "holdout/basic/h2-ambiguous-price",
+          "holdout/scale/h2s-top-evaluations",
+          "holdout/scale/h2s-ambiguous-issues",
+          "holdout/scale/h2s-ambiguous-campaigns",
+          "holdout/scale/h2s-ambiguous-products",
+          "holdout/scale/hs-ambiguous-customers"
+        ],
+        "onlyEngine": [
+          "holdout/basic/h2-customers-list",
+          "holdout/basic/h2-customers-info",
+          "holdout/basic/h2-products-db",
+          "holdout/basic/h2-seoul-count",
+          "holdout/basic/h2-cheapest-db",
+          "holdout/basic/h2-category-avg",
+          "holdout/basic/h2-follow-group",
+          "holdout/scale/h2s-thanks",
+          "holdout/scale/h2s-carriers",
+          "holdout/scale/h2s-trainings",
+          "holdout/scale/h2s-support-agents",
+          "holdout/scale/h2s-supplier-lead-time",
+          "holdout/basic/h-db-busan-customers",
+          "holdout/basic/h-db-products",
+          "holdout/basic/h-follow-sum"
+        ],
+        "bothFail": [
+          "holdout/basic/h-slack-search"
+        ],
+        "mcnemarP": 0.0783538818359375
+      }
     },
     {
       "engine": "codex:gpt-6-luna:low",
-      "bothPass": 63,
+      "cases": 149,
+      "bothPass": 121,
       "onlyJev": [
+        "holdout/basic/h2-products-table",
+        "holdout/basic/h2-ambiguous-price",
+        "holdout/scale/h2s-ambiguous-issues",
+        "holdout/scale/h2s-ambiguous-returns",
+        "holdout/scale/h2s-ambiguous-campaigns",
+        "holdout/scale/h2s-ambiguous-products",
         "main/basic/two-sources",
         "main/scale/scale-logistics-orders",
         "main/scale/scale-erp-vendors",
@@ -708,52 +1099,237 @@
         "holdout/scale/hs-ambiguous-customers"
       ],
       "onlyEngine": [
+        "holdout/basic/h2-customers-list",
+        "holdout/basic/h2-customers-info",
+        "holdout/basic/h2-products-db",
+        "holdout/basic/h2-seoul-count",
+        "holdout/basic/h2-cheapest-db",
+        "holdout/basic/h2-category-avg",
+        "holdout/basic/h2-follow-group",
+        "holdout/scale/h2s-thanks",
+        "holdout/scale/h2s-carriers",
+        "holdout/scale/h2s-trainings",
+        "holdout/scale/h2s-support-agents",
         "holdout/basic/h-db-busan-customers",
         "holdout/basic/h-db-products",
         "holdout/basic/h-follow-sum"
       ],
       "bothFail": [
+        "holdout/scale/h2s-supplier-lead-time",
         "holdout/basic/h-slack-search"
-      ]
+      ],
+      "mcnemarP": 0.8450189828872681,
+      "holdout": {
+        "cases": 100,
+        "bothPass": 77,
+        "onlyJev": [
+          "holdout/basic/h2-products-table",
+          "holdout/basic/h2-ambiguous-price",
+          "holdout/scale/h2s-ambiguous-issues",
+          "holdout/scale/h2s-ambiguous-returns",
+          "holdout/scale/h2s-ambiguous-campaigns",
+          "holdout/scale/h2s-ambiguous-products",
+          "holdout/scale/hs-ambiguous-customers"
+        ],
+        "onlyEngine": [
+          "holdout/basic/h2-customers-list",
+          "holdout/basic/h2-customers-info",
+          "holdout/basic/h2-products-db",
+          "holdout/basic/h2-seoul-count",
+          "holdout/basic/h2-cheapest-db",
+          "holdout/basic/h2-category-avg",
+          "holdout/basic/h2-follow-group",
+          "holdout/scale/h2s-thanks",
+          "holdout/scale/h2s-carriers",
+          "holdout/scale/h2s-trainings",
+          "holdout/scale/h2s-support-agents",
+          "holdout/basic/h-db-busan-customers",
+          "holdout/basic/h-db-products",
+          "holdout/basic/h-follow-sum"
+        ],
+        "bothFail": [
+          "holdout/scale/h2s-supplier-lead-time",
+          "holdout/basic/h-slack-search"
+        ],
+        "mcnemarP": 0.18924713134765625
+      }
     },
     {
       "engine": "codex:gpt-6.1-sol:high",
-      "bothPass": 69,
-      "onlyJev": [],
+      "cases": 149,
+      "bothPass": 131,
+      "onlyJev": [
+        "holdout/basic/h2-ambiguous-price",
+        "holdout/scale/h2s-ambiguous-issues"
+      ],
       "onlyEngine": [
+        "holdout/basic/h2-customers-list",
+        "holdout/basic/h2-customers-info",
+        "holdout/basic/h2-products-db",
+        "holdout/basic/h2-seoul-count",
+        "holdout/basic/h2-cheapest-db",
+        "holdout/basic/h2-category-avg",
+        "holdout/basic/h2-follow-group",
+        "holdout/scale/h2s-thanks",
+        "holdout/scale/h2s-carriers",
+        "holdout/scale/h2s-trainings",
+        "holdout/scale/h2s-support-agents",
+        "holdout/scale/h2s-supplier-lead-time",
         "holdout/basic/h-db-busan-customers",
         "holdout/basic/h-db-products"
       ],
       "bothFail": [
         "holdout/basic/h-slack-search",
         "holdout/basic/h-follow-sum"
-      ]
+      ],
+      "mcnemarP": 0.004180908203125,
+      "holdout": {
+        "cases": 100,
+        "bothPass": 82,
+        "onlyJev": [
+          "holdout/basic/h2-ambiguous-price",
+          "holdout/scale/h2s-ambiguous-issues"
+        ],
+        "onlyEngine": [
+          "holdout/basic/h2-customers-list",
+          "holdout/basic/h2-customers-info",
+          "holdout/basic/h2-products-db",
+          "holdout/basic/h2-seoul-count",
+          "holdout/basic/h2-cheapest-db",
+          "holdout/basic/h2-category-avg",
+          "holdout/basic/h2-follow-group",
+          "holdout/scale/h2s-thanks",
+          "holdout/scale/h2s-carriers",
+          "holdout/scale/h2s-trainings",
+          "holdout/scale/h2s-support-agents",
+          "holdout/scale/h2s-supplier-lead-time",
+          "holdout/basic/h-db-busan-customers",
+          "holdout/basic/h-db-products"
+        ],
+        "bothFail": [
+          "holdout/basic/h-slack-search",
+          "holdout/basic/h-follow-sum"
+        ],
+        "mcnemarP": 0.004180908203125
+      }
     },
     {
       "engine": "codex:gpt-6.1-sol:low",
-      "bothPass": 69,
-      "onlyJev": [],
+      "cases": 149,
+      "bothPass": 131,
+      "onlyJev": [
+        "holdout/basic/h2-ambiguous-price",
+        "holdout/scale/h2s-ambiguous-issues"
+      ],
       "onlyEngine": [
+        "holdout/basic/h2-customers-list",
+        "holdout/basic/h2-customers-info",
+        "holdout/basic/h2-products-db",
+        "holdout/basic/h2-seoul-count",
+        "holdout/basic/h2-cheapest-db",
+        "holdout/basic/h2-category-avg",
+        "holdout/basic/h2-follow-group",
+        "holdout/scale/h2s-thanks",
+        "holdout/scale/h2s-carriers",
+        "holdout/scale/h2s-trainings",
+        "holdout/scale/h2s-support-agents",
+        "holdout/scale/h2s-supplier-lead-time",
         "holdout/basic/h-db-busan-customers",
         "holdout/basic/h-db-products"
       ],
       "bothFail": [
         "holdout/basic/h-slack-search",
         "holdout/basic/h-follow-sum"
-      ]
+      ],
+      "mcnemarP": 0.004180908203125,
+      "holdout": {
+        "cases": 100,
+        "bothPass": 82,
+        "onlyJev": [
+          "holdout/basic/h2-ambiguous-price",
+          "holdout/scale/h2s-ambiguous-issues"
+        ],
+        "onlyEngine": [
+          "holdout/basic/h2-customers-list",
+          "holdout/basic/h2-customers-info",
+          "holdout/basic/h2-products-db",
+          "holdout/basic/h2-seoul-count",
+          "holdout/basic/h2-cheapest-db",
+          "holdout/basic/h2-category-avg",
+          "holdout/basic/h2-follow-group",
+          "holdout/scale/h2s-thanks",
+          "holdout/scale/h2s-carriers",
+          "holdout/scale/h2s-trainings",
+          "holdout/scale/h2s-support-agents",
+          "holdout/scale/h2s-supplier-lead-time",
+          "holdout/basic/h-db-busan-customers",
+          "holdout/basic/h-db-products"
+        ],
+        "bothFail": [
+          "holdout/basic/h-slack-search",
+          "holdout/basic/h-follow-sum"
+        ],
+        "mcnemarP": 0.004180908203125
+      }
     },
     {
       "engine": "codex:gpt-6.1-sol:medium",
-      "bothPass": 69,
-      "onlyJev": [],
+      "cases": 149,
+      "bothPass": 131,
+      "onlyJev": [
+        "holdout/basic/h2-ambiguous-price",
+        "holdout/scale/h2s-ambiguous-issues"
+      ],
       "onlyEngine": [
+        "holdout/basic/h2-customers-list",
+        "holdout/basic/h2-customers-info",
+        "holdout/basic/h2-products-db",
+        "holdout/basic/h2-seoul-count",
+        "holdout/basic/h2-cheapest-db",
+        "holdout/basic/h2-category-avg",
+        "holdout/basic/h2-follow-group",
+        "holdout/scale/h2s-thanks",
+        "holdout/scale/h2s-carriers",
+        "holdout/scale/h2s-trainings",
+        "holdout/scale/h2s-support-agents",
+        "holdout/scale/h2s-supplier-lead-time",
         "holdout/basic/h-db-busan-customers",
         "holdout/basic/h-db-products"
       ],
       "bothFail": [
         "holdout/basic/h-slack-search",
         "holdout/basic/h-follow-sum"
-      ]
+      ],
+      "mcnemarP": 0.004180908203125,
+      "holdout": {
+        "cases": 100,
+        "bothPass": 82,
+        "onlyJev": [
+          "holdout/basic/h2-ambiguous-price",
+          "holdout/scale/h2s-ambiguous-issues"
+        ],
+        "onlyEngine": [
+          "holdout/basic/h2-customers-list",
+          "holdout/basic/h2-customers-info",
+          "holdout/basic/h2-products-db",
+          "holdout/basic/h2-seoul-count",
+          "holdout/basic/h2-cheapest-db",
+          "holdout/basic/h2-category-avg",
+          "holdout/basic/h2-follow-group",
+          "holdout/scale/h2s-thanks",
+          "holdout/scale/h2s-carriers",
+          "holdout/scale/h2s-trainings",
+          "holdout/scale/h2s-support-agents",
+          "holdout/scale/h2s-supplier-lead-time",
+          "holdout/basic/h-db-busan-customers",
+          "holdout/basic/h-db-products"
+        ],
+        "bothFail": [
+          "holdout/basic/h-slack-search",
+          "holdout/basic/h-follow-sum"
+        ],
+        "mcnemarP": 0.004180908203125
+      }
     }
   ],
   "overhead": [
