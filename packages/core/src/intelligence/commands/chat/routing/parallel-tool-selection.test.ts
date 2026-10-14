@@ -277,13 +277,6 @@ describe('a spreadsheet the request names by file name', () => {
     params: { folderId: 'f1' },
     parameterHints: [{ path: 'path', type: 'string', required: true, choices: ['월간매출요약_2026-08.xlsx', '주문내역_2026-08.xlsx'] }],
   };
-  const answers = (db: number, sheet: number) => ({
-    needs_natural_language_answer: { type: 'boolean' as const, probability: 0.2 },
-    tool_0: { type: 'boolean' as const, probability: db },
-    tool_1: { type: 'boolean' as const, probability: sheet },
-  });
-  const telemetry = { evaluationCalls: 1, providerRequestCount: 1, estimatedRequestBytes: 0, candidateCount: 2 };
-
   it('names the folder read when a word of a file name is in the request', () => {
     expect([...requestNamedToolIds(candidates, '8월 주문내역에서 카테고리별 매출 보여줘', [sheetHint])]).toEqual(['read:op_1']);
     expect([...requestNamedToolIds(candidates, '카테고리별 매출 보여줘', [sheetHint])]).toEqual([]);

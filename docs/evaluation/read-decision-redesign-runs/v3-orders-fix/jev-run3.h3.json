@@ -1,0 +1,3511 @@
+{
+  "engine": "jev",
+  "at": "2026-10-14T06:03:29.339Z",
+  "outcomes": [
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h3-diff-run",
+      "message": "업무랑 실행 기록은 뭐가 다른 거예요?",
+      "expected": {
+        "kind": [
+          "reply"
+        ]
+      },
+      "passed": true,
+      "kind": "reply",
+      "route": "answer",
+      "serviceError": false,
+      "durationMs": 370,
+      "calls": [
+        {
+          "questions": 28,
+          "durationMs": 351.83860000000004,
+          "requestBytes": 22344,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 6590,
+          "outputTokens": 795
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h3-lunch",
+      "message": "점심 메뉴 추천 좀 해줄래?",
+      "expected": {
+        "kind": [
+          "reply"
+        ]
+      },
+      "passed": true,
+      "kind": "reply",
+      "route": "answer",
+      "serviceError": false,
+      "durationMs": 217,
+      "calls": [
+        {
+          "questions": 28,
+          "durationMs": 212.16499999999996,
+          "requestBytes": 22328,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 6579,
+          "outputTokens": 795
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h3-why-ask",
+      "message": "아까 어디서 찾을지 물어본 건 왜 그런 거야?",
+      "expected": {
+        "kind": [
+          "reply"
+        ]
+      },
+      "passed": true,
+      "kind": "reply",
+      "route": "answer",
+      "serviceError": false,
+      "durationMs": 217,
+      "calls": [
+        {
+          "questions": 28,
+          "durationMs": 214.84960000000024,
+          "requestBytes": 22352,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 6598,
+          "outputTokens": 795
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h3-customer-regions",
+      "message": "고객들 이름이랑 사는 지역 좀 보여줄래?",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "table": "customers"
+        }
+      },
+      "passed": false,
+      "miss": "kind clarify",
+      "kind": "clarify",
+      "route": "execution_enqueue_once",
+      "serviceError": false,
+      "decided": {
+        "message": "쇼핑몰 DB, DummyJSON에 모두 관련 자료가 있어 어느 쪽에서 찾을지 정하지 못했습니다. 한 곳을 골라 주세요. 둘을 함께 비교하려면 \"두 자료를 비교해 줘\"처럼 말씀해 주세요. 아직 아무것도 실행하지 않았습니다.",
+        "chooser": "어디에서 찾을까요?"
+      },
+      "durationMs": 399,
+      "calls": [
+        {
+          "questions": 28,
+          "durationMs": 208.4776999999999,
+          "requestBytes": 22347,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 6596,
+          "outputTokens": 798
+        },
+        {
+          "questions": 2,
+          "durationMs": 187.7797999999998,
+          "requestBytes": 5540,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 2100,
+          "outputTokens": 95
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h3-orders-dates",
+      "message": "주문 들어온 날짜랑 금액 같이 나오게 주문 데이터 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "table": "orders"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "table": "orders",
+          "join": [
+            {
+              "table": "customers",
+              "on": "customer_id",
+              "references": "id"
+            },
+            {
+              "table": "products",
+              "on": "product_code",
+              "references": "code"
+            }
+          ]
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 419,
+      "calls": [
+        {
+          "questions": 28,
+          "durationMs": 216.82150000000001,
+          "requestBytes": 22370,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 6597,
+          "outputTokens": 798
+        },
+        {
+          "questions": 1,
+          "durationMs": 198.91309999999976,
+          "requestBytes": 2884,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 1410,
+          "outputTokens": 55
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h3-orders-state",
+      "message": "주문 건마다 처리 상태가 어떻게 되어 있는지 보고 싶어요",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "table": "orders"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "table": "orders",
+          "join": [
+            {
+              "table": "customers",
+              "on": "customer_id",
+              "references": "id"
+            },
+            {
+              "table": "products",
+              "on": "product_code",
+              "references": "code"
+            }
+          ]
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 400,
+      "calls": [
+        {
+          "questions": 28,
+          "durationMs": 206.93370000000004,
+          "requestBytes": 22370,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 6598,
+          "outputTokens": 798
+        },
+        {
+          "questions": 1,
+          "durationMs": 191.82999999999993,
+          "requestBytes": 2884,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 1411,
+          "outputTokens": 55
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h3-db-product-codes",
+      "message": "쇼핑몰 DB에서 상품 코드랑 이름 목록 뽑아주세요",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "table": "products"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "table": "products"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 458,
+      "calls": [
+        {
+          "questions": 29,
+          "durationMs": 266.3238000000001,
+          "requestBytes": 22778,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 6721,
+          "outputTokens": 817
+        },
+        {
+          "questions": 1,
+          "durationMs": 189.38870000000043,
+          "requestBytes": 2890,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 1415,
+          "outputTokens": 55
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h3-db-catalog",
+      "message": "내부 DB 기준으로 판매 상품 카탈로그 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "table": "products"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "table": "products"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 400,
+      "calls": [
+        {
+          "questions": 28,
+          "durationMs": 207.60530000000017,
+          "requestBytes": 22352,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 6593,
+          "outputTokens": 798
+        },
+        {
+          "questions": 1,
+          "durationMs": 190.45119999999997,
+          "requestBytes": 2831,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 1399,
+          "outputTokens": 55
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h3-customers-table",
+      "message": "customers 테이블 그대로 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "table": "customers"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "table": "customers"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 238,
+      "calls": [
+        {
+          "questions": 28,
+          "durationMs": 236.0047000000004,
+          "requestBytes": 22332,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 6581,
+          "outputTokens": 798
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h3-orders-table",
+      "message": "쇼핑몰 DB의 주문 테이블 열어봐 줄래",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "table": "orders"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "table": "orders",
+          "join": [
+            {
+              "table": "customers",
+              "on": "customer_id",
+              "references": "id"
+            },
+            {
+              "table": "products",
+              "on": "product_code",
+              "references": "code"
+            }
+          ]
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 490,
+      "calls": [
+        {
+          "questions": 28,
+          "durationMs": 249.8177999999998,
+          "requestBytes": 22342,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 6593,
+          "outputTokens": 798
+        },
+        {
+          "questions": 1,
+          "durationMs": 234.7415000000001,
+          "requestBytes": 2800,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 1397,
+          "outputTokens": 55
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h3-customers-per-region",
+      "message": "지역마다 고객이 몇 명씩 있는지 세어줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "table": "customers"
+        },
+        "tableTransform": [
+          "calculate"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "table": "customers"
+        },
+        "tableTransform": "calculate"
+      },
+      "durationMs": 410,
+      "calls": [
+        {
+          "questions": 28,
+          "durationMs": 208.61499999999978,
+          "requestBytes": 22346,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 6591,
+          "outputTokens": 798
+        },
+        {
+          "questions": 1,
+          "durationMs": 199.58459999999923,
+          "requestBytes": 2813,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 1395,
+          "outputTokens": 55
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h3-db-price-filter",
+      "message": "쇼핑몰 DB에 있는 상품 중 가격 3만원 이상인 것만 골라줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "table": "products"
+        },
+        "tableTransform": [
+          "filter",
+          "filter_sort"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "table": "products"
+        },
+        "tableTransform": "filter"
+      },
+      "durationMs": 609,
+      "calls": [
+        {
+          "questions": 29,
+          "durationMs": 226.9300000000003,
+          "requestBytes": 22974,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 6760,
+          "outputTokens": 829
+        },
+        {
+          "questions": 1,
+          "durationMs": 190.26069999999982,
+          "requestBytes": 2908,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 1420,
+          "outputTokens": 55
+        },
+        {
+          "questions": 1,
+          "durationMs": 190.02410000000054,
+          "requestBytes": 2555,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 1310,
+          "outputTokens": 36
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h3-db-category-count",
+      "message": "DB 상품을 카테고리별로 몇 개인지 세어줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "table": "products"
+        },
+        "tableTransform": [
+          "calculate"
+        ]
+      },
+      "passed": false,
+      "miss": "kind clarify",
+      "kind": "clarify",
+      "route": "execution_enqueue_once",
+      "serviceError": false,
+      "decided": {
+        "message": "쇼핑몰 DB, DummyJSON에 모두 관련 자료가 있어 어느 쪽에서 찾을지 정하지 못했습니다. 한 곳을 골라 주세요. 둘을 함께 비교하려면 \"두 자료를 비교해 줘\"처럼 말씀해 주세요. 아직 아무것도 실행하지 않았습니다.",
+        "chooser": "어디에서 찾을까요?"
+      },
+      "durationMs": 398,
+      "calls": [
+        {
+          "questions": 28,
+          "durationMs": 217.2551999999996,
+          "requestBytes": 22381,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 6604,
+          "outputTokens": 798
+        },
+        {
+          "questions": 2,
+          "durationMs": 179.27279999999973,
+          "requestBytes": 5628,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 2114,
+          "outputTokens": 95
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h3-busan-order-sum",
+      "message": "부산 고객들이 주문한 금액 다 합치면 얼마야?",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "table": "orders"
+        },
+        "join": [
+          "customers"
+        ],
+        "tableTransform": [
+          "calculate"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "table": "orders",
+          "join": [
+            {
+              "table": "customers",
+              "on": "customer_id",
+              "references": "id"
+            },
+            {
+              "table": "products",
+              "on": "product_code",
+              "references": "code"
+            }
+          ]
+        },
+        "tableTransform": "calculate"
+      },
+      "durationMs": 410,
+      "calls": [
+        {
+          "questions": 28,
+          "durationMs": 208.6237000000001,
+          "requestBytes": 22387,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 6612,
+          "outputTokens": 798
+        },
+        {
+          "questions": 1,
+          "durationMs": 199.51130000000012,
+          "requestBytes": 2868,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 1429,
+          "outputTokens": 55
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h3-orders-per-product",
+      "message": "상품별로 주문이 몇 번 들어왔는지 알려줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "table": "orders"
+        },
+        "tableTransform": [
+          "calculate"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "table": "orders",
+          "join": [
+            {
+              "table": "customers",
+              "on": "customer_id",
+              "references": "id"
+            },
+            {
+              "table": "products",
+              "on": "product_code",
+              "references": "code"
+            }
+          ]
+        },
+        "tableTransform": "calculate"
+      },
+      "durationMs": 399,
+      "calls": [
+        {
+          "questions": 28,
+          "durationMs": 218.79989999999998,
+          "requestBytes": 22349,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 6590,
+          "outputTokens": 798
+        },
+        {
+          "questions": 1,
+          "durationMs": 179.30019999999968,
+          "requestBytes": 2822,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 1394,
+          "outputTokens": 55
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h3-top-buyers",
+      "message": "주문을 제일 많이 한 고객 이름 3명만 알려줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "table": "orders"
+        },
+        "join": [
+          "customers"
+        ],
+        "tableTransform": [
+          "calculate",
+          "sort",
+          "filter_sort"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "table": "orders",
+          "join": [
+            {
+              "table": "customers",
+              "on": "customer_id",
+              "references": "id"
+            },
+            {
+              "table": "products",
+              "on": "product_code",
+              "references": "code"
+            }
+          ],
+          "limit": 3
+        },
+        "tableTransform": "sort"
+      },
+      "durationMs": 603,
+      "calls": [
+        {
+          "questions": 29,
+          "durationMs": 209.21780000000035,
+          "requestBytes": 22958,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 6757,
+          "outputTokens": 831
+        },
+        {
+          "questions": 1,
+          "durationMs": 198.26649999999972,
+          "requestBytes": 2858,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 1410,
+          "outputTokens": 55
+        },
+        {
+          "questions": 1,
+          "durationMs": 192.91439999999966,
+          "requestBytes": 2526,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 1304,
+          "outputTokens": 38
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h3-customers-name-sort",
+      "message": "고객 명단을 이름 가나다순으로 정렬해서 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "table": "customers"
+        },
+        "tableTransform": [
+          "sort",
+          "filter_sort"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "table": "customers"
+        },
+        "tableTransform": "sort"
+      },
+      "durationMs": 427,
+      "calls": [
+        {
+          "questions": 28,
+          "durationMs": 227.04680000000008,
+          "requestBytes": 22384,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 6603,
+          "outputTokens": 798
+        },
+        {
+          "questions": 1,
+          "durationMs": 198.34839999999986,
+          "requestBytes": 2875,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 1414,
+          "outputTokens": 55
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h3-api-categories",
+      "message": "DummyJSON 쪽 상품 카테고리 종류 뭐 있는지 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "http.request",
+        "params": {
+          "path": [
+            "products",
+            "products/categories"
+          ]
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "http.request",
+        "params": {
+          "method": "GET",
+          "path": "products",
+          "connectionId": "dummyjson"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 260,
+      "calls": [
+        {
+          "questions": 29,
+          "durationMs": 257.98619999999937,
+          "requestBytes": 22777,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 6723,
+          "outputTokens": 817
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h3-api-user-ages",
+      "message": "더미JSON 회원 나이 정보 확인하고 싶어",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "http.request",
+        "params": {
+          "path": "users"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "http.request",
+        "params": {
+          "method": "GET",
+          "path": "users",
+          "connectionId": "dummyjson"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 211,
+      "calls": [
+        {
+          "questions": 28,
+          "durationMs": 209.22129999999925,
+          "requestBytes": 22344,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 6594,
+          "outputTokens": 798
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h3-ambiguous-category-count",
+      "message": "카테고리별로 상품이 몇 개씩 있는지 세어줘",
+      "expected": {
+        "kind": [
+          "clarify"
+        ],
+        "sourceChooser": true
+      },
+      "passed": true,
+      "kind": "clarify",
+      "route": "execution_enqueue_once",
+      "serviceError": false,
+      "decided": {
+        "message": "쇼핑몰 DB, DummyJSON에 모두 관련 자료가 있어 어느 쪽에서 찾을지 정하지 못했습니다. 한 곳을 골라 주세요. 둘을 함께 비교하려면 \"두 자료를 비교해 줘\"처럼 말씀해 주세요. 아직 아무것도 실행하지 않았습니다.",
+        "chooser": "어디에서 찾을까요?"
+      },
+      "durationMs": 409,
+      "calls": [
+        {
+          "questions": 28,
+          "durationMs": 218.82530000000042,
+          "requestBytes": 22385,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 6603,
+          "outputTokens": 798
+        },
+        {
+          "questions": 2,
+          "durationMs": 188.34240000000136,
+          "requestBytes": 5640,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 2113,
+          "outputTokens": 95
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h3-mail-quote",
+      "message": "거래처에서 온 견적서 메일 있는지 찾아봐",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "gmail.messages.search"
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "gmail.messages.search",
+        "params": {},
+        "tableTransform": "none"
+      },
+      "durationMs": 231,
+      "calls": [
+        {
+          "questions": 28,
+          "durationMs": 229.77220000000125,
+          "requestBytes": 22349,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 6594,
+          "outputTokens": 798
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h3-slack-today",
+      "message": "#ax테스트에서 오늘 오간 대화 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": [
+          "slack.messages.read",
+          "slack.messages.search"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "slack.messages.read",
+        "params": {
+          "channel": "#ax테스트"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 416,
+      "calls": [
+        {
+          "questions": 28,
+          "durationMs": 225.886199999999,
+          "requestBytes": 22342,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 6596,
+          "outputTokens": 798
+        },
+        {
+          "questions": 1,
+          "durationMs": 188.79460000000108,
+          "requestBytes": 3546,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 1548,
+          "outputTokens": 57
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h3-mail-attachments",
+      "message": "첨부파일 붙은 메일만 최근 거 몇 개 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "gmail.messages.search"
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "gmail.messages.search",
+        "params": {},
+        "tableTransform": "filter_sort"
+      },
+      "durationMs": 224,
+      "calls": [
+        {
+          "questions": 28,
+          "durationMs": 222.93860000000132,
+          "requestBytes": 22384,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 6605,
+          "outputTokens": 799
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h3-remember-sort",
+      "message": "내가 보는 표는 항상 최신 날짜가 위로 오게 해줘. 계속 그렇게 기억해줘",
+      "expected": {
+        "kind": [
+          "command",
+          "clarify"
+        ],
+        "route": [
+          "context_remember"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "context_remember",
+      "serviceError": false,
+      "decided": {
+        "command": "ui.present"
+      },
+      "durationMs": 217,
+      "calls": [
+        {
+          "questions": 28,
+          "durationMs": 214.3173000000006,
+          "requestBytes": 22390,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 6602,
+          "outputTokens": 798
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h3-send-mail-once",
+      "message": "내 Gmail로 \"내일 회의 자료 챙기기\" 메모 한 번 보내줘",
+      "expected": {
+        "kind": [
+          "command",
+          "clarify"
+        ],
+        "route": [
+          "execution_enqueue_once"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "execution_enqueue_once",
+      "serviceError": false,
+      "decided": {
+        "command": "execution.enqueue_once"
+      },
+      "durationMs": 632,
+      "calls": [
+        {
+          "questions": 28,
+          "durationMs": 224.80229999999938,
+          "requestBytes": 22365,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 6601,
+          "outputTokens": 796
+        },
+        {
+          "questions": 2,
+          "durationMs": 184.8203999999987,
+          "requestBytes": 2625,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 1183,
+          "outputTokens": 91
+        },
+        {
+          "questions": 2,
+          "durationMs": 208.7378000000008,
+          "requestBytes": 2029,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 959,
+          "outputTokens": 79
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h3-report-quarter",
+      "message": "이번 분기 매출 보고서 하나 만들어 줘",
+      "expected": {
+        "kind": [
+          "command",
+          "clarify"
+        ],
+        "route": [
+          "report_generate"
+        ]
+      },
+      "passed": true,
+      "kind": "clarify",
+      "route": "report_generate",
+      "serviceError": false,
+      "decided": {
+        "message": "보고서를 만들려면 지난 기간에 완성한 보고서(PDF나 Word 파일)를 이 대화에 올려 주세요. 빈 양식 PDF가 있으면 함께 올려 주셔도 됩니다."
+      },
+      "durationMs": 236,
+      "calls": [
+        {
+          "questions": 28,
+          "durationMs": 235.0061999999998,
+          "requestBytes": 22344,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 6590,
+          "outputTokens": 796
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h3-cancel-trigger",
+      "message": "취소 주문이 생길 때마다 슬랙으로 알려주는 자동 업무 만들어줘",
+      "expected": {
+        "kind": [
+          "command",
+          "clarify"
+        ],
+        "route": [
+          "workflow_create",
+          "job_propose"
+        ]
+      },
+      "passed": true,
+      "kind": "clarify",
+      "route": "workflow_create",
+      "serviceError": false,
+      "decided": {
+        "message": "새 업무를 저장하라는 요청인지 확실하지 않아 저장하지 않았습니다. 저장할 업무를 명시해 주세요."
+      },
+      "durationMs": 209,
+      "calls": [
+        {
+          "questions": 28,
+          "durationMs": 208.04919999999947,
+          "requestBytes": 22380,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 6602,
+          "outputTokens": 795
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h3-monthly-customers",
+      "message": "매달 말일에 신규 고객 수를 정리해서 메일로 보내주는 거 설정해줘",
+      "expected": {
+        "kind": [
+          "command",
+          "clarify"
+        ],
+        "route": [
+          "workflow_create",
+          "job_propose"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "job_propose",
+      "serviceError": false,
+      "decided": {
+        "command": "job.propose"
+      },
+      "durationMs": 639,
+      "calls": [
+        {
+          "questions": 28,
+          "durationMs": 219.6762000000017,
+          "requestBytes": 22417,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 6611,
+          "outputTokens": 797
+        },
+        {
+          "questions": 7,
+          "durationMs": 208.7435000000005,
+          "requestBytes": 10409,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 7155,
+          "outputTokens": 2484
+        },
+        {
+          "questions": 2,
+          "durationMs": 182.47850000000108,
+          "requestBytes": 2228,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 1045,
+          "outputTokens": 79
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h3-follow-top3",
+      "message": "이 중에서 금액 큰 거 세 개만 남겨",
+      "expected": {
+        "kind": [
+          "previous_result"
+        ]
+      },
+      "passed": true,
+      "kind": "previous_result",
+      "route": "previous_result",
+      "serviceError": false,
+      "durationMs": 219,
+      "calls": [
+        {
+          "questions": 28,
+          "durationMs": 217.4938000000002,
+          "requestBytes": 23049,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 6847,
+          "outputTokens": 804
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h3-follow-average",
+      "message": "여기 나온 것들 평균 금액은?",
+      "expected": {
+        "kind": [
+          "previous_result",
+          "reply"
+        ]
+      },
+      "passed": false,
+      "miss": "kind fallback (uncertain)",
+      "kind": "fallback",
+      "serviceError": false,
+      "decided": {
+        "reason": "uncertain",
+        "detail": "tool_selection_no_answer_or_tool"
+      },
+      "durationMs": 230,
+      "calls": [
+        {
+          "questions": 28,
+          "durationMs": 229.14629999999852,
+          "requestBytes": 23037,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 6845,
+          "outputTokens": 803
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h3s-goodnight",
+      "message": "수고했어 오늘도",
+      "expected": {
+        "kind": [
+          "reply"
+        ]
+      },
+      "passed": true,
+      "kind": "reply",
+      "route": "answer",
+      "serviceError": false,
+      "durationMs": 345,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 295.29609999999957,
+          "requestBytes": 87731,
+          "providerRequests": 2,
+          "model": "jev-1.13.0",
+          "inputTokens": 28190,
+          "outputTokens": 3916
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h3s-howto-db",
+      "message": "새로운 DB를 연결하려면 뭘 준비해야 하나요?",
+      "expected": {
+        "kind": [
+          "reply"
+        ]
+      },
+      "passed": true,
+      "kind": "reply",
+      "route": "answer",
+      "serviceError": false,
+      "durationMs": 338,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 293.1064000000006,
+          "requestBytes": 87805,
+          "providerRequests": 2,
+          "model": "jev-1.13.0",
+          "inputTokens": 28216,
+          "outputTokens": 3916
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h3s-privacy",
+      "message": "여기서 조회한 데이터가 외부로 나가지는 않죠?",
+      "expected": {
+        "kind": [
+          "reply"
+        ]
+      },
+      "passed": true,
+      "kind": "reply",
+      "route": "answer",
+      "serviceError": false,
+      "durationMs": 468,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 465.63820000000123,
+          "requestBytes": 87887,
+          "providerRequests": 2,
+          "model": "jev-1.13.0",
+          "inputTokens": 28230,
+          "outputTokens": 3916
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h3s-order-items",
+      "message": "주문 상세 품목 내역 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "shop",
+          "table": "order_items"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "shop",
+          "table": "order_items"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 507,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 283.77200000000084,
+          "requestBytes": 87761,
+          "providerRequests": 2,
+          "model": "jev-1.13.0",
+          "inputTokens": 28186,
+          "outputTokens": 3922
+        },
+        {
+          "questions": 2,
+          "durationMs": 220.6241000000009,
+          "requestBytes": 12588,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 5678,
+          "outputTokens": 122
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h3s-shop-carts",
+      "message": "쇼핑몰 고객들 장바구니에 담긴 거 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "shop",
+          "table": "carts"
+        }
+      },
+      "passed": false,
+      "miss": "kind clarify",
+      "kind": "clarify",
+      "route": "execution_enqueue_once",
+      "serviceError": false,
+      "decided": {
+        "message": "쇼핑몰 DB, DummyJSON에 모두 관련 자료가 있어 어느 쪽에서 찾을지 정하지 못했습니다. 한 곳을 골라 주세요. 둘을 함께 비교하려면 \"두 자료를 비교해 줘\"처럼 말씀해 주세요. 아직 아무것도 실행하지 않았습니다.",
+        "chooser": "어디에서 찾을까요?"
+      },
+      "durationMs": 499,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 290.77640000000065,
+          "requestBytes": 87799,
+          "providerRequests": 2,
+          "model": "jev-1.13.0",
+          "inputTokens": 28206,
+          "outputTokens": 3922
+        },
+        {
+          "questions": 2,
+          "durationMs": 205.15200000000004,
+          "requestBytes": 12386,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 5655,
+          "outputTokens": 122
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h3s-shop-refunds",
+      "message": "쇼핑몰 환불 처리 내역 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "shop",
+          "table": "refunds"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "shop",
+          "table": "refunds"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 537,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 287.26760000000104,
+          "requestBytes": 87767,
+          "providerRequests": 2,
+          "model": "jev-1.13.0",
+          "inputTokens": 28200,
+          "outputTokens": 3922
+        },
+        {
+          "questions": 2,
+          "durationMs": 246.58789999999863,
+          "requestBytes": 13572,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 6016,
+          "outputTokens": 149
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h3s-routes",
+      "message": "창고에서 배송지까지 배송 경로 목록 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "logistics",
+          "table": "routes"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "logistics",
+          "table": "routes"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 507,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 298.59029999999984,
+          "requestBytes": 87805,
+          "providerRequests": 2,
+          "model": "jev-1.13.0",
+          "inputTokens": 28212,
+          "outputTokens": 3923
+        },
+        {
+          "questions": 2,
+          "durationMs": 205.70520000000033,
+          "requestBytes": 10874,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 5169,
+          "outputTokens": 95
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h3s-shipments",
+      "message": "물류 DB에서 출고 내역 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "logistics",
+          "table": "shipments"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "logistics",
+          "table": "shipments"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 541,
+      "calls": [
+        {
+          "questions": 175,
+          "durationMs": 319.9819000000007,
+          "requestBytes": 88186,
+          "providerRequests": 2,
+          "model": "jev-1.13.0",
+          "inputTokens": 28336,
+          "outputTokens": 3939
+        },
+        {
+          "questions": 2,
+          "durationMs": 218.00290000000132,
+          "requestBytes": 14865,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 6434,
+          "outputTokens": 169
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h3s-budgets",
+      "message": "올해 부서별 예산 편성표 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "finance",
+          "table": "budgets"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "finance",
+          "table": "budgets"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 489,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 276.65700000000106,
+          "requestBytes": 87773,
+          "providerRequests": 2,
+          "model": "jev-1.13.0",
+          "inputTokens": 28204,
+          "outputTokens": 3923
+        },
+        {
+          "questions": 1,
+          "durationMs": 209.70509999999922,
+          "requestBytes": 8237,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 4509,
+          "outputTokens": 55
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h3s-accounts",
+      "message": "계정과목 목록 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "finance",
+          "table": "accounts"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "finance",
+          "table": "accounts"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 548,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 336.59660000000076,
+          "requestBytes": 87745,
+          "providerRequests": 2,
+          "model": "jev-1.13.0",
+          "inputTokens": 28190,
+          "outputTokens": 3923
+        },
+        {
+          "questions": 1,
+          "durationMs": 208.73489999999947,
+          "requestBytes": 8077,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 4441,
+          "outputTokens": 46
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h3s-leaves",
+      "message": "직원들 휴가 신청 내역 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "hr",
+          "table": "leaves"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "hr",
+          "table": "leaves",
+          "join": [
+            {
+              "table": "employees",
+              "on": "employee_id",
+              "references": "id"
+            }
+          ]
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 567,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 357.5426000000007,
+          "requestBytes": 87767,
+          "providerRequests": 2,
+          "model": "jev-1.13.0",
+          "inputTokens": 28204,
+          "outputTokens": 3923
+        },
+        {
+          "questions": 1,
+          "durationMs": 207.4997000000003,
+          "requestBytes": 8283,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 4523,
+          "outputTokens": 55
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h3s-crm-contacts",
+      "message": "CRM 고객사 담당자 연락처 목록 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "crm",
+          "table": "customers"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "crm",
+          "table": "customers"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 679,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 468.21169999999984,
+          "requestBytes": 87787,
+          "providerRequests": 2,
+          "model": "jev-1.13.0",
+          "inputTokens": 28202,
+          "outputTokens": 3919
+        },
+        {
+          "questions": 1,
+          "durationMs": 208.77850000000035,
+          "requestBytes": 8440,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 4568,
+          "outputTokens": 64
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h3s-purchase-orders",
+      "message": "공급처에 낸 발주 내역 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "inventory",
+          "table": "purchase_orders"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "inventory",
+          "table": "purchase_orders"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 539,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 329.4292000000023,
+          "requestBytes": 87767,
+          "providerRequests": 2,
+          "model": "jev-1.13.0",
+          "inputTokens": 28198,
+          "outputTokens": 3922
+        },
+        {
+          "questions": 2,
+          "durationMs": 207.51450000000114,
+          "requestBytes": 12250,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 5603,
+          "outputTokens": 122
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h3s-promotions",
+      "message": "진행했던 프로모션 목록 좀 보여주세요",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "marketing",
+          "table": "promotions"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "marketing",
+          "table": "promotions"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 543,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 335.91949999999997,
+          "requestBytes": 87791,
+          "providerRequests": 2,
+          "model": "jev-1.13.0",
+          "inputTokens": 28208,
+          "outputTokens": 3923
+        },
+        {
+          "questions": 2,
+          "durationMs": 204.3152999999984,
+          "requestBytes": 11108,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 5260,
+          "outputTokens": 104
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h3s-web-visits",
+      "message": "마케팅 DB 웹 방문 기록 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "marketing",
+          "table": "web_visits"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "marketing",
+          "table": "web_visits"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 503,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 291.3137999999999,
+          "requestBytes": 87767,
+          "providerRequests": 2,
+          "model": "jev-1.13.0",
+          "inputTokens": 28196,
+          "outputTokens": 3919
+        },
+        {
+          "questions": 2,
+          "durationMs": 208.54880000000048,
+          "requestBytes": 10830,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 5158,
+          "outputTokens": 95
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h3s-ticket-messages",
+      "message": "고객 문의 티켓에 오간 메시지 내용 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "support",
+          "table": "ticket_messages"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "support",
+          "table": "ticket_messages"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 534,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 297.4657999999981,
+          "requestBytes": 87801,
+          "providerRequests": 2,
+          "model": "jev-1.13.0",
+          "inputTokens": 28214,
+          "outputTokens": 3919
+        },
+        {
+          "questions": 2,
+          "durationMs": 234.14429999999993,
+          "requestBytes": 12301,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 5569,
+          "outputTokens": 113
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h3s-erp-orders",
+      "message": "ERP 주문 마스터 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "erp",
+          "table": "tb_ord_mst"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "erp",
+          "table": "tb_ord_mst"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 292,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 290.22979999999734,
+          "requestBytes": 87747,
+          "providerRequests": 2,
+          "model": "jev-1.13.0",
+          "inputTokens": 28182,
+          "outputTokens": 3923
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h3s-erp-customers",
+      "message": "ERP에 등록된 거래 고객 사업자번호 목록 뽑아줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "erp",
+          "table": "tb_cust_mst"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "erp",
+          "table": "tb_cust_mst"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 498,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 289.4948000000004,
+          "requestBytes": 87813,
+          "providerRequests": 2,
+          "model": "jev-1.13.0",
+          "inputTokens": 28214,
+          "outputTokens": 3923
+        },
+        {
+          "questions": 2,
+          "durationMs": 207.03489999999874,
+          "requestBytes": 10313,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 5050,
+          "outputTokens": 86
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h3s-grade-sales",
+      "message": "쇼핑몰 고객 등급별로 주문 금액 합계 내줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "shop",
+          "table": "orders"
+        },
+        "join": [
+          "customers"
+        ],
+        "tableTransform": [
+          "calculate"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "shop",
+          "table": "orders",
+          "join": [
+            {
+              "table": "customers",
+              "on": "customer_id",
+              "references": "id"
+            }
+          ]
+        },
+        "tableTransform": "calculate"
+      },
+      "durationMs": 510,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 288.6412999999993,
+          "requestBytes": 87867,
+          "providerRequests": 2,
+          "model": "jev-1.13.0",
+          "inputTokens": 28228,
+          "outputTokens": 3922
+        },
+        {
+          "questions": 2,
+          "durationMs": 219.60050000000047,
+          "requestBytes": 14341,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 6282,
+          "outputTokens": 169
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h3s-brand-sales",
+      "message": "브랜드별로 쇼핑몰 매출 얼마나 나왔는지 합계 내줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "shop",
+          "table": [
+            "orders",
+            "order_items"
+          ]
+        },
+        "join": [
+          "products"
+        ],
+        "tableTransform": [
+          "calculate"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "shop",
+          "table": "orders",
+          "join": [
+            {
+              "table": "products",
+              "on": "product_id",
+              "references": "id"
+            }
+          ]
+        },
+        "tableTransform": "calculate"
+      },
+      "durationMs": 479,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 278.1182000000008,
+          "requestBytes": 87891,
+          "providerRequests": 2,
+          "model": "jev-1.13.0",
+          "inputTokens": 28238,
+          "outputTokens": 3922
+        },
+        {
+          "questions": 2,
+          "durationMs": 199.31289999999717,
+          "requestBytes": 14805,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 6391,
+          "outputTokens": 169
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h3s-review-average",
+      "message": "상품별 리뷰 평점 평균 알려줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "shop",
+          "table": "reviews"
+        },
+        "tableTransform": [
+          "calculate"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "shop",
+          "table": "reviews",
+          "join": [
+            {
+              "table": "products",
+              "on": "product_id",
+              "references": "id"
+            }
+          ]
+        },
+        "tableTransform": "calculate"
+      },
+      "durationMs": 490,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 279.07480000000214,
+          "requestBytes": 87833,
+          "providerRequests": 2,
+          "model": "jev-1.13.0",
+          "inputTokens": 28212,
+          "outputTokens": 3919
+        },
+        {
+          "questions": 1,
+          "durationMs": 209.11559999999736,
+          "requestBytes": 8459,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 4571,
+          "outputTokens": 64
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h3s-warehouse-capacity",
+      "message": "수용량 큰 창고 순서대로 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "logistics",
+          "table": "warehouses"
+        },
+        "tableTransform": [
+          "sort",
+          "filter_sort"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "logistics",
+          "table": "warehouses"
+        },
+        "tableTransform": "sort"
+      },
+      "durationMs": 509,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 298.897399999998,
+          "requestBytes": 87773,
+          "providerRequests": 2,
+          "model": "jev-1.13.0",
+          "inputTokens": 28206,
+          "outputTokens": 3922
+        },
+        {
+          "questions": 1,
+          "durationMs": 208.93079999999827,
+          "requestBytes": 8127,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 4466,
+          "outputTokens": 46
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h3s-deal-stages",
+      "message": "CRM 거래를 단계별로 몇 건씩 있는지 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "crm",
+          "table": "deals"
+        },
+        "tableTransform": [
+          "calculate"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "crm",
+          "table": "deals",
+          "join": [
+            {
+              "table": "customers",
+              "on": "customer_id",
+              "references": "id"
+            }
+          ]
+        },
+        "tableTransform": "calculate"
+      },
+      "durationMs": 499,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 299.17169999999896,
+          "requestBytes": 87801,
+          "providerRequests": 2,
+          "model": "jev-1.13.0",
+          "inputTokens": 28212,
+          "outputTokens": 3919
+        },
+        {
+          "questions": 1,
+          "durationMs": 198.46819999999934,
+          "requestBytes": 8586,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 4634,
+          "outputTokens": 73
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h3s-warranty-reasons",
+      "message": "보증수리 청구를 사유별로 몇 건인지 집계해줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "erp",
+          "table": "tb_wrnty_clm"
+        },
+        "tableTransform": [
+          "calculate"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "erp",
+          "table": "tb_wrnty_clm"
+        },
+        "tableTransform": "calculate"
+      },
+      "durationMs": 499,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 287.6286,
+          "requestBytes": 87811,
+          "providerRequests": 2,
+          "model": "jev-1.13.0",
+          "inputTokens": 28216,
+          "outputTokens": 3919
+        },
+        {
+          "questions": 2,
+          "durationMs": 209.78859999999986,
+          "requestBytes": 10891,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 5218,
+          "outputTokens": 95
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h3s-big-coupons",
+      "message": "할인율 20% 이상인 쿠폰만 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "connectionId": "shop",
+          "table": "coupons"
+        },
+        "tableTransform": [
+          "filter",
+          "filter_sort"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "connectionId": "shop",
+          "table": "coupons"
+        },
+        "tableTransform": "filter"
+      },
+      "durationMs": 760,
+      "calls": [
+        {
+          "questions": 175,
+          "durationMs": 318.96250000000146,
+          "requestBytes": 88411,
+          "providerRequests": 2,
+          "model": "jev-1.13.0",
+          "inputTokens": 28381,
+          "outputTokens": 3950
+        },
+        {
+          "questions": 2,
+          "durationMs": 228.70449999999983,
+          "requestBytes": 10116,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 4941,
+          "outputTokens": 77
+        },
+        {
+          "questions": 1,
+          "durationMs": 210.37159999999858,
+          "requestBytes": 7886,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 4403,
+          "outputTokens": 36
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h3s-placeholder-comments",
+      "message": "JSONPlaceholder 댓글 데이터 가져와",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "http.request",
+        "params": {
+          "connectionId": "jsonplaceholder",
+          "path": "comments"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "http.request",
+        "params": {
+          "method": "GET",
+          "path": "comments",
+          "connectionId": "jsonplaceholder"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 299,
+      "calls": [
+        {
+          "questions": 175,
+          "durationMs": 297.4356000000007,
+          "requestBytes": 88192,
+          "providerRequests": 2,
+          "model": "jev-1.13.0",
+          "inputTokens": 28324,
+          "outputTokens": 3942
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h3s-recipes",
+      "message": "레시피 목록 API로 불러와줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "http.request",
+        "params": {
+          "connectionId": "dummyjson",
+          "path": "recipes"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "http.request",
+        "params": {
+          "method": "GET",
+          "path": "recipes",
+          "connectionId": "dummyjson"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 370,
+      "calls": [
+        {
+          "questions": 175,
+          "durationMs": 368.3355999999985,
+          "requestBytes": 88180,
+          "providerRequests": 2,
+          "model": "jev-1.13.0",
+          "inputTokens": 28324,
+          "outputTokens": 3938
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h3s-stock-alerts",
+      "message": "재고 부족 알림 뜬 품목 API에서 확인해줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "http.request",
+        "params": {
+          "connectionId": "stock-api",
+          "path": "alerts"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "http.request",
+        "params": {
+          "method": "GET",
+          "path": "alerts",
+          "connectionId": "stock-api"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 768,
+      "calls": [
+        {
+          "questions": 175,
+          "durationMs": 546.8100999999988,
+          "requestBytes": 88216,
+          "providerRequests": 2,
+          "model": "jev-1.13.0",
+          "inputTokens": 28338,
+          "outputTokens": 3942
+        },
+        {
+          "questions": 1,
+          "durationMs": 219.60189999999784,
+          "requestBytes": 9019,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 4663,
+          "outputTokens": 57
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h3s-forecast",
+      "message": "내일 비 온대? 일기예보 좀 봐줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "http.request",
+        "params": {
+          "connectionId": "weather-api",
+          "path": "forecast"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "http.request",
+        "params": {
+          "method": "GET",
+          "path": "forecast",
+          "connectionId": "weather-api"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 499,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 285.86699999999837,
+          "requestBytes": 87771,
+          "providerRequests": 2,
+          "model": "jev-1.13.0",
+          "inputTokens": 28200,
+          "outputTokens": 3922
+        },
+        {
+          "questions": 1,
+          "durationMs": 210.60480000000098,
+          "requestBytes": 8929,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 4630,
+          "outputTokens": 57
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h3s-meeting-rooms",
+      "message": "회의실 목록 확인하고 싶어",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "http.request",
+        "params": {
+          "connectionId": "calendar-api",
+          "path": "rooms"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "http.request",
+        "params": {
+          "method": "GET",
+          "path": "rooms",
+          "connectionId": "calendar-api"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 288,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 287.34020000000237,
+          "requestBytes": 87759,
+          "providerRequests": 2,
+          "model": "jev-1.13.0",
+          "inputTokens": 28198,
+          "outputTokens": 3923
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h3s-approvals",
+      "message": "결재 올라온 문서들 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "http.request",
+        "params": {
+          "connectionId": "hr-api",
+          "path": "approvals"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "http.request",
+        "params": {
+          "method": "GET",
+          "path": "approvals",
+          "connectionId": "hr-api"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 501,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 289.53259999999864,
+          "requestBytes": 87759,
+          "providerRequests": 2,
+          "model": "jev-1.13.0",
+          "inputTokens": 28194,
+          "outputTokens": 3923
+        },
+        {
+          "questions": 2,
+          "durationMs": 209.38560000000143,
+          "requestBytes": 10859,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 5174,
+          "outputTokens": 95
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h3s-jira-sprints",
+      "message": "Jira 이번 스프린트 정보 보여줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "http.request",
+        "params": {
+          "connectionId": "jira-api",
+          "path": "sprints"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "http.request",
+        "params": {
+          "method": "GET",
+          "path": "sprints",
+          "connectionId": "jira-api"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 536,
+      "calls": [
+        {
+          "questions": 175,
+          "durationMs": 304.33000000000175,
+          "requestBytes": 88190,
+          "providerRequests": 2,
+          "model": "jev-1.13.0",
+          "inputTokens": 28336,
+          "outputTokens": 3943
+        },
+        {
+          "questions": 1,
+          "durationMs": 228.14129999999932,
+          "requestBytes": 9028,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 4691,
+          "outputTokens": 66
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h3s-ambiguous-posts",
+      "message": "게시글 목록 보여줘",
+      "expected": {
+        "kind": [
+          "clarify"
+        ],
+        "sourceChooser": true
+      },
+      "passed": false,
+      "miss": "kind fallback (missing_context)",
+      "kind": "fallback",
+      "serviceError": false,
+      "decided": {
+        "reason": "missing_context"
+      },
+      "durationMs": 322,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 294.7926000000007,
+          "requestBytes": 87739,
+          "providerRequests": 2,
+          "model": "jev-1.13.0",
+          "inputTokens": 28190,
+          "outputTokens": 3919
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h3s-ambiguous-users",
+      "message": "사용자 목록 불러와줘",
+      "expected": {
+        "kind": [
+          "clarify"
+        ],
+        "sourceChooser": true
+      },
+      "passed": true,
+      "kind": "clarify",
+      "route": "execution_enqueue_once",
+      "serviceError": false,
+      "decided": {
+        "message": "쇼핑몰 DB, CRM DB, ERP DB, DummyJSON 등 5곳에 모두 관련 자료가 있어 어느 쪽에서 찾을지 정하지 못했습니다. 한 곳을 골라 주세요. 목록에 없는 곳이면 그 이름을 넣어 다시 말씀해 주세요. 둘을 함께 비교하려면 \"두 자료를 비교해 줘\"처럼 말씀해 주세요. 아직 ",
+        "chooser": "어디에서 찾을까요?"
+      },
+      "durationMs": 496,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 279.2658999999985,
+          "requestBytes": 87745,
+          "providerRequests": 2,
+          "model": "jev-1.13.0",
+          "inputTokens": 28190,
+          "outputTokens": 3919
+        },
+        {
+          "questions": 2,
+          "durationMs": 199.9271000000008,
+          "requestBytes": 10778,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 5205,
+          "outputTokens": 104
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h3s-ambiguous-stock",
+      "message": "품목별 현재 재고 수량 보여줘",
+      "expected": {
+        "kind": [
+          "clarify"
+        ],
+        "sourceChooser": true
+      },
+      "passed": true,
+      "kind": "clarify",
+      "route": "execution_enqueue_once",
+      "serviceError": false,
+      "decided": {
+        "message": "재고 DB, 재고 API에 모두 관련 자료가 있어 어느 쪽에서 찾을지 정하지 못했습니다. 한 곳을 골라 주세요. 둘을 함께 비교하려면 \"두 자료를 비교해 줘\"처럼 말씀해 주세요. 아직 아무것도 실행하지 않았습니다.",
+        "chooser": "어디에서 찾을까요?"
+      },
+      "durationMs": 518,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 308.46010000000024,
+          "requestBytes": 87767,
+          "providerRequests": 2,
+          "model": "jev-1.13.0",
+          "inputTokens": 28192,
+          "outputTokens": 3922
+        },
+        {
+          "questions": 2,
+          "durationMs": 207.7596999999987,
+          "requestBytes": 10519,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 5052,
+          "outputTokens": 86
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h3s-ambiguous-order-count",
+      "message": "이번 달 주문 몇 건 들어왔는지 알려줘",
+      "expected": {
+        "kind": [
+          "clarify"
+        ],
+        "sourceChooser": true
+      },
+      "passed": true,
+      "kind": "clarify",
+      "route": "execution_enqueue_once",
+      "serviceError": false,
+      "decided": {
+        "message": "주문 API, 쇼핑몰 DB, ERP DB에 모두 관련 자료가 있어 어느 쪽에서 찾을지 정하지 못했습니다. 한 곳을 골라 주세요. 둘을 함께 비교하려면 \"두 자료를 비교해 줘\"처럼 말씀해 주세요. 아직 아무것도 실행하지 않았습니다.",
+        "chooser": "어디에서 찾을까요?"
+      },
+      "durationMs": 520,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 298.4308999999994,
+          "requestBytes": 87789,
+          "providerRequests": 2,
+          "model": "jev-1.13.0",
+          "inputTokens": 28196,
+          "outputTokens": 3922
+        },
+        {
+          "questions": 2,
+          "durationMs": 219.39110000000073,
+          "requestBytes": 12805,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 5776,
+          "outputTokens": 131
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h3s-ambiguous-sales",
+      "message": "매출 데이터 보여줘",
+      "expected": {
+        "kind": [
+          "clarify"
+        ],
+        "sourceChooser": true
+      },
+      "passed": true,
+      "kind": "clarify",
+      "route": "execution_enqueue_once",
+      "serviceError": false,
+      "decided": {
+        "message": "ERP API, 쇼핑몰 DB, 회계 DB, ERP DB 등 5곳에 모두 관련 자료가 있어 어느 쪽에서 찾을지 정하지 못했습니다. 한 곳을 골라 주세요. 목록에 없는 곳이면 그 이름을 넣어 다시 말씀해 주세요. 둘을 함께 비교하려면 \"두 자료를 비교해 줘\"처럼 말씀해 주세요. 아직 아무것",
+        "chooser": "어디에서 찾을까요?"
+      },
+      "durationMs": 501,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 289.4940999999999,
+          "requestBytes": 87739,
+          "providerRequests": 2,
+          "model": "jev-1.13.0",
+          "inputTokens": 28184,
+          "outputTokens": 3923
+        },
+        {
+          "questions": 2,
+          "durationMs": 209.8878999999979,
+          "requestBytes": 13353,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 5975,
+          "outputTokens": 149
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h3s-latest-report-file",
+      "message": "월간보고 폴더에서 제일 최근 파일이 뭐야?",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "local_folder.list"
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "local_folder.list",
+        "params": {
+          "folderId": "f-reports",
+          "limit": 20
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 512,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 285.3868000000002,
+          "requestBytes": 87801,
+          "providerRequests": 2,
+          "model": "jev-1.13.0",
+          "inputTokens": 28216,
+          "outputTokens": 3919
+        },
+        {
+          "questions": 2,
+          "durationMs": 224.0649999999987,
+          "requestBytes": 10153,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 4967,
+          "outputTokens": 86
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h3s-slack-outage",
+      "message": "슬랙에서 장애 공지 언급된 메시지 검색해줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "slack.messages.search"
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "slack.messages.search",
+        "params": {
+          "query": "공지"
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 493,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 294.4519,
+          "requestBytes": 87805,
+          "providerRequests": 2,
+          "model": "jev-1.13.0",
+          "inputTokens": 28202,
+          "outputTokens": 3919
+        },
+        {
+          "questions": 1,
+          "durationMs": 196.29149999999936,
+          "requestBytes": 9001,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 4642,
+          "outputTokens": 57
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h3s-mail-tax-invoice",
+      "message": "세금계산서 첨부된 메일 왔는지 확인해줘",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "gmail.messages.search"
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "gmail.messages.search",
+        "params": {},
+        "tableTransform": "none"
+      },
+      "durationMs": 539,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 328.1258000000016,
+          "requestBytes": 87863,
+          "providerRequests": 2,
+          "model": "jev-1.13.0",
+          "inputTokens": 28240,
+          "outputTokens": 3919
+        },
+        {
+          "questions": 1,
+          "durationMs": 208.8703999999998,
+          "requestBytes": 9108,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 4696,
+          "outputTokens": 57
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h3s-db-connections",
+      "message": "연결된 데이터베이스가 몇 개고 뭐뭐야?",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "route": [
+          "connection_list",
+          "source_list",
+          "resource_list"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "resource_list",
+      "serviceError": false,
+      "decided": {
+        "command": "resource.list"
+      },
+      "durationMs": 289,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 287.1932000000015,
+          "requestBytes": 87859,
+          "providerRequests": 2,
+          "model": "jev-1.13.0",
+          "inputTokens": 28240,
+          "outputTokens": 3917
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h3s-slack-once",
+      "message": "슬랙 #ax테스트에 \"점검 끝났습니다\" 한 줄 남겨줘",
+      "expected": {
+        "kind": [
+          "command",
+          "clarify"
+        ],
+        "route": [
+          "execution_enqueue_once"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "execution_enqueue_once",
+      "serviceError": false,
+      "decided": {
+        "command": "execution.enqueue_once"
+      },
+      "durationMs": 479,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 278.90460000000166,
+          "requestBytes": 87873,
+          "providerRequests": 2,
+          "model": "jev-1.13.0",
+          "inputTokens": 28230,
+          "outputTokens": 3918
+        },
+        {
+          "questions": 2,
+          "durationMs": 196.53959999999643,
+          "requestBytes": 1755,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 831,
+          "outputTokens": 79
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h3s-report-draft",
+      "message": "월간보고 폴더에 있는 지난달 보고서 참고해서 이번 달 보고서 초안 써줘",
+      "expected": {
+        "kind": [
+          "command",
+          "clarify"
+        ],
+        "route": [
+          "report_generate"
+        ]
+      },
+      "passed": true,
+      "kind": "clarify",
+      "route": "report_generate",
+      "serviceError": false,
+      "decided": {
+        "message": "보고서를 만들려면 지난 기간에 완성한 보고서(PDF나 Word 파일)를 이 대화에 올려 주세요. 빈 양식 PDF가 있으면 함께 올려 주셔도 됩니다."
+      },
+      "durationMs": 314,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 312.0584000000017,
+          "requestBytes": 87921,
+          "providerRequests": 2,
+          "model": "jev-1.13.0",
+          "inputTokens": 28250,
+          "outputTokens": 3917
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h3s-weekly-tickets",
+      "message": "매주 금요일 퇴근 전에 미해결 티켓 수를 슬랙 #ax테스트로 알려줘",
+      "expected": {
+        "kind": [
+          "command",
+          "clarify"
+        ],
+        "route": [
+          "workflow_create",
+          "job_propose"
+        ]
+      },
+      "passed": true,
+      "kind": "clarify",
+      "route": "job_propose",
+      "serviceError": false,
+      "decided": {
+        "message": "앞 단계 결과를 다음 단계에 어떻게 넘길지 정하지 못했습니다. 어떤 결과를 쓸지 알려 주세요. 아무 반복 업무도 저장하거나 활성화하지 않았습니다.",
+        "chooser": "실행 전 계획 확인"
+      },
+      "durationMs": 894,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 314.03280000000086,
+          "requestBytes": 87863,
+          "providerRequests": 2,
+          "model": "jev-1.13.0",
+          "inputTokens": 28236,
+          "outputTokens": 3921
+        },
+        {
+          "questions": 7,
+          "durationMs": 216.86789999999746,
+          "requestBytes": 10406,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 7162,
+          "outputTokens": 2482
+        },
+        {
+          "questions": 7,
+          "durationMs": 180.15630000000237,
+          "requestBytes": 2681,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 1035,
+          "outputTokens": 133
+        },
+        {
+          "questions": 1,
+          "durationMs": 178.41479999999865,
+          "requestBytes": 2463,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 1268,
+          "outputTokens": 46
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h3s-stock-alert-trigger",
+      "message": "재고 부족 알림이 새로 뜨면 바로 메일로 보내주는 자동화 만들어줘",
+      "expected": {
+        "kind": [
+          "command",
+          "clarify"
+        ],
+        "route": [
+          "workflow_create",
+          "job_propose"
+        ]
+      },
+      "passed": true,
+      "kind": "clarify",
+      "route": "workflow_create",
+      "serviceError": false,
+      "decided": {
+        "message": "새 업무를 저장하라는 요청인지 확실하지 않아 저장하지 않았습니다. 저장할 업무를 명시해 주세요."
+      },
+      "durationMs": 300,
+      "calls": [
+        {
+          "questions": 174,
+          "durationMs": 298.4689999999973,
+          "requestBytes": 87869,
+          "providerRequests": 2,
+          "model": "jev-1.13.0",
+          "inputTokens": 28222,
+          "outputTokens": 3920
+        }
+      ]
+    },
+    {
+      "set": "holdout",
+      "workspace": "scale",
+      "id": "h3s-monthly-payroll",
+      "message": "매월 25일 아침에 부서별 급여 총액 정리해서 나한테 메일 줘",
+      "expected": {
+        "kind": [
+          "command",
+          "clarify"
+        ],
+        "route": [
+          "workflow_create",
+          "job_propose"
+        ]
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "job_propose",
+      "serviceError": false,
+      "decided": {
+        "command": "job.propose"
+      },
+      "durationMs": 1097,
+      "calls": [
+        {
+          "questions": 175,
+          "durationMs": 282.9904999999999,
+          "requestBytes": 88553,
+          "providerRequests": 2,
+          "model": "jev-1.13.0",
+          "inputTokens": 28435,
+          "outputTokens": 3952
+        },
+        {
+          "questions": 7,
+          "durationMs": 217.97920000000158,
+          "requestBytes": 10398,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 7162,
+          "outputTokens": 2483
+        },
+        {
+          "questions": 2,
+          "durationMs": 201.1606000000029,
+          "requestBytes": 2779,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 2004,
+          "outputTokens": 674
+        },
+        {
+          "questions": 4,
+          "durationMs": 197.10329999999522,
+          "requestBytes": 5025,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 2044,
+          "outputTokens": 143
+        },
+        {
+          "questions": 2,
+          "durationMs": 189.1996999999974,
+          "requestBytes": 2207,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 1054,
+          "outputTokens": 79
+        }
+      ]
+    }
+  ]
+}

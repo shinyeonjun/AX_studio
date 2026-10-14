@@ -11,7 +11,6 @@ import {
   upsertRdbDatabase,
 } from './config/databases.js';
 import { buildJevReadOperationHints } from '../../intelligence/decision/read-operation-catalog.js';
-import { coveringRdbRead } from '../../intelligence/commands/chat/routing/rdb-read-cover.js';
 
 const ctx = (): ConnectorContext => ({ executionId: 'multi-db', variables: {}, log: vi.fn() });
 
@@ -80,8 +79,8 @@ describe('several databases in one connection', () => {
       ['쇼핑몰 DB', 'shop', 'orders'], ['물류 DB', 'logistics', 'orders'],
     ]));
     expect(reads.find((hint) => hint.params.connectionId === 'logistics')?.description).toContain('물류 DB의');
-    const shopOrders = reads.find((hint) => hint.params.connectionId === 'shop' && hint.params.table === 'orders' && !hint.params.join)!;
-    const logisticsOrders = reads.find((hint) => hint.params.connectionId === 'logistics')!;
-    expect(coveringRdbRead([shopOrders, logisticsOrders], hints)).toBeUndefined();
+    // Relations stay inside one database: the logistics orders have no customers table to attach.
+    expect(reads.find((hint) => hint.params.connectionId === 'shop' && hint.params.table === 'orders')?.relations?.map(({ table }) => table)).toEqual(['customers']);
+    expect(reads.find((hint) => hint.params.connectionId === 'logistics')?.relations).toBeUndefined();
   });
 });

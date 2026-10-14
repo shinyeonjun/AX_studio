@@ -3256,7 +3256,7 @@ describe('routeChatWithJev', () => {
           answers: {
             route: { type: 'choice', choice: 'capability_read', probabilities: { capability_read: 0.9 }, confidence: 0.9 },
             ...parallelAnswers,
-            primary_read_operation: { type: 'choice', choice: 'operation_0', probabilities: { operation_0: 0.9 }, confidence: 0.9 },
+            record_read: { type: 'choice', choice: 'read_0', probabilities: { read_0: 0.9 }, confidence: 0.9 },
             table_transform: { type: 'choice', choice: 'none', probabilities: { none: 0.9 }, confidence: 0.9 },
           },
         };
@@ -3346,7 +3346,7 @@ describe('routeChatWithJev', () => {
 
     it('reads the table whose own rows are the records, without joining what it does not need', async () => {
       // Real: a product price list read every order with its product when join variants were reads of their own.
-      const { result } = await route([orders, products], { records_0: no, records_1: yes, attach_0_0: no, attach_0_1: no });
+      const { result } = await route([orders, products], { record_read: { type: 'choice', choice: 'read_1', probabilities: { read_1: 0.9 }, confidence: 0.9 }, attach_0_0: no, attach_0_1: no });
       expect(result).toMatchObject({ kind: 'command', command: { args: { id: 'rdb.query.read', params: { table: 'products' } } } });
       expect(result.kind === 'command' && result.command.args.params).not.toHaveProperty('join');
     });
@@ -3357,10 +3357,10 @@ describe('routeChatWithJev', () => {
       expect(result).toMatchObject({ kind: 'command', command: { args: { params: { table: 'orders', join: [{ table: 'customers', on: 'customer_id', references: 'id' }] } } } });
     });
 
-    it('asks where to look when records of that kind are in several places and none is named', async () => {
-      const unnamed = await route([products, apiProducts], { records_0: yes, records_1: yes, named_place: { type: 'choice', choice: 'none', probabilities: { none: 0.9 }, confidence: 0.9 } });
+    it('asks where to look only when several places hold the records and nothing tells which', async () => {
+      const unnamed = await route([products, apiProducts], { record_read: { type: 'choice', choice: 'read_0', probabilities: { read_0: 0.9 }, confidence: 0.9 }, same_records_elsewhere: yes, points_to_place_0: no, points_to_place_1: no });
       expect(unnamed.result).toMatchObject({ kind: 'clarify', presentation: { title: '어디에서 찾을까요?' } });
-      const named = await route([products, apiProducts], { records_0: yes, records_1: yes, named_place: { type: 'choice', choice: 'place_1', probabilities: { place_1: 0.9 }, confidence: 0.9 } });
+      const named = await route([products, apiProducts], { record_read: { type: 'choice', choice: 'read_1', probabilities: { read_1: 0.9 }, confidence: 0.9 }, same_records_elsewhere: yes, points_to_place_0: yes, points_to_place_1: no });
       expect(named.result).toMatchObject({ kind: 'command', command: { args: { id: 'http.request' } } });
     });
   });
@@ -3396,7 +3396,7 @@ describe('routeChatWithJev', () => {
           answers: {
             route: { type: 'choice', choice: 'capability_read', probabilities: { capability_read: 0.99 }, confidence: 0.99 },
             ...parallelAnswers,
-            primary_read_operation: { type: 'choice', choice: 'operation_0', probabilities: { operation_0: 0.9 }, confidence: 0.9 },
+            record_read: { type: 'choice', choice: 'read_0', probabilities: { read_0: 0.9 }, confidence: 0.9 },
             table_transform: { type: 'choice', choice: 'filter', probabilities: { filter: 0.99 }, confidence: 0.99 },
             table_projection: { type: 'choice', choice: 'all_columns', probabilities: { all_columns: 0.99 }, confidence: 0.99 },
           },
