@@ -10,6 +10,7 @@ import { CodexDecisionEngine, type CodexDecisionCall } from './codex-decision-en
 import { HolisticLlmRouter, type HolisticCall } from './holistic-llm-router.js';
 import { HOLDOUT2_BASIC_CASES, HOLDOUT2_SCALE_CASES, HOLDOUT_BASIC_CASES, HOLDOUT_SCALE_CASES } from './routing-eval.holdout-cases.js';
 import { HOLDOUT3_BASIC_CASES, HOLDOUT3_SCALE_CASES } from './routing-eval.holdout3-cases.js';
+import { HOLDOUT4_BASIC_CASES, HOLDOUT4_SCALE_CASES } from './routing-eval.holdout4-cases.js';
 import { JEV_ROUTING_CASES, JEV_SCALE_ROUTING_CASES, previousOrdersTable, routingMiss, type JevRoutingCase } from './routing-eval.cases.js';
 import { SCALE_CONNECTED, SCALE_CONNECTIONS, SCALE_HTTP_ENDPOINTS } from './routing-eval.scale-fixture.js';
 import { BASIC_CONNECTIONS } from './routing-eval.workspace.js';
@@ -28,7 +29,7 @@ const engineSpec = process.env.AX_COMPARE_ENGINE?.trim() ?? 'jev';
 /** Comma-separated case ids, for a quick check of the harness. */
 /**
  * Cases added after the first runs are run as a part of the same run: AX_COMPARE_PART=h2 runs only
- * ids starting with h2 and writes <engine>-run<n>.h2.json (a retry part: h2-retry); h3 likewise.
+ * ids starting with h2 and writes <engine>-run<n>.h2.json (a retry part: h2-retry); h3 and h4 likewise.
  */
 const part = process.env.AX_COMPARE_PART?.trim() || undefined;
 const partPrefix = part?.replace(/-retry$/u, '');
@@ -54,6 +55,8 @@ const WORKSPACES: readonly Workspace[] = [
   { name: 'scale', set: 'holdout', cases: HOLDOUT2_SCALE_CASES, ...scale },
   { name: 'basic', set: 'holdout', cases: HOLDOUT3_BASIC_CASES, ...basic },
   { name: 'scale', set: 'holdout', cases: HOLDOUT3_SCALE_CASES, ...scale },
+  { name: 'basic', set: 'holdout', cases: HOLDOUT4_BASIC_CASES, ...basic },
+  { name: 'scale', set: 'holdout', cases: HOLDOUT4_SCALE_CASES, ...scale },
 ];
 
 interface CallRecord {
@@ -162,7 +165,7 @@ describe.skipIf(!enabled)('decision engine comparison', () => {
       const index = buildJevReadOperationIndex(workspace.connections);
       for (const testCase of workspace.cases) {
         if (only && !only.has(testCase.id)) continue;
-        if (partPrefix ? !testCase.id.startsWith(partPrefix) : /^h[23]/u.test(testCase.id)) continue;
+        if (partPrefix ? !testCase.id.startsWith(partPrefix) : /^h[234]/u.test(testCase.id)) continue;
         calls = [];
         const selection = index.select(testCase.message);
         const startedAt = performance.now();

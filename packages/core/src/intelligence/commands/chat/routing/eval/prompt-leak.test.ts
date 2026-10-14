@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { JEV_ROUTING_CASES, JEV_SCALE_ROUTING_CASES } from './routing-eval.cases.js';
 import { HOLDOUT2_BASIC_CASES, HOLDOUT2_SCALE_CASES, HOLDOUT_BASIC_CASES, HOLDOUT_SCALE_CASES } from './routing-eval.holdout-cases.js';
 import { HOLDOUT3_BASIC_CASES, HOLDOUT3_SCALE_CASES } from './routing-eval.holdout3-cases.js';
+import { HOLDOUT4_BASIC_CASES, HOLDOUT4_SCALE_CASES } from './routing-eval.holdout4-cases.js';
 
 /**
  * What Jev is told must not contain the requests it is scored on: an evaluation sentence used as
@@ -15,7 +16,7 @@ const src = join(dirname(fileURLToPath(import.meta.url)), '../../../../..');
 const CASES = [
   ...JEV_ROUTING_CASES, ...JEV_SCALE_ROUTING_CASES,
   ...HOLDOUT_BASIC_CASES, ...HOLDOUT_SCALE_CASES, ...HOLDOUT2_BASIC_CASES, ...HOLDOUT2_SCALE_CASES,
-  ...HOLDOUT3_BASIC_CASES, ...HOLDOUT3_SCALE_CASES,
+  ...HOLDOUT3_BASIC_CASES, ...HOLDOUT3_SCALE_CASES, ...HOLDOUT4_BASIC_CASES, ...HOLDOUT4_SCALE_CASES,
 ];
 
 function sourceFiles(dir: string, out: string[] = []): string[] {
