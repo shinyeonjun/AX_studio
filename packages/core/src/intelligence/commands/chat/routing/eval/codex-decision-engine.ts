@@ -35,8 +35,8 @@ function answerSchema(question: DecisionQuestion): ZodType {
 }
 
 /** Waits before asking again after a rate limit (429) or "at capacity": 30 s, then 1, 2 and 4 min. */
-const RATE_LIMIT_WAITS_MS = [30_000, 60_000, 120_000, 240_000];
-const RATE_LIMITED = /429|too many requests|at capacity|rate limit/iu;
+export const RATE_LIMIT_WAITS_MS = [30_000, 60_000, 120_000, 240_000];
+export const RATE_LIMITED = /429|too many requests|at capacity|rate limit/iu;
 
 const clamp = (value: number) => Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0));
 
