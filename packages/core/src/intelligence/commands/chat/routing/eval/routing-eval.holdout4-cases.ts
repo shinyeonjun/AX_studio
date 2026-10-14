@@ -5,7 +5,10 @@ import type { JevRoutingCase } from './routing-eval.cases.js';
  * saw only the case type, the scorer, the two workspace fixtures and the earlier case wording (to
  * avoid repeating it), and no results. The category quota (the same as v3) was fixed before any
  * request was written; each group is headed by its category and count. A separate reviewer in a
- * new session checked every expectation against the fixtures: 0 expectations fixed. Never edited after results.
+ * new session checked every expectation against the fixtures: 0 expectations fixed. A second
+ * reviewer, also in a new session and without results, checked every table, column, API path,
+ * connectionId, source overlap and transform again — second reviewer: 0 expectations fixed.
+ * Never edited after results.
  */
 const dbRead = (table: string | string[], extra: Partial<JevRoutingCase['expect']> = {}): JevRoutingCase['expect'] =>
   ({ kind: ['command'], capabilityId: 'rdb.query.read', params: { table }, ...extra });
