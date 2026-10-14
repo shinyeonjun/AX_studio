@@ -128,8 +128,9 @@ for (const [engine, engineRuns] of byEngine) {
     'holdout/basic': (outcome) => outcome.set === 'holdout' && outcome.workspace === 'basic',
     'holdout/scale': (outcome) => outcome.set === 'holdout' && outcome.workspace === 'scale',
     // The first 24 held-out cases (2026-10-13) and the 76 added by a blind author (2026-10-14).
-    'holdout-v1': (outcome) => outcome.set === 'holdout' && !outcome.id.startsWith('h2'),
+    'holdout-v1': (outcome) => outcome.set === 'holdout' && !/^h[23]/u.test(outcome.id),
     'holdout-v2': (outcome) => outcome.set === 'holdout' && outcome.id.startsWith('h2'),
+    'holdout-v3': (outcome) => outcome.set === 'holdout' && outcome.id.startsWith('h3'),
   };
   const accuracyBySet = Object.fromEntries(Object.entries(sets).map(([name, filter]) => {
     const values = accuracy(filter);
