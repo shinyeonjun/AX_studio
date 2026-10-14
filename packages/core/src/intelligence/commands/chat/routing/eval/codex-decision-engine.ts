@@ -34,6 +34,10 @@ function answerSchema(question: DecisionQuestion): ZodType {
   return z.object({ score: z.number().int(), confidence: z.number() });
 }
 
+/** Waits before asking again after a rate limit (429) or "at capacity": 30 s, then 1, 2 and 4 min. */
+const RATE_LIMIT_WAITS_MS = [30_000, 60_000, 120_000, 240_000];
+const RATE_LIMITED = /429|too many requests|at capacity|rate limit/iu;
+
 const clamp = (value: number) => Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0));
 
 /** Jev's answer shapes: a choice's probability is the model's confidence in it. */
@@ -52,6 +56,8 @@ export interface CodexDecisionCall {
   questions: number;
   promptChars: number;
   durationMs: number;
+  /** Time spent waiting before this attempt after a rate limit; not part of the decision's speed. */
+  waitedMs?: number;
   usage?: ModelTokenUsage;
   error?: string;
 }
@@ -72,8 +78,30 @@ export class CodexDecisionEngine implements DecisionEngine {
     const entries = Object.entries(request.questions);
     const schema = z.object(Object.fromEntries(entries.map(([id, question]) => [id, answerSchema(question)])));
     const user = JSON.stringify({ state: request.state, questions: request.questions });
+    let waitedMs = 0;
+    for (let attempt = 0; ; attempt += 1) {
+      try {
+        return await this.attempt(request, entries, schema, user, waitedMs);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        // Rate limits and capacity are the provider's, not the model's judgment: wait and ask again.
+        if (attempt >= RATE_LIMIT_WAITS_MS.length || !RATE_LIMITED.test(message) || request.signal?.aborted) throw error;
+        waitedMs = RATE_LIMIT_WAITS_MS[attempt]!;
+        await new Promise((resolve) => setTimeout(resolve, waitedMs));
+      }
+    }
+  }
+
+  private async attempt(
+    request: DecisionEvaluationRequest,
+    entries: Array<[string, DecisionQuestion]>,
+    schema: ZodType,
+    user: string,
+    waitedMs: number,
+  ): Promise<DecisionEvaluationResult> {
     let usage: ModelTokenUsage | undefined;
     const startedAt = performance.now();
+    const waited = waitedMs > 0 ? { waitedMs } : {};
     try {
       const output = await this.provider.generateStructured({
         schema,
@@ -84,7 +112,7 @@ export class CodexDecisionEngine implements DecisionEngine {
         ...(request.signal ? { abortSignal: request.signal } : {}),
         onUsage: (reported) => { usage = reported; },
       }) as Record<string, Record<string, unknown>>;
-      this.onCall?.({ questions: entries.length, promptChars: user.length, durationMs: performance.now() - startedAt, ...(usage ? { usage } : {}) });
+      this.onCall?.({ questions: entries.length, promptChars: user.length, durationMs: performance.now() - startedAt, ...waited, ...(usage ? { usage } : {}) });
       return {
         answers: Object.fromEntries(entries.map(([id, question]) => [id, toAnswer(question, output[id] ?? {})])),
         model: this.model,
@@ -94,7 +122,7 @@ export class CodexDecisionEngine implements DecisionEngine {
       };
     } catch (error) {
       this.onCall?.({
-        questions: entries.length, promptChars: user.length, durationMs: performance.now() - startedAt,
+        questions: entries.length, promptChars: user.length, durationMs: performance.now() - startedAt, ...waited,
         ...(usage ? { usage } : {}), error: (error instanceof Error ? error.message : String(error)).slice(0, 300),
       });
       throw error;
