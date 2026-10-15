@@ -3,7 +3,7 @@ import { existsSync } from 'node:fs';
 import { readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { app } from 'electron';
-import type { AiBrand, AiConnectionMode } from '@ax-studio/core';
+import type { AiBrand } from '@ax-studio/core';
 import type { AiTomlConfig, JevDecisionTomlConfig } from './contracts.js';
 import { emptyConfig, parseAiToml, serializeAiToml } from './toml.js';
 import { getDesktopAxDataPaths } from '../../data-paths.js';
@@ -55,17 +55,17 @@ export function saveJevDecisionPreferences(prefs: JevDecisionTomlConfig): Promis
   });
 }
 
-export function saveActiveAi(brand: AiBrand, mode: AiConnectionMode, model: string): Promise<AiTomlConfig> {
+export function saveActiveAi(brand: AiBrand, model: string): Promise<AiTomlConfig> {
   return updateAiToml((config) => {
-    config.active = { brand, mode, model };
-    config.providers[brand] = { ...config.providers[brand], mode, model };
+    config.active = { brand, model };
+    config.providers[brand] = { ...config.providers[brand], model };
   });
 }
 
 /** Partial update: omitted fields keep their stored values. */
 export function saveAiBrandPreferences(
   brand: AiBrand,
-  prefs: { mode?: AiConnectionMode; model?: string },
+  prefs: { model?: string },
 ): Promise<AiTomlConfig> {
   return updateAiToml((config) => {
     config.providers[brand] = { ...config.providers[brand], ...definedFields(prefs) };

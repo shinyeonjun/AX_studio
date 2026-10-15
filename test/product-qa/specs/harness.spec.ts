@@ -309,45 +309,12 @@ if (!printMode && mode === 'deterministic' && !filters.ids?.length && !filters.t
       await ctx.app.evaluate(({ ipcMain }) => {
         ipcMain.removeHandler('ax:getAiConfig');
         ipcMain.handle('ax:getAiConfig', () => ({ path: 'isolated-qa-config',
-          providers: { gpt: { mode: 'api' } }, secrets: {} }));
+          providers: { gpt: { model: 'gpt-5.5' } } }));
       });
       await ctx.page.getByRole('button', { name: '다시 시도', exact: true }).click();
       await expect(ctx.page.getByRole('alert')).toHaveCount(0, { timeout: 5_000 });
       await ctx.page.getByRole('button', { name: 'GPT 설정', exact: true }).click();
-      await expect(ctx.page.locator('#gpt-api-key')).toBeVisible();
-      expect(rendererErrors).toEqual([]);
-    } finally {
-      await closeDesktop(ctx);
-      rmSync(dataRoot, { recursive: true, force: true });
-    }
-  });
-
-  test('AI provider switches isolate unsaved API key drafts', async () => {
-    const dataRoot = mkdtempSync(join(tmpdir(), 'ax-ai-form-isolation-'));
-    const ctx = await launchDesktop({ mode: 'deterministic', dataRoot, runId,
-      scenarioId: 'ai-provider-form-isolation' });
-    const rendererErrors: string[] = [];
-    ctx.page.on('pageerror', (error) => rendererErrors.push(error.message));
-    try {
-      await ctx.app.evaluate(({ ipcMain }) => {
-        ipcMain.removeHandler('ax:getAiConfig');
-        ipcMain.handle('ax:getAiConfig', () => ({
-          path: 'isolated-qa-config',
-          providers: { claude: { mode: 'api' }, gpt: { mode: 'api' } },
-          secrets: {},
-        }));
-        ipcMain.removeHandler('ax:detectAiCli');
-        ipcMain.handle('ax:detectAiCli', () => []);
-      });
-      await ctx.page.reload();
-      await ctx.page.locator('.workspace-sidebar-tab', { hasText: '설정' }).click();
-      await ctx.page.getByRole('button', { name: 'Claude 설정', exact: true }).click();
-      await ctx.page.locator('#claude-api-key').fill('qa-claude-draft-not-a-real-key');
-      await ctx.page.getByRole('button', { name: 'GPT 설정', exact: true }).click();
-      await expect(ctx.page.locator('#gpt-api-key')).toHaveValue('', { timeout: 5_000 });
-      await ctx.page.locator('#gpt-api-key').fill('qa-gpt-draft-not-a-real-key');
-      await ctx.page.getByRole('button', { name: 'Claude 설정', exact: true }).click();
-      await expect(ctx.page.locator('#claude-api-key')).toHaveValue('', { timeout: 5_000 });
+      await expect(ctx.page.locator('#gpt-model')).toHaveValue('gpt-5.5');
       expect(rendererErrors).toEqual([]);
     } finally {
       await closeDesktop(ctx);

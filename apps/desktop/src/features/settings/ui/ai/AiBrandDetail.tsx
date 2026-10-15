@@ -26,27 +26,18 @@ export function AiBrandDetail({ brand, state, detecting, onRefresh, detection }:
   return (
     <AiBrandForm
       brand={brand}
-      mode={panel.mode}
       model={panel.model}
       models={panel.models}
       cliOption={panel.selectedCli}
       detecting={detecting}
-      apiKeyDraft={panel.apiKeyDraft}
-      apiKeyConfigured={panel.apiKeyConfigured}
-      apiKeyMasked={panel.apiKeyMasked}
       cliVerified={panel.cliVerified}
-      apiVerified={panel.apiVerified}
       saving={panel.saving}
-      testing={panel.testing}
       testingCli={panel.testingCli}
       message={panel.message}
       messageIsError={panel.messageIsError}
       canSave={panel.canSave}
-      onModeChange={panel.selectMode}
       onModelChange={panel.setModel}
-      onApiKeyChange={panel.setApiKeyDraft}
       onTestCli={() => void panel.testCli()}
-      onTestApiKey={() => void panel.testApiKey()}
       onSave={() => void panel.save()}
     />
   );

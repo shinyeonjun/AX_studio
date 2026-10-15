@@ -1,30 +1,20 @@
 export const CLI_PROVIDER_IDS = ['codex-cli', 'claude-cli'] as const;
 export type CliProviderId = (typeof CLI_PROVIDER_IDS)[number];
 
-const API_PROVIDER_IDS = ['openai-api', 'anthropic-api', 'ollama-api'] as const;
+/** AI runs only through the installed CLIs; the API providers were removed. */
+export type AiProviderId = CliProviderId;
 
-export const AI_PROVIDER_IDS = [...CLI_PROVIDER_IDS, ...API_PROVIDER_IDS] as const;
-export type AiProviderId = (typeof AI_PROVIDER_IDS)[number];
-
-export const AI_BRANDS = ['claude', 'gpt', 'ollama'] as const;
+export const AI_BRANDS = ['claude', 'gpt'] as const;
 export type AiBrand = (typeof AI_BRANDS)[number];
-
-export const AI_CONNECTION_MODES = ['cli', 'api'] as const;
-export type AiConnectionMode = (typeof AI_CONNECTION_MODES)[number];
 
 export interface AiProviderConfig {
   provider: AiProviderId;
   model?: string;
   brand?: AiBrand;
-  mode?: AiConnectionMode;
-}
-
-export function isCliProviderId(id: AiProviderId): id is CliProviderId {
-  return (CLI_PROVIDER_IDS as readonly string[]).includes(id);
 }
 
 export function isAiProviderId(value: unknown): value is AiProviderId {
-  return typeof value === 'string' && (AI_PROVIDER_IDS as readonly string[]).includes(value);
+  return typeof value === 'string' && (CLI_PROVIDER_IDS as readonly string[]).includes(value);
 }
 
 export function isAiBrand(value: unknown): value is AiBrand {

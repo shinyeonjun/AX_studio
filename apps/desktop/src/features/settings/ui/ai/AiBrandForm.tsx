@@ -1,7 +1,5 @@
 import { AI_PROVIDER_UI_CATALOG } from '../../../../ui/constants/ai-providers';
 import { defaultSetupGuide } from './AiSetupGuide';
-import { AiModeSwitch } from './AiModeSwitch';
-import { AiApiPanel } from './brand-form/api-panel';
 import { AiCliPanel } from './brand-form/cli-panel';
 import { AiModelField } from './brand-form/model-field';
 import type { AiBrandFormProps } from './brand-form/contracts';
@@ -9,37 +7,22 @@ import type { AiBrandFormProps } from './brand-form/contracts';
 export function AiBrandForm({
   brand,
   embedded = false,
-  mode,
   model,
   models,
   cliOption,
   detecting,
-  apiKeyDraft,
-  apiKeyConfigured,
-  apiKeyMasked,
   cliVerified,
-  apiVerified,
   saving,
-  testing,
   testingCli,
   message,
   messageIsError = false,
   canSave,
-  onModeChange,
   onModelChange,
-  onApiKeyChange,
   onTestCli,
-  onTestApiKey,
   onSave,
 }: AiBrandFormProps) {
   const meta = AI_PROVIDER_UI_CATALOG[brand];
-  const isOllamaApi = brand === 'ollama' && mode === 'api';
   const cliConnected = Boolean(cliOption?.installed || cliVerified);
-  const apiConnected = Boolean(apiKeyConfigured || apiVerified);
-
-  const cliBadge = cliConnected ? '연결됨' : '미설치';
-  // A saved key passed its check when it was saved; it may have expired since.
-  const apiBadge = apiVerified ? '연결 확인됨' : apiKeyConfigured ? '등록됨' : '미연결';
 
   return (
     <div className={embedded ? 'connection-form-embedded' : 'connection-detail'}>
@@ -52,41 +35,16 @@ export function AiBrandForm({
           </div>
         </div>
 
-        <AiModeSwitch
-          mode={mode}
-          cliLabel={meta.cliModeLabel === 'Codex' ? 'Codex CLI' : meta.cliLabel}
-          disabled={brand === 'ollama'}
-          onChange={onModeChange}
-        />
-
         {detecting && <p className="muted">연결 상태를 확인하는 중…</p>}
 
-        {mode === 'cli' && (
-          <AiCliPanel
-            label={meta.cliLabel}
-            description={cliOption?.description ?? `이 컴퓨터에 ${meta.cliLabel} 프로그램이 설치되어 있어야 합니다.`}
-            connected={cliConnected}
-            badge={cliBadge}
-            testing={testingCli}
-            onTest={onTestCli}
-          />
-        )}
-
-        {mode === 'api' && (
-          <AiApiPanel
-            brand={brand}
-            title={meta.title}
-            isOllamaApi={isOllamaApi}
-            connected={apiConnected}
-            badge={apiBadge}
-            apiKeyDraft={apiKeyDraft}
-            apiKeyConfigured={apiKeyConfigured}
-            apiKeyMasked={apiKeyMasked}
-            testing={testing}
-            onApiKeyChange={onApiKeyChange}
-            onTest={onTestApiKey}
-          />
-        )}
+        <AiCliPanel
+          label={meta.cliLabel}
+          description={cliOption?.description ?? `이 컴퓨터에 ${meta.cliLabel} 프로그램이 설치되어 있어야 합니다.`}
+          connected={cliConnected}
+          badge={cliConnected ? '연결됨' : '미설치'}
+          testing={testingCli}
+          onTest={onTestCli}
+        />
 
         <AiModelField brand={brand} model={model} models={models} onChange={onModelChange} />
 

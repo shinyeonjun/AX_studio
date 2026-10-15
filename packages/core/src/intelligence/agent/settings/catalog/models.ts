@@ -12,10 +12,6 @@ export function getBrandCliFallbackModels(brand: AiBrand): CliModelOption[] {
   return normalizeModelOptions(CLI_PROVIDER_META[cliId].models);
 }
 
-export function getBrandApiModels(brand: AiBrand): CliModelOption[] {
-  return normalizeModelOptions(AI_BRAND_CATALOG[brand].apiModels);
-}
-
 export function parseCodexModelsOutput(raw: string): CliModelOption[] {
   const trimmed = raw.trim();
   if (!trimmed) return [];

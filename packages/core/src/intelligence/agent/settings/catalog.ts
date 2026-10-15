@@ -13,7 +13,6 @@ export {
   uniqueModels,
 } from './model-options.js';
 export {
-  getBrandApiModels,
   getBrandCliFallbackModels,
   parseCodexModelsOutput,
 } from './catalog/models.js';

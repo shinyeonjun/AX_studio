@@ -13,24 +13,6 @@ export function getAiBrandHubStatus(
 ): 'active' | 'ready' | 'off' {
   const activeBrand = brandFromProvider(state?.aiProvider?.provider, state?.aiProvider?.brand);
   if (activeBrand === brand) return 'active';
-
-  const mode = state?.aiBrandConfigs?.[brand]?.mode ?? 'cli';
-  const model = resolveBrandModel(
-    brand,
-    mode,
-    detection.cliProviders,
-    state?.aiBrandConfigs?.[brand],
-    activeBrand === brand ? state?.aiProvider?.model : undefined,
-  );
-
-  return isBrandReady(
-    brand,
-    mode,
-    detection.cliProviders,
-    detection.brandSecrets,
-    detection.verifiedCli,
-    detection.verifiedApi,
-  ) && model
-    ? 'ready'
-    : 'off';
+  const model = resolveBrandModel(brand, detection.cliProviders, state?.aiBrandConfigs?.[brand]);
+  return isBrandReady(brand, detection.cliProviders, detection.verifiedCli) && model ? 'ready' : 'off';
 }

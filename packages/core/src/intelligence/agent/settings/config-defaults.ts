@@ -5,6 +5,5 @@ import { CLI_PROVIDER_META } from './catalog.js';
 export const DEFAULT_AI_PROVIDER: AiProviderConfig = {
   provider: 'claude-cli',
   brand: 'claude',
-  mode: 'cli',
   model: CLI_PROVIDER_META['claude-cli'].defaultModel,
 };

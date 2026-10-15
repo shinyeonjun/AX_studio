@@ -19,7 +19,7 @@ import { loadEnvFile, purgeDisallowedEnvFileKeys } from '../env-file';
 import { printHtmlToPdf } from '../document-print.js';
 import { getWebhookSecret } from '../webhook/connection.js';
 import { resolveRdbConnectionConfig } from '../rdb/connection.js';
-import { loadAiTomlIntoEnv, migrateAiSecretsToOsStore } from '../ai/config-file';
+import { loadAiTomlIntoEnv, migrateAiSecretsToOsStore, purgeRetiredAiApiKeys, saveActiveAi } from '../ai/config-file';
 import { migrateDesktopAiProvider } from '../ai/provider-migrate.js';
 import {
   notifyStateChanged,
@@ -87,6 +87,7 @@ export function registerDesktopReadyHandler(): void {
         // An unreadable stored secret (DPAPI/keyring change) must not block startup;
         // the affected provider simply reads as unconfigured until re-entered.
         await runNonFatalStartupStep('AI secret migration', () => migrateAiSecretsToOsStore());
+        await runNonFatalStartupStep('Retired AI API key cleanup', () => purgeRetiredAiApiKeys());
         await purgeDisallowedEnvFileKeys();
         aiToml = await runNonFatalStartupStep('AI config load', () => loadAiTomlIntoEnv()) ?? null;
       }
@@ -122,11 +123,16 @@ export function registerDesktopReadyHandler(): void {
       if (aiToml?.active) {
         const config = migrateDesktopAiProvider({
           brand: aiToml.active.brand,
-          mode: aiToml.active.mode,
+          mode: aiToml.active.legacyMode,
           model: aiToml.active.model,
         });
         core.store.setSetting('aiProvider', config);
         core.refreshAgentHarness(config);
+        // A file from a build with API mode is rewritten for the CLI once.
+        if (aiToml.active.legacyMode && config.brand && config.model) {
+          const { brand, model } = config;
+          await runNonFatalStartupStep('AI config rewrite', () => saveActiveAi(brand, model));
+        }
       } else {
         const stored = core.store.getSetting('aiProvider', undefined);
         const config = migrateDesktopAiProvider(stored);

@@ -128,11 +128,11 @@ npm run knip
 | 위치 | 역할 | Git |
 | --- | --- | --- |
 | `.env` | 개발용 Gmail OAuth Client ID/Secret | 커밋 금지 — `.env.example`만 제공 |
-| `ai.toml` | 활성 AI와 모델 설정 | 커밋 금지 — `.ai.toml.example`만 제공, API 키 금지 |
+| `ai.toml` | 활성 AI(Claude CLI·Codex CLI)와 모델 설정 | 커밋 금지 — `.ai.toml.example`만 제공, 키 금지 |
 | `*.db` | 로컬 SQLite 데이터 | 커밋 금지 |
-| OS credential store | AI API 키, Gmail refresh token | PC별 암호화 저장, 공유 대상 아님 |
+| OS credential store | 요청 판단(Jev) API 키, Gmail refresh token | PC별 암호화 저장, 공유 대상 아님 |
 
-AI API 키는 `.env`에 넣지 않습니다. 앱 설정에서 등록한 키는 OS credential store에 저장합니다. Client Secret은 Electron Main 프로세스에서만 읽고 연결 메타데이터·렌더러 상태·로그에는 저장하지 않습니다.
+AI는 설치된 Claude CLI 또는 Codex CLI로만 실행하며, AI API 키를 받지 않습니다. 요청 판단(Jev) 키도 `.env`에 넣지 않고 앱 설정에서 등록하면 OS credential store에 저장합니다. Client Secret은 Electron Main 프로세스에서만 읽고 연결 메타데이터·렌더러 상태·로그에는 저장하지 않습니다.
 
 ### Gmail 개발 설정
 

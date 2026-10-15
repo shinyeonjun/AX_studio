@@ -1,6 +1,5 @@
-import { isAiProviderId, type AiBrand, type AiConnectionMode } from './ai-provider-id.js';
+import { isAiProviderId, type AiBrand } from './ai-provider-id.js';
 import {
-  getBrandApiModels,
   getBrandCliFallbackModels,
   normalizeModelOptions,
   type CliModelOption,
@@ -11,13 +10,12 @@ export {
   AI_BRAND_CATALOG,
   CLI_PROVIDER_META,
   ENABLED_AI_BRANDS,
-  getBrandApiModels,
   getBrandCliFallbackModels,
   normalizeModelOptions,
   type CliModelOption,
 } from './catalog.js';
 export { resolveClaudeCliModelId } from './providers/claude/meta.js';
-export type { AiBrand, AiConnectionMode, AiProviderId, CliProviderId } from './ai-provider-id.js';
+export type { AiBrand, AiProviderId, CliProviderId } from './ai-provider-id.js';
 
 export function brandFromProvider(provider?: string, brand?: AiBrand): AiBrand | null {
   if (brand) return brand;
@@ -25,12 +23,7 @@ export function brandFromProvider(provider?: string, brand?: AiBrand): AiBrand |
   return resolveAiBrand({ provider });
 }
 
-export function modelsForBrand(
-  brand: AiBrand,
-  mode: AiConnectionMode,
-  cliModels: CliModelOption[] | undefined,
-): CliModelOption[] {
-  if (mode === 'api') return getBrandApiModels(brand);
+export function modelsForBrand(brand: AiBrand, cliModels: CliModelOption[] | undefined): CliModelOption[] {
   const detected = cliModels && cliModels.length > 0 ? normalizeModelOptions(cliModels) : [];
   return detected.length > 0 ? detected : getBrandCliFallbackModels(brand);
 }

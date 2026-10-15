@@ -82,7 +82,7 @@ describe('failures the person reads in words, never as codes or provider English
     const refused = Object.assign(new Error('Failed after 3 attempts. Last error: Cannot connect to API: connect ECONNREFUSED 127.0.0.1:11434'), {
       lastError: Object.assign(new Error('Cannot connect to API: connect ECONNREFUSED 127.0.0.1:11434'), {}),
     });
-    expect(aiProviderErrorMessage(refused)).toContain('켜져 있는지');
+    expect(aiProviderErrorMessage(refused)).toContain('로그인 상태');
     expect(aiProviderFailureCode(refused)).toBe('ai_unreachable');
     const rejected = Object.assign(new Error('Failed after 3 attempts.'), { lastError: Object.assign(new Error('Unauthorized'), { statusCode: 401 }) });
     expect(aiProviderFailureCode(rejected)).toBe('ai_auth_failed');

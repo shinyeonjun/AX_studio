@@ -1,4 +1,4 @@
-import { isAiBrand, type AiConnectionMode } from '@ax-studio/core';
+import { isAiBrand } from '@ax-studio/core';
 import type { AiTomlConfig } from './contracts.js';
 
 export function emptyConfig(): AiTomlConfig {
@@ -40,10 +40,6 @@ function parseTomlValue(raw: string): string {
   return (comment < 0 ? trimmed : trimmed.slice(0, comment)).trim();
 }
 
-function parseMode(value: string): AiConnectionMode | undefined {
-  return value === 'cli' || value === 'api' ? value : undefined;
-}
-
 export function parseAiToml(content: string): AiTomlConfig {
   const config = emptyConfig();
   let section = '';
@@ -67,7 +63,7 @@ export function parseAiToml(content: string): AiTomlConfig {
     if (section === 'active') {
       active ??= {};
       if (key === 'brand' && isAiBrand(value)) active.brand = value;
-      if (key === 'mode') active.mode = parseMode(value);
+      if (key === 'mode') active.legacyMode = value;
       if (key === 'model') active.model = value;
       continue;
     }
@@ -87,17 +83,16 @@ export function parseAiToml(content: string): AiTomlConfig {
       continue;
     }
 
-    // Removed brands (Grok/Cursor) are dropped so the next save forgets them.
+    // Removed brands (Grok/Cursor, Ollama) and the removed `mode` are dropped so the next save forgets them.
     const brand = section.match(/^providers\.(.+)$/)?.[1];
     if (brand && isAiBrand(brand)) {
       const provider = (config.providers[brand] ??= {});
-      if (key === 'mode') provider.mode = parseMode(value);
       if (key === 'model') provider.model = value;
     }
   }
 
-  if (active?.brand && active.mode) {
-    config.active = { brand: active.brand, mode: active.mode, model: active.model ?? '' };
+  if (active?.brand) {
+    config.active = { brand: active.brand, model: active.model ?? '', ...(active.legacyMode ? { legacyMode: active.legacyMode } : {}) };
   }
   return config;
 }
@@ -114,7 +109,7 @@ export function serializeAiToml(config: AiTomlConfig): string {
   const lines = [
     '# AX Studio AI settings',
     '# 개발: 프로젝트 루트 ai.toml / 릴리즈: %LOCALAPPDATA%\\AXStudio\\config\\ai.toml',
-    '# API 키는 이 파일에 저장하지 않습니다.',
+    '# AI는 설치된 Claude CLI 또는 Codex CLI로 실행합니다. 요청 판단(Jev) 키는 이 파일에 저장하지 않습니다.',
     '',
   ];
 
@@ -122,7 +117,6 @@ export function serializeAiToml(config: AiTomlConfig): string {
     lines.push(
       '[active]',
       `brand = ${escapeTomlString(config.active.brand)}`,
-      `mode = ${escapeTomlString(config.active.mode)}`,
       `model = ${escapeTomlString(config.active.model)}`,
       '',
     );
@@ -131,7 +125,6 @@ export function serializeAiToml(config: AiTomlConfig): string {
   for (const [brand, provider] of Object.entries(config.providers)) {
     if (!provider || !isAiBrand(brand)) continue;
     lines.push(`[providers.${brand}]`);
-    if (provider.mode) lines.push(`mode = ${escapeTomlString(provider.mode)}`);
     if (provider.model) lines.push(`model = ${escapeTomlString(provider.model)}`);
     lines.push('');
   }

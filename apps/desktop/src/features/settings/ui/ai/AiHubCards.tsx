@@ -1,10 +1,9 @@
 import { useMemo } from 'react';
 import { AI_PROVIDER_UI_CATALOG, ENABLED_AI_PROVIDER_IDS } from '../../../../ui/constants/ai-providers';
 import { aiBrandStatusLabel } from '../../../../ui/lib/ai-brand-labels';
-import type { AiBrand, AiConnectionMode } from '../../../../types/ai-provider';
+import type { AiBrand } from '../../../../types/ai-provider';
 import type { AppState } from '../../../../types/app-state';
 import type { AiHubController } from '../../hooks/useAiHub';
-import { AiModeSwitch } from './AiModeSwitch';
 
 interface AiHubCardsProps {
   state: AppState | null;
@@ -23,7 +22,7 @@ export function AiHubCards({ state, detecting, hub, onOpenBrand }: AiHubCardsPro
   const brands = useMemo(() => sortBrands(hub.activeBrand), [hub.activeBrand]);
 
   const handleCardActivate = (brand: AiBrand, status: 'active' | 'ready' | 'off') => {
-    if (hub.modeSaving || hub.activeBrand === brand) return;
+    if (hub.switching || hub.activeBrand === brand) return;
     if (status === 'ready') void hub.selectBrand(brand);
     else onOpenBrand(brand);
   };
@@ -36,15 +35,14 @@ export function AiHubCards({ state, detecting, hub, onOpenBrand }: AiHubCardsPro
           const meta = AI_PROVIDER_UI_CATALOG[brand];
           const status = hub.brandStatus(brand);
           const isActive = hub.activeBrand === brand;
-          const mode = hub.brandMode(brand);
           const selectable = status === 'ready';
 
           return (
             <div
               key={brand}
-              className={`connection-card ai-provider-card ${isActive ? 'selected' : ''} ${!isActive && !hub.modeSaving ? 'clickable' : ''}`}
+              className={`connection-card ai-provider-card ${isActive ? 'selected' : ''} ${!isActive && !hub.switching ? 'clickable' : ''}`}
               role={isActive ? undefined : 'button'}
-              tabIndex={isActive || hub.modeSaving ? -1 : 0}
+              tabIndex={isActive || hub.switching ? -1 : 0}
               aria-label={
                 isActive
                   ? `${meta.title} 사용 중`
@@ -91,12 +89,7 @@ export function AiHubCards({ state, detecting, hub, onOpenBrand }: AiHubCardsPro
                 onClick={(event) => event.stopPropagation()}
                 onKeyDown={(event) => event.stopPropagation()}
               >
-                <AiModeSwitch
-                  mode={mode}
-                  cliLabel={meta.cliModeLabel}
-                  disabled={hub.modeSaving}
-                  onChange={(nextMode: AiConnectionMode) => void hub.setBrandMode(brand, nextMode)}
-                />
+                <span className="ai-provider-cli-label">{meta.cliLabel}</span>
                 <button type="button" className="btn btn-sm btn-secondary" onClick={() => onOpenBrand(brand)}>
                   설정
                 </button>
