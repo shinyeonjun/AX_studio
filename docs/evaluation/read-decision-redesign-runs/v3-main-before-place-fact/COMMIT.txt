@@ -1,4 +1,0 @@
-commit 9d5a3676e024f18f55cc912608fb607307d83798
-control: main just before the place-fact change (tree identical to f78fd17f, parent of a0feb427).
-Not a tuning attempt. Separates main changes after 4f4dfede and Jev run-to-run variation from the effect of 125be346.
-worktree: clean checkout, no overlay
