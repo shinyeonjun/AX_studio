@@ -94,6 +94,8 @@ export function WorkspaceSidebar({
 
         {tab === 'activity' && <SidebarStatusPanel kind="activity" />}
 
+        {tab === 'usage' && <SidebarStatusPanel kind="usage" />}
+
         {tab === 'settings' && (
           <SidebarSettingsPanel
             state={state}

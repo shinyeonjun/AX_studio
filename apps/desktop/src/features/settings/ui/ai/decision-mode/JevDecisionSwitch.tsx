@@ -4,8 +4,6 @@ import { SettingRow, SettingSwitch } from '../../SettingRow';
 
 interface JevDecisionSwitchProps {
   onRefresh: () => Promise<void>;
-  /** Tells the parent whether Jev decides now, e.g. to mark the active column. */
-  onEnabledChange?: (enabled: boolean) => void;
   /** `card` matches the connection cards on the settings home; `row` is a full-width setting row. */
   variant?: 'card' | 'row';
   /** Card only: opens the screen where the key is entered (the card is pressed, or switched on without a key). */
@@ -21,7 +19,7 @@ interface LoadedConfig {
  * Jev on or off. On asks only for the API key; the model and the server stay at what is saved
  * (or the defaults). Off leaves the decision to the connected AI.
  */
-export function JevDecisionSwitch({ onRefresh, onEnabledChange, variant = 'row', onOpen }: JevDecisionSwitchProps) {
+export function JevDecisionSwitch({ onRefresh, variant = 'row', onOpen }: JevDecisionSwitchProps) {
   const [config, setConfig] = useState<LoadedConfig | null>(null);
   const [enabled, setEnabled] = useState(false);
   const [keyConfigured, setKeyConfigured] = useState(false);
@@ -49,8 +47,6 @@ export function JevDecisionSwitch({ onRefresh, onEnabledChange, variant = 'row',
       });
     return () => { cancelled = true; };
   }, []);
-
-  useEffect(() => { onEnabledChange?.(enabled); }, [enabled, onEnabledChange]);
 
   const report = (text: string, isError = false) => {
     setMessage(text);
