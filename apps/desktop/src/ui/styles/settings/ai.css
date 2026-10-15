@@ -131,3 +131,150 @@
 .ai-mode-switch-option.active {
   color: white;
 }
+
+/* Request decision: who decides (Jev or LLM) and the usage comparison. */
+.decision-mode-switch {
+  min-width: 132px;
+  flex-shrink: 0;
+}
+
+.decision-mode-preview {
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+.decision-mode-detail {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.decision-mode-detail-title {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.decision-mode-detail p {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.decision-mode-provider {
+  color: var(--text);
+}
+
+.decision-mode-shadow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.decision-jev-heading {
+  margin: 8px 0 10px;
+  font-size: 13px;
+}
+
+.decision-usage-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.decision-usage-header h4 {
+  margin: 0 0 4px;
+}
+
+.decision-usage-header p {
+  margin: 0;
+  font-size: 12px;
+}
+
+.decision-usage-periods {
+  display: inline-flex;
+  gap: 4px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-elevated);
+}
+
+.decision-usage-period {
+  padding: 4px 10px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.decision-usage-period.active {
+  background: var(--purple);
+  color: white;
+}
+
+.decision-usage-sample {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.decision-usage-table {
+  width: 100%;
+  margin-top: 12px;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.decision-usage-table th,
+.decision-usage-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.decision-usage-table th[scope='row'],
+.decision-usage-table thead th:first-child {
+  text-align: left;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.decision-usage-table thead th {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.decision-usage-table td.better {
+  color: var(--green);
+  font-weight: 700;
+}
+
+.decision-usage-active {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--purple-glow);
+  color: var(--purple-light);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.decision-usage-empty,
+.decision-usage-note {
+  margin: 12px 0 0;
+  font-size: 12px;
+  line-height: 1.6;
+}

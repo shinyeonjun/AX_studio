@@ -60,7 +60,7 @@ export function SettingsPageContent({
           detection={detection}
         />
       )}
-      {screen === 'ai-jev' && <JevDecisionPlaneForm onRefresh={onRefresh} />}
+      {screen === 'ai-jev' && <JevDecisionPlaneForm aiProviderLabel={state?.aiProviderLabel} onRefresh={onRefresh} />}
       {screen === 'slack' && (
         <SlackConnectionForm state={state} onConnect={onConnectSlack} onDisconnect={onDisconnectSlack} />
       )}

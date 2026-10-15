@@ -1,12 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ipcErrorMessage } from '../../../../ui/lib/ipc-error';
 import { SettingSwitch } from '../SettingRow';
+import { SAMPLE_USAGE, type DecisionMode, type UsagePeriod } from './decision-mode/contracts';
+import { DecisionModeSection } from './decision-mode/DecisionModeSection';
+import { DecisionUsageCompare } from './decision-mode/DecisionUsageCompare';
 
 interface JevDecisionPlaneFormProps {
+  aiProviderLabel?: string;
   onRefresh: () => Promise<void>;
 }
 
-export function JevDecisionPlaneForm({ onRefresh }: JevDecisionPlaneFormProps) {
+export function JevDecisionPlaneForm({ aiProviderLabel, onRefresh }: JevDecisionPlaneFormProps) {
+  // The decision mode, the side-by-side comparison and the usage table are not wired to the app yet.
+  const [decisionMode, setDecisionMode] = useState<DecisionMode>('jev');
+  const [shadowCompare, setShadowCompare] = useState(false);
+  const [usagePeriod, setUsagePeriod] = useState<UsagePeriod>('week');
   const [loaded, setLoaded] = useState(false);
   const [enabled, setEnabled] = useState(false);
   const [model, setModel] = useState('');
@@ -130,6 +138,19 @@ export function JevDecisionPlaneForm({ onRefresh }: JevDecisionPlaneFormProps) {
           </div>
         </div>
 
+        <DecisionModeSection
+          mode={decisionMode}
+          aiProviderLabel={aiProviderLabel}
+          shadowCompare={shadowCompare}
+          preview
+          onModeChange={setDecisionMode}
+          onShadowCompareChange={setShadowCompare}
+        />
+
+        <h4 className="decision-jev-heading">
+          Jev 연결{decisionMode === 'llm' && <span className="muted"> · 함께 판단해서 비교하거나 다시 Jev로 바꿀 때 씁니다</span>}
+        </h4>
+
         <div className="provider-option selected" style={{ marginBottom: 16 }}>
           <div className="provider-option-header">
             <div>
@@ -221,6 +242,14 @@ export function JevDecisionPlaneForm({ onRefresh }: JevDecisionPlaneFormProps) {
           </p>
         )}
       </div>
+
+      <DecisionUsageCompare
+        period={usagePeriod}
+        usage={SAMPLE_USAGE}
+        sample
+        activeMode={decisionMode}
+        onPeriodChange={setUsagePeriod}
+      />
 
       <div className="connection-guide">
         <h4>적용 범위</h4>
