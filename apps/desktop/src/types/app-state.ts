@@ -73,6 +73,8 @@ export interface AppState {
   jevDecisionEnabled?: boolean;
   jevDecisionConfigured?: boolean;
   jevDecisionModel?: string;
+  /** Who answers request decisions now: Jev, the connected AI in its place, or nobody. */
+  decisionEngineKind?: 'jev' | 'llm' | 'none';
   gmailOAuthConfigured?: boolean;
   gmailEmail?: string;
   gmailScopes?: string[];

@@ -35,7 +35,7 @@ export function UsagePage({ state }: UsagePageProps) {
     return () => { cancelled = true; };
   }, [period]);
 
-  const activeMode = state?.jevDecisionEnabled ? 'jev' : 'llm';
+  const activeMode = state?.decisionEngineKind === 'jev' ? 'jev' : 'llm';
   const decision = report?.decision;
   const pick = (read: (usage: UsageSummary) => number) => ({
     ...(decision?.jev ? { jev: read(decision.jev) } : {}),

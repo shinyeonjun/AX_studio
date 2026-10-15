@@ -63,6 +63,7 @@ export async function buildConnectorState(core: AxCore) {
     jevDecisionEnabled: aiToml.decision?.jev?.enabled ?? false,
     jevDecisionConfigured: Boolean(jevSecret),
     jevDecisionModel: resolveJevModel(aiToml.decision?.jev?.model),
+    decisionEngineKind: core.decisionEngineKind,
     gmailOAuthConfigured: isGoogleOAuthConfigured(),
     gmailEmail: gmailConn?.connected ? gmailRecord?.account : undefined,
     gmailScopes: gmailConn?.connected ? gmailRecord?.scopes : undefined,

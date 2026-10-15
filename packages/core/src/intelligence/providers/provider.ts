@@ -14,6 +14,12 @@ export interface ModelTokenUsage {
   reasoningTokens?: number;
 }
 
+/** All input tokens, cache reads and writes included, whatever the provider's convention. */
+export function inputTokensWithCache(model: Pick<ModelProvider, 'usageInputExcludesCache'>, usage: ModelTokenUsage): number | undefined {
+  if (usage.inputTokens === undefined) return undefined;
+  return usage.inputTokens + (model.usageInputExcludesCache ? (usage.cachedInputTokens ?? 0) + (usage.cacheWriteInputTokens ?? 0) : 0);
+}
+
 export function reportModelTokenUsage(
   input: { onUsage?: (usage: ModelTokenUsage) => void },
   usage: ModelTokenUsage,

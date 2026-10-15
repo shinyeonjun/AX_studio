@@ -1,7 +1,7 @@
 import type { AiProviderConfig } from './settings/config.js';
 import { resolveAiProviderConfig } from './settings/config.js';
 import { createModelProvider } from '../providers/factory.js';
-import type { ModelProvider } from '../providers/provider.js';
+import { inputTokensWithCache, type ModelProvider, type ModelTokenUsage, type StructuredGenerateInput } from '../providers/provider.js';
 import type { AgentResult, AgentRun, AgentTextResult, AgentTextRun } from './types.js';
 import type {
   InvestigationRunRequest,
@@ -53,6 +53,24 @@ export class AgentHarness {
     if (this.disposed) return Promise.reject(new Error('agent_harness_disposed'));
     const run = runTextAgent(this.model, request);
     this.activeRuns.set(run, this.model);
+    return run.finally(() => { this.activeRuns.delete(run); });
+  }
+
+  /**
+   * One structured call on the configured AI, outside the agent roles (decisions use their own
+   * prompt). Usage comes back with the input counted cache included.
+   */
+  generateStructured<T>(input: StructuredGenerateInput<T>): Promise<{ output: T; model?: string; usage?: ModelTokenUsage }> {
+    if (this.disposed) return Promise.reject(new Error('agent_harness_disposed'));
+    const model = this.model;
+    let usage: ModelTokenUsage | undefined;
+    const run = model.generateStructured({ ...input, onUsage: (reported) => { usage = reported; input.onUsage?.(reported); } })
+      .then((output) => ({
+        output,
+        ...(model.model ? { model: model.model } : {}),
+        ...(usage ? { usage: { ...usage, ...(usage.inputTokens !== undefined ? { inputTokens: inputTokensWithCache(model, usage) } : {}) } } : {}),
+      }));
+    this.activeRuns.set(run, model);
     return run.finally(() => { this.activeRuns.delete(run); });
   }
 
