@@ -10,6 +10,8 @@ import { registerAllModules } from '../connectors/packages/register.js';
 import { createAgentHarness, createInvestigationRunner, type AgentHarness } from '../intelligence/agent/harness.js';
 import { AxCommandService } from '../intelligence/commands/service.js';
 import type { DecisionEngine } from '../contracts/decision.js';
+import { withUsageRecording } from '../intelligence/usage/recording-decision-engine.js';
+import { setUsageRecorder } from '../intelligence/usage/usage-recorder.js';
 import type { ArtifactReference, ArtifactSink } from '../connectors/types.js';
 import { ArtifactStore } from '../persistence/artifact-store.js';
 import { WorkspaceSourceService } from '../persistence/workspace-source-service.js';
@@ -99,6 +101,8 @@ export async function createAxStudioCore(options: AxStudioCoreOptions): Promise<
 
   const db = await createDatabaseAsync(dbPath);
   const store = new WorkflowStore(db);
+  // Every model call this core makes is counted for the Usage screen.
+  setUsageRecorder((call) => store.usage.recordUsageCall(call));
   // Bounded history retention; hosts repeat it periodically. Never fatal.
   try { store.pruneHistory(); }
   catch (error) { console.warn('[AX Studio] history retention failed', { code: (error as { code?: unknown } | null)?.code }); }
@@ -129,7 +133,8 @@ export async function createAxStudioCore(options: AxStudioCoreOptions): Promise<
 
   const connectors = buildConnectorsFromStore(store);
   let runtime: WorkflowRuntime | undefined;
-  let activeDecisionEngine = options.decisionEngine;
+  const recorded = (engine?: DecisionEngine) => (engine ? withUsageRecording(engine) : undefined);
+  let activeDecisionEngine = recorded(options.decisionEngine);
   let reportPlanner: import('../documents/reporting/planner/planner.js').ReportPlanner | undefined;
   let reportGenerationPromise: Promise<import('../documents/reporting/service.js').ReportGenerationService> | undefined;
   const getReportGeneration = () => {
@@ -159,7 +164,7 @@ export async function createAxStudioCore(options: AxStudioCoreOptions): Promise<
   runtime = new WorkflowRuntime({
     store,
     investigationRunner,
-    decisionEngine: options.decisionEngine,
+    decisionEngine: activeDecisionEngine,
     globalActive,
     connectors,
     artifactSink: generatedArtifactSink,
@@ -234,7 +239,8 @@ export async function createAxStudioCore(options: AxStudioCoreOptions): Promise<
       runtime.setInvestigationRunner(investigationRunner);
       return core.agentHarness;
     },
-    refreshDecisionEngine(decisionEngine?: DecisionEngine) {
+    refreshDecisionEngine(next?: DecisionEngine) {
+      const decisionEngine = recorded(next);
       activeDecisionEngine = decisionEngine;
       commandService.setDecisionEngine(decisionEngine);
       reportPlanner?.setDecisionEngine(decisionEngine);

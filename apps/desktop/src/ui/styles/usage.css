@@ -206,3 +206,34 @@
   font-size: 12px;
   line-height: 1.6;
 }
+
+.usage-subheading {
+  margin: 20px 0 0;
+}
+
+.usage-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin: 12px 0 0;
+}
+
+.usage-kpis div {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+}
+
+.usage-kpis dt {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.usage-kpis dd {
+  margin: 4px 0 0;
+  font-size: 18px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}

@@ -22,6 +22,7 @@ import { TriggerReceiptStore } from './stores/trigger-receipt-store.js';
 import { SettingsStore } from './stores/settings-store.js';
 import { DiscoveryStore } from './stores/discovery-store.js';
 import { RepairStore } from './stores/repair-store.js';
+import { UsageStore } from './stores/usage-store.js';
 
 export class WorkflowStore {
   readonly workflows: WorkflowDefinitionStore;
@@ -32,6 +33,7 @@ export class WorkflowStore {
   readonly settings: SettingsStore;
   readonly discovery: DiscoveryStore;
   readonly repairs: RepairStore;
+  readonly usage: UsageStore;
 
   constructor(db: AppDatabase) {
     this.workflows = new WorkflowDefinitionStore(db);
@@ -42,6 +44,7 @@ export class WorkflowStore {
     this.settings = new SettingsStore(db);
     this.discovery = new DiscoveryStore(db);
     this.repairs = new RepairStore(db);
+    this.usage = new UsageStore(db);
   }
 
   saveWorkflow(ir: WorkflowIR) { return this.workflows.saveWorkflow(ir); }

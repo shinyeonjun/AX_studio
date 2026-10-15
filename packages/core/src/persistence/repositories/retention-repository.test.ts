@@ -6,7 +6,7 @@ import { appendExecutionLog, getExecution } from './execution-repository.js';
 
 const NOW = new Date('2026-10-06T00:00:00.000Z');
 const daysAgo = (days: number) => new Date(NOW.getTime() - days * 86_400_000).toISOString();
-const policy = { executionsPerWorkflow: 2, executionMinAgeDays: 90, completedReceiptMaxAgeDays: 30, workflowVersionsPerWorkflow: 2, abandonedDiscoveryMaxAgeDays: 30 };
+const policy = { executionsPerWorkflow: 2, executionMinAgeDays: 90, completedReceiptMaxAgeDays: 30, workflowVersionsPerWorkflow: 2, abandonedDiscoveryMaxAgeDays: 30, usageCallMaxAgeDays: 90 };
 
 describe('history retention', () => {
   let db: AppDatabase;

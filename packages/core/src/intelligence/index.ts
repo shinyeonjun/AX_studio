@@ -3,3 +3,4 @@
 export * from './agent/index.js';
 export * from './providers/index.js';
 export * from './commands/index.js';
+export * from './usage/index.js';

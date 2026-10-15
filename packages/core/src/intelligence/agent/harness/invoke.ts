@@ -6,6 +6,7 @@ import { composeAgentSystemPrompt } from '../prompt/index.js';
 import { getRoleDefinition } from '../types.js';
 import type { AgentContext, AgentResult, AgentRole } from '../types.js';
 import { isCloudProvider, redactUntrustedContext } from './policy.js';
+import { recordUsageCall } from '../../usage/usage-recorder.js';
 
 export interface InvocationRequest {
   role: AgentRole;
@@ -37,6 +38,28 @@ export interface InvocationSpec<T> {
   rolePrompt(context: AgentContext | undefined): string;
   call(model: ModelProvider, params: ModelCall): Promise<unknown>;
   finalize(raw: unknown): T;
+}
+
+/** One LLM generation as the Usage screen counts it; unreported token fields stay unknown. */
+function recordGeneration(model: ModelProvider, request: InvocationRequest, durationMs: number, usage: ModelTokenUsage | undefined, ok: boolean): void {
+  recordUsageCall({
+    engine: 'llm',
+    purpose: 'generation',
+    label: request.logContext ?? request.role,
+    provider: model.name,
+    ...(model.model ? { model: model.model } : {}),
+    durationMs,
+    providerRequests: 1,
+    // Stored as all input, cache included, whatever the provider's convention.
+    ...(usage?.inputTokens !== undefined ? {
+      inputTokens: usage.inputTokens + (model.usageInputExcludesCache ? (usage.cachedInputTokens ?? 0) + (usage.cacheWriteInputTokens ?? 0) : 0),
+    } : {}),
+    ...(usage?.cachedInputTokens !== undefined ? { cachedInputTokens: usage.cachedInputTokens } : {}),
+    ...(usage?.cacheWriteInputTokens !== undefined ? { cacheWriteInputTokens: usage.cacheWriteInputTokens } : {}),
+    ...(usage?.outputTokens !== undefined ? { outputTokens: usage.outputTokens } : {}),
+    ...(usage?.reasoningTokens !== undefined ? { reasoningTokens: usage.reasoningTokens } : {}),
+    ok,
+  });
 }
 
 /** Shared lifecycle for structured and text agent runs: policy, timeout, cancellation, telemetry. */
@@ -109,6 +132,7 @@ export async function invokeAgent<T>(
     if (controller.signal.aborted) throw new Error('agent_result_after_abort');
     const output = spec.finalize(raw);
     const durationMs = Date.now() - started;
+    recordGeneration(model, request, durationMs, usage, true);
     appendAppLog('info', `${spec.label} invocation completed`, {
       ...measurements, durationMs, providerUsageAvailable: Boolean(usage), ...(usage ? { usage } : {}),
     });
@@ -136,6 +160,7 @@ export async function invokeAgent<T>(
       providerUsageAvailable: Boolean(usage),
       ...(usage ? { usage } : {}),
     };
+    recordGeneration(model, request, failureTelemetry.durationMs, usage, false);
     if (request.abortSignal?.aborted) {
       appendAppLog('info', `${spec.label} invocation cancelled`, failureTelemetry);
       throw Object.assign(new Error('Agent request aborted'), { code: 'agent_aborted' });

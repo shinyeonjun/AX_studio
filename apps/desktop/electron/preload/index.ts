@@ -85,6 +85,7 @@ contextBridge.exposeInMainWorld('ax', {
     ipcRenderer.invoke('ax:proposeRecurringFromRead', workspaceSessionId, scheduleValue),
   cancelChat: (requestId: string) => ipcRenderer.invoke('ax:cancelChat', requestId),
   listChatSessions: () => ipcRenderer.invoke('ax:listChatSessions'),
+  getUsageReport: (period: string) => ipcRenderer.invoke('ax:getUsageReport', period),
   saveWorkspaceChat: (
     id: string | undefined,
     messages: WorkspaceChatMessage[],
