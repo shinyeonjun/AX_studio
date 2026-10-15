@@ -16,7 +16,7 @@ test.afterEach(() => {
 
 // This launches only a synthetic Electron renderer. It never loads AX startup,
 // credential modules, user configuration, connectors, or a network provider.
-test('Jev form distinguishes registration, mocked authentication and failed retry', async () => {
+test('Jev switch sends the key as typed, shows mocked authentication and failed retry', async () => {
   test.setTimeout(90_000);
   const runRoot = resolve(process.env.AX_JEV_MOCK_QA_DIR ?? join(repoRoot, 'test/product-qa/runs/jev-key-mock-' + Date.now()));
   const sourceRoot = resolve(process.env.AX_JEV_MOCK_SOURCE_ROOT ?? repoRoot);
@@ -30,7 +30,11 @@ test('Jev form distinguishes registration, mocked authentication and failed retr
     import { JevDecisionPlaneForm } from ${JSON.stringify(form)};
     window.__jevQa = { mode: 'success', requests: [] };
     window.ax = {
-      async getJevDecisionConfig() { return { enabled: true, model: 'mock-jev', baseURL: 'https://fixture.invalid', apiKeyConfigured: true, apiKeyMasked: 'synthetic-***' }; },
+      async getJevDecisionConfig() { return { enabled: true, model: 'mock-jev', baseURL: 'https://fixture.invalid', defaultBaseURL: 'https://fixture.invalid', apiKeyConfigured: true, apiKeyMasked: 'synthetic-***' }; },
+      async saveJevDecisionConfig(prefs) {
+        window.__jevQa.saves = (window.__jevQa.saves ?? 0) + 1;
+        return { enabled: prefs.enabled, model: 'mock-jev', baseURL: 'https://fixture.invalid', defaultBaseURL: 'https://fixture.invalid', apiKeyConfigured: true, apiKeyMasked: 'synthetic-***' };
+      },
       async testJevDecisionApi(request) {
         window.__jevQa.requests.push(request);
         if (request.apiKey && !/^[A-Za-z0-9_-]+$/.test(request.apiKey)) throw new Error('유효한 ASCII API 키를 입력하세요.');
@@ -58,28 +62,32 @@ test('Jev form distinguishes registration, mocked authentication and failed retr
     expect(await app.evaluate(({ app }) => ['no-sandbox', 'disable-setuid-sandbox', 'disable-namespace-sandbox']
       .filter((flag) => app.commandLine.hasSwitch(flag)))).toEqual([]);
     const page = await app.firstWindow();
-    const badge = page.locator('.connection-badge');
-    await expect(badge).toHaveText('키 등록됨 · 인증 미확인');
-    await expect(badge).not.toHaveClass(/connected/);
-    await page.locator('#jev-api-key').fill(' 새로운-synthetic-key ');
-    await page.getByRole('button', { name: 'API 연결 테스트' }).click();
-    await expect(page.locator('.connection-form-message')).toHaveText('유효한 ASCII API 키를 입력하세요.');
+    const message = page.locator('.connection-form-message');
+    const key = page.getByPlaceholder('Jev API 키');
+    await expect(page.getByRole('switch', { name: 'Jev 요청 판단' })).toBeChecked();
+    await expect(page.locator('.jev-key-current')).toContainText('등록된 키 synthetic-***');
+    await page.getByRole('button', { name: '키 바꾸기' }).click();
+    await key.fill(' 새로운-synthetic-key ');
+    await page.getByRole('button', { name: '연결' }).click();
+    await expect(message).toHaveText('유효한 ASCII API 키를 입력하세요.');
     expect(await page.evaluate(() => (window as any).__jevQa.requests[0].apiKey)).toBe(' 새로운-synthetic-key ');
-    await expect(badge).toHaveText('키 등록됨 · 인증 미확인');
-    await page.locator('#jev-api-key').fill('synthetic-key');
-    await page.getByRole('button', { name: 'API 연결 테스트' }).click();
-    await expect(badge).toHaveText('인증 확인됨');
+    expect(await page.evaluate(() => (window as any).__jevQa.saves ?? 0)).toBe(0);
+    await key.fill('synthetic-key');
+    await page.getByRole('button', { name: '연결' }).click();
+    await expect(message).toHaveText('연결했어요. Jev가 요청을 판단합니다.');
+    expect(await page.evaluate(() => (window as any).__jevQa.saves)).toBe(1);
     await page.evaluate(() => { (window as any).__jevQa.mode = 'failure'; });
-    await page.getByRole('button', { name: 'API 연결 테스트' }).click();
-    await expect(page.locator('.connection-form-message')).toHaveText('API 키가 거부됐어요. 키를 다시 확인해 주세요.');
-    await expect(badge).toHaveText('키 등록됨 · 인증 미확인');
+    await page.getByRole('button', { name: '키 바꾸기' }).click();
+    await key.fill('synthetic-key');
+    await page.getByRole('button', { name: '연결' }).click();
+    await expect(message).toHaveText('API 키가 거부됐어요. 키를 다시 확인해 주세요.');
     // Untranslated English from the main process is never shown as is.
     await page.evaluate(() => { (window as any).__jevQa.mode = 'english'; });
-    await page.getByRole('button', { name: 'API 연결 테스트' }).click();
-    await expect(page.locator('.connection-form-message')).toHaveText('요청 판단 연결 테스트에 실패했습니다.');
-    await expect(badge).not.toHaveClass(/connected/);
+    await page.getByRole('button', { name: '연결' }).click();
+    await expect(message).toHaveText('API 키를 확인하지 못했어요. 키를 다시 확인해 주세요.');
+    expect(await page.evaluate(() => (window as any).__jevQa.saves)).toBe(1);
     writeFileSync(join(runRoot, 'result.json'), JSON.stringify({ status: 'passed', mode: 'mock-renderer-only', liveApiRequests: 0,
-      checked: ['registered badge', 'raw invalid draft', 'mock authentication', 'failed retry clears authentication'] }, null, 2));
+      checked: ['registered key shown', 'raw invalid draft not saved', 'mock authentication saves', 'failed retry not saved', 'english error replaced'] }, null, 2));
   } finally {
     await app.close();
   }

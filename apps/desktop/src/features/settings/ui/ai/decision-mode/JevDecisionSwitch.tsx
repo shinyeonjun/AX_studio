@@ -86,7 +86,8 @@ export function JevDecisionSwitch({ onRefresh, variant = 'row', onOpen }: JevDec
     setBusy(true);
     report('');
     try {
-      const tested = await window.ax.testJevDecisionApi({ model: config.model, baseURL: config.baseURL, apiKey: keyDraft.trim() });
+      // The key goes as typed: the main process checks it and says what is wrong.
+      const tested = await window.ax.testJevDecisionApi({ model: config.model, baseURL: config.baseURL, apiKey: keyDraft });
       if (tested.saved) {
         setKeyConfigured(true);
         setKeyMasked(tested.masked);
