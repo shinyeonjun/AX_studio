@@ -1,0 +1,3 @@
+commit cf520a11dfa327bb7140aeab87146972bf2ca5ee
+product code identical to 372df8cf (place-fact: read-decision.ts only, on control 9d5a3676); later commits touch eval/ only
+non-blind: the change was written after seeing v3 results

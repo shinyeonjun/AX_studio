@@ -7,8 +7,10 @@ import { buildJevReadOperationIndex } from '../../../../decision/read-operation-
 import { routeChatWithJev } from '../router.js';
 import type { JevChatRouterResult } from '../router-contract.js';
 import { CodexDecisionEngine, type CodexDecisionCall } from './codex-decision-engine.js';
+import { HolisticLlmRouter, type HolisticCall } from './holistic-llm-router.js';
 import { HOLDOUT2_BASIC_CASES, HOLDOUT2_SCALE_CASES, HOLDOUT_BASIC_CASES, HOLDOUT_SCALE_CASES } from './routing-eval.holdout-cases.js';
 import { HOLDOUT3_BASIC_CASES, HOLDOUT3_SCALE_CASES } from './routing-eval.holdout3-cases.js';
+import { HOLDOUT4_BASIC_CASES, HOLDOUT4_SCALE_CASES } from './routing-eval.holdout4-cases.js';
 import { JEV_ROUTING_CASES, JEV_SCALE_ROUTING_CASES, previousOrdersTable, routingMiss, type JevRoutingCase } from './routing-eval.cases.js';
 import { SCALE_CONNECTED, SCALE_CONNECTIONS, SCALE_HTTP_ENDPOINTS } from './routing-eval.scale-fixture.js';
 import { BASIC_CONNECTIONS } from './routing-eval.workspace.js';
@@ -17,7 +19,7 @@ import { BASIC_CONNECTIONS } from './routing-eval.workspace.js';
  * Jev vs an LLM (Codex CLI) as the router's decision engine: the same cases, the same router,
  * the same candidate lists. Only `decisionEngine.evaluate` differs. Nothing is read or executed.
  *
- *   AX_LIVE_DECISION_COMPARE=1 AX_COMPARE_ENGINE=jev | codex:<model>:<low|medium|high>
+ *   AX_LIVE_DECISION_COMPARE=1 AX_COMPARE_ENGINE=jev | codex:<model>:<low|medium|high> | holistic:<model>:<low|medium|high>
  *   AX_COMPARE_RUN=<n> AX_COMPARE_OUT=<dir> [AX_COMPARE_PART=h2]   (Jev key: JEV_API_KEY or TYPESAFE_API_KEY)
  *
  * Writes <dir>/<engine>-run<n>.json; scripts/decision-compare-report.mjs turns the runs into tables.
@@ -27,7 +29,7 @@ const engineSpec = process.env.AX_COMPARE_ENGINE?.trim() ?? 'jev';
 /** Comma-separated case ids, for a quick check of the harness. */
 /**
  * Cases added after the first runs are run as a part of the same run: AX_COMPARE_PART=h2 runs only
- * ids starting with h2 and writes <engine>-run<n>.h2.json (a retry part: h2-retry); h3 likewise.
+ * ids starting with h2 and writes <engine>-run<n>.h2.json (a retry part: h2-retry); h3 and h4 likewise.
  */
 const part = process.env.AX_COMPARE_PART?.trim() || undefined;
 const partPrefix = part?.replace(/-retry$/u, '');
@@ -53,6 +55,8 @@ const WORKSPACES: readonly Workspace[] = [
   { name: 'scale', set: 'holdout', cases: HOLDOUT2_SCALE_CASES, ...scale },
   { name: 'basic', set: 'holdout', cases: HOLDOUT3_BASIC_CASES, ...basic },
   { name: 'scale', set: 'holdout', cases: HOLDOUT3_SCALE_CASES, ...scale },
+  { name: 'basic', set: 'holdout', cases: HOLDOUT4_BASIC_CASES, ...basic },
+  { name: 'scale', set: 'holdout', cases: HOLDOUT4_SCALE_CASES, ...scale },
 ];
 
 interface CallRecord {
@@ -68,6 +72,9 @@ interface CallRecord {
   reasoningTokens?: number;
   model?: string;
   error?: string;
+  /** The whole decision of a holistic call (one LLM call routes the request). */
+  output?: unknown;
+  transport?: 'cli';
   /** Every answer of the call, by question id: a probability, a choice with its probability, or a score. */
   answers?: Record<string, number | string>;
 }
@@ -107,8 +114,19 @@ function decided(result: JevChatRouterResult): unknown {
 describe.skipIf(!enabled)('decision engine comparison', () => {
   it(`routes every case with ${engineSpec}`, async () => {
     let calls: CallRecord[] = [];
-    let engine: DecisionEngine;
-    if (engineSpec === 'jev') {
+    let engine: DecisionEngine | undefined;
+    let holistic: HolisticLlmRouter | undefined;
+    if (engineSpec.startsWith('holistic:')) {
+      const [, model, effort] = engineSpec.split(':');
+      expect(model && ['low', 'medium', 'high'].includes(effort ?? ''), 'AX_COMPARE_ENGINE=holistic:<model>:<low|medium|high>').toBeTruthy();
+      holistic = new HolisticLlmRouter(model!, effort as 'low' | 'medium' | 'high', (call: HolisticCall) => calls.push({
+        questions: 0, durationMs: call.durationMs, ...(call.waitedMs ? { waitedMs: call.waitedMs } : {}), requestBytes: call.promptChars, providerRequests: 1, model, transport: 'cli',
+        inputTokens: call.usage?.inputTokens, cachedInputTokens: call.usage?.cachedInputTokens,
+        outputTokens: call.usage?.outputTokens, reasoningTokens: call.usage?.reasoningTokens,
+        ...(call.output ? { output: call.output } : {}),
+        ...(call.error ? { error: call.error } : {}),
+      }));
+    } else if (engineSpec === 'jev') {
       const apiKey = (process.env.JEV_API_KEY ?? process.env.TYPESAFE_API_KEY)?.trim();
       expect(apiKey, 'Set JEV_API_KEY or TYPESAFE_API_KEY.').toBeTruthy();
       const jev = new JevDecisionEngine({ apiKey: apiKey!, model: process.env.TYPESAFE_DEFAULT_MODEL?.trim() || undefined });
@@ -140,22 +158,29 @@ describe.skipIf(!enabled)('decision engine comparison', () => {
         ...(call.error ? { error: call.error } : {}),
       }));
     }
-    engine = recordingAnswers(engine, () => calls);
+    if (engine) engine = recordingAnswers(engine, () => calls);
 
     const outcomes: Array<Record<string, unknown>> = [];
     for (const workspace of WORKSPACES) {
       const index = buildJevReadOperationIndex(workspace.connections);
       for (const testCase of workspace.cases) {
         if (only && !only.has(testCase.id)) continue;
-        if (partPrefix ? !testCase.id.startsWith(partPrefix) : /^h[23]/u.test(testCase.id)) continue;
+        if (partPrefix ? !testCase.id.startsWith(partPrefix) : /^h[234]/u.test(testCase.id)) continue;
         calls = [];
         const selection = index.select(testCase.message);
         const startedAt = performance.now();
         let result: JevChatRouterResult | undefined;
         let miss: string | undefined;
         try {
-          result = await routeChatWithJev({
-            decisionEngine: engine,
+          result = holistic ? await holistic.route({
+            userMessage: testCase.message,
+            readOperationHints: selection.hints,
+            httpEndpoints: workspace.httpEndpoints,
+            connectedConnectors: workspace.connectedConnectors,
+            ...(testCase.previous ? { previousReadResult: previousOrdersTable() } : {}),
+            ...(testCase.pastChoices ? { pastSourceChoices: testCase.pastChoices } : {}),
+          }) : await routeChatWithJev({
+            decisionEngine: engine!,
             userMessage: testCase.message,
             hasWorkspaceSession: true,
             connectedConnectors: workspace.connectedConnectors,

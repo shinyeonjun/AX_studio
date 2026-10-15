@@ -1,0 +1,1091 @@
+{
+  "generatedAt": "2026-10-14T17:44:47.907Z",
+  "prices": {
+    "jev-1.13.0": {
+      "input": 0.042,
+      "cached": 0.042,
+      "output": 0
+    },
+    "gpt-5.6-luna": {
+      "input": 0.2,
+      "cached": 0.02,
+      "output": 1.2
+    },
+    "gpt-6-luna": {
+      "input": 0.1,
+      "cached": 0.01,
+      "output": 0.5
+    },
+    "gpt-6.1-sol": {
+      "input": 2,
+      "cached": 0.1,
+      "output": 10
+    }
+  },
+  "reasoningAboveOutputCalls": 0,
+  "engines": [
+    {
+      "engine": "codex:gpt-6-luna:high",
+      "runs": 3,
+      "models": [
+        "gpt-6-luna"
+      ],
+      "accuracy": {
+        "all": {
+          "mean": 0.8684210526315791,
+          "min": 0.8552631578947368,
+          "max": 0.881578947368421,
+          "cases": 76,
+          "ci95": [
+            0.774456779943005,
+            0.9269319697814496
+          ]
+        },
+        "main": {
+          "mean": 0,
+          "min": 0,
+          "max": 0,
+          "cases": 0,
+          "ci95": [
+            0,
+            0
+          ]
+        },
+        "holdout": {
+          "mean": 0.8684210526315791,
+          "min": 0.8552631578947368,
+          "max": 0.881578947368421,
+          "cases": 76,
+          "ci95": [
+            0.774456779943005,
+            0.9269319697814496
+          ]
+        },
+        "main/basic": {
+          "mean": 0,
+          "min": 0,
+          "max": 0,
+          "cases": 0,
+          "ci95": [
+            0,
+            0
+          ]
+        },
+        "main/scale": {
+          "mean": 0,
+          "min": 0,
+          "max": 0,
+          "cases": 0,
+          "ci95": [
+            0,
+            0
+          ]
+        },
+        "holdout/basic": {
+          "mean": 0.8777777777777778,
+          "min": 0.8666666666666667,
+          "max": 0.9,
+          "cases": 30,
+          "ci95": [
+            0.7164975146122738,
+            0.9532895718926984
+          ]
+        },
+        "holdout/scale": {
+          "mean": 0.8623188405797101,
+          "min": 0.8478260869565217,
+          "max": 0.8695652173913043,
+          "cases": 46,
+          "ci95": [
+            0.7347395733824549,
+            0.9340458053640808
+          ]
+        },
+        "holdout-v1": {
+          "mean": 0,
+          "min": 0,
+          "max": 0,
+          "cases": 0,
+          "ci95": [
+            0,
+            0
+          ]
+        },
+        "holdout-v2": {
+          "mean": 0,
+          "min": 0,
+          "max": 0,
+          "cases": 0,
+          "ci95": [
+            0,
+            0
+          ]
+        },
+        "holdout-v3": {
+          "mean": 0,
+          "min": 0,
+          "max": 0,
+          "cases": 0,
+          "ci95": [
+            0,
+            0
+          ]
+        },
+        "holdout-v4": {
+          "mean": 0.8684210526315791,
+          "min": 0.8552631578947368,
+          "max": 0.881578947368421,
+          "cases": 76,
+          "ci95": [
+            0.774456779943005,
+            0.9269319697814496
+          ]
+        }
+      },
+      "consistency": {
+        "sameVerdictAllRuns": 0.9736842105263158,
+        "sameDecisionAllRuns": 0.8026315789473685,
+        "flakyCases": [
+          "holdout/basic/h4-follow-rows",
+          "holdout/scale/h4s-sales-folder-count"
+        ]
+      },
+      "failures": {
+        "total": 30,
+        "wrongCommand": 25,
+        "askedOrDeclined": 2,
+        "serviceError": 0
+      },
+      "latencyMs": {
+        "perCase": {
+          "mean": 17567.28947368421,
+          "p50": 16000,
+          "p95": 29811,
+          "max": 188737
+        },
+        "perCall": {
+          "mean": 12096.960377945617,
+          "p50": 9438.818299999999,
+          "p95": 21267.601499999873
+        },
+        "perCaseBasic": 9500,
+        "perCaseScale": 19071
+      },
+      "callsPerCase": 1.4517543859649122,
+      "providerRequestsPerCase": 1.4517543859649122,
+      "tokensPerCase": {
+        "input": 29994.43859649123,
+        "cachedInput": 5703.859649122807,
+        "output": 1411.6754385964912,
+        "reasoning": 330.19736842105266,
+        "requestBytes": 51633.64473684211
+      },
+      "costUsd": {
+        "perCase": 0.003191934210526315,
+        "per1000Requests": 3.1919342105263153,
+        "allRuns": 0.7277609999999999
+      },
+      "firstAttempt": {
+        "accuracy": 0.868421052631579,
+        "serviceFailureRate": 0,
+        "failedCallRate": 0,
+        "serviceFailures": 0,
+        "errors": []
+      },
+      "retriedCases": 0,
+      "stillServiceFailedAfterRetry": 0,
+      "missedCases": [
+        "holdout/basic/h4-ambiguous-price-list",
+        "holdout/basic/h4-slack-mention",
+        "holdout/basic/h4-report-last-week",
+        "holdout/scale/h4s-ambiguous-todos",
+        "holdout/scale/h4s-ambiguous-customer-regions",
+        "holdout/scale/h4s-ambiguous-partners",
+        "holdout/scale/h4s-ambiguous-pageviews",
+        "holdout/scale/h4s-ambiguous-carts",
+        "holdout/scale/h4s-report-hiring",
+        "holdout/basic/h4-follow-rows",
+        "holdout/scale/h4s-sales-folder-count"
+      ]
+    },
+    {
+      "engine": "codex:gpt-6.1-sol:medium",
+      "runs": 3,
+      "models": [
+        "gpt-6.1-sol"
+      ],
+      "accuracy": {
+        "all": {
+          "mean": 0.912280701754386,
+          "min": 0.9078947368421053,
+          "max": 0.9210526315789473,
+          "cases": 76,
+          "ci95": [
+            0.8272983858696685,
+            0.9575890245362686
+          ]
+        },
+        "main": {
+          "mean": 0,
+          "min": 0,
+          "max": 0,
+          "cases": 0,
+          "ci95": [
+            0,
+            0
+          ]
+        },
+        "holdout": {
+          "mean": 0.912280701754386,
+          "min": 0.9078947368421053,
+          "max": 0.9210526315789473,
+          "cases": 76,
+          "ci95": [
+            0.8272983858696685,
+            0.9575890245362686
+          ]
+        },
+        "main/basic": {
+          "mean": 0,
+          "min": 0,
+          "max": 0,
+          "cases": 0,
+          "ci95": [
+            0,
+            0
+          ]
+        },
+        "main/scale": {
+          "mean": 0,
+          "min": 0,
+          "max": 0,
+          "cases": 0,
+          "ci95": [
+            0,
+            0
+          ]
+        },
+        "holdout/basic": {
+          "mean": 0.8000000000000002,
+          "min": 0.7666666666666667,
+          "max": 0.8333333333333334,
+          "cases": 30,
+          "ci95": [
+            0.6269395261897257,
+            0.9049502189759877
+          ]
+        },
+        "holdout/scale": {
+          "mean": 0.9855072463768115,
+          "min": 0.9782608695652174,
+          "max": 1,
+          "cases": 46,
+          "ci95": [
+            0.8980742911231843,
+            0.9980981163971734
+          ]
+        },
+        "holdout-v1": {
+          "mean": 0,
+          "min": 0,
+          "max": 0,
+          "cases": 0,
+          "ci95": [
+            0,
+            0
+          ]
+        },
+        "holdout-v2": {
+          "mean": 0,
+          "min": 0,
+          "max": 0,
+          "cases": 0,
+          "ci95": [
+            0,
+            0
+          ]
+        },
+        "holdout-v3": {
+          "mean": 0,
+          "min": 0,
+          "max": 0,
+          "cases": 0,
+          "ci95": [
+            0,
+            0
+          ]
+        },
+        "holdout-v4": {
+          "mean": 0.912280701754386,
+          "min": 0.9078947368421053,
+          "max": 0.9210526315789473,
+          "cases": 76,
+          "ci95": [
+            0.8272983858696685,
+            0.9575890245362686
+          ]
+        }
+      },
+      "consistency": {
+        "sameVerdictAllRuns": 0.9605263157894737,
+        "sameDecisionAllRuns": 0.9078947368421053,
+        "flakyCases": [
+          "holdout/basic/h4-seoul-orders",
+          "holdout/basic/h4-api-carts-call",
+          "holdout/scale/h4s-report-hiring"
+        ]
+      },
+      "failures": {
+        "total": 20,
+        "wrongCommand": 10,
+        "askedOrDeclined": 7,
+        "serviceError": 0
+      },
+      "latencyMs": {
+        "perCase": {
+          "mean": 33557.70175438596,
+          "p50": 34658,
+          "p95": 59083,
+          "max": 87692
+        },
+        "perCall": {
+          "mean": 19564.582947314553,
+          "p50": 14148.001900000032,
+          "p95": 39902.36400000006
+        },
+        "perCaseBasic": 17136,
+        "perCaseScale": 39351
+      },
+      "callsPerCase": 1.7149122807017543,
+      "providerRequestsPerCase": 1.7149122807017543,
+      "tokensPerCase": {
+        "input": 31753.342105263157,
+        "cachedInput": 2850.8070175438597,
+        "output": 1053.0438596491229,
+        "reasoning": 62.5,
+        "requestBytes": 55553.679824561405
+      },
+      "costUsd": {
+        "perCase": 0.06862058947368423,
+        "per1000Requests": 68.62058947368422,
+        "allRuns": 15.645494400000004
+      },
+      "firstAttempt": {
+        "accuracy": 0.9122807017543859,
+        "serviceFailureRate": 0,
+        "failedCallRate": 0.0741687979539642,
+        "serviceFailures": 0,
+        "errors": [
+          "Codex CLI 호출에 실패했습니다. (exceeded retry limit, last status: 429 Too Many Requests)"
+        ]
+      },
+      "retriedCases": 0,
+      "stillServiceFailedAfterRetry": 0,
+      "missedCases": [
+        "holdout/basic/h4-excel-question",
+        "holdout/basic/h4-ambiguous-price-list",
+        "holdout/basic/h4-slack-mention",
+        "holdout/basic/h4-report-last-week",
+        "holdout/basic/h4-follow-rows",
+        "holdout/scale/h4s-report-hiring",
+        "holdout/basic/h4-seoul-orders",
+        "holdout/basic/h4-api-carts-call"
+      ]
+    },
+    {
+      "engine": "holistic:gpt-6-luna:high",
+      "runs": 3,
+      "models": [
+        "gpt-6-luna"
+      ],
+      "accuracy": {
+        "all": {
+          "mean": 0.9736842105263158,
+          "min": 0.9736842105263158,
+          "max": 0.9736842105263158,
+          "cases": 76,
+          "ci95": [
+            0.9090320424906206,
+            0.9927534928693922
+          ]
+        },
+        "main": {
+          "mean": 0,
+          "min": 0,
+          "max": 0,
+          "cases": 0,
+          "ci95": [
+            0,
+            0
+          ]
+        },
+        "holdout": {
+          "mean": 0.9736842105263158,
+          "min": 0.9736842105263158,
+          "max": 0.9736842105263158,
+          "cases": 76,
+          "ci95": [
+            0.9090320424906206,
+            0.9927534928693922
+          ]
+        },
+        "main/basic": {
+          "mean": 0,
+          "min": 0,
+          "max": 0,
+          "cases": 0,
+          "ci95": [
+            0,
+            0
+          ]
+        },
+        "main/scale": {
+          "mean": 0,
+          "min": 0,
+          "max": 0,
+          "cases": 0,
+          "ci95": [
+            0,
+            0
+          ]
+        },
+        "holdout/basic": {
+          "mean": 0.9666666666666667,
+          "min": 0.9666666666666667,
+          "max": 0.9666666666666667,
+          "cases": 30,
+          "ci95": [
+            0.8332924860304112,
+            0.9940915620051425
+          ]
+        },
+        "holdout/scale": {
+          "mean": 0.9782608695652174,
+          "min": 0.9782608695652174,
+          "max": 0.9782608695652174,
+          "cases": 46,
+          "ci95": [
+            0.8866444550566697,
+            0.9961522448887572
+          ]
+        },
+        "holdout-v1": {
+          "mean": 0,
+          "min": 0,
+          "max": 0,
+          "cases": 0,
+          "ci95": [
+            0,
+            0
+          ]
+        },
+        "holdout-v2": {
+          "mean": 0,
+          "min": 0,
+          "max": 0,
+          "cases": 0,
+          "ci95": [
+            0,
+            0
+          ]
+        },
+        "holdout-v3": {
+          "mean": 0,
+          "min": 0,
+          "max": 0,
+          "cases": 0,
+          "ci95": [
+            0,
+            0
+          ]
+        },
+        "holdout-v4": {
+          "mean": 0.9736842105263158,
+          "min": 0.9736842105263158,
+          "max": 0.9736842105263158,
+          "cases": 76,
+          "ci95": [
+            0.9090320424906206,
+            0.9927534928693922
+          ]
+        }
+      },
+      "consistency": {
+        "sameVerdictAllRuns": 1,
+        "sameDecisionAllRuns": 0.9342105263157895,
+        "flakyCases": []
+      },
+      "failures": {
+        "total": 6,
+        "wrongCommand": 6,
+        "askedOrDeclined": 0,
+        "serviceError": 0
+      },
+      "latencyMs": {
+        "perCase": {
+          "mean": 5610.8026315789475,
+          "p50": 5466,
+          "p95": 8185,
+          "max": 11590
+        },
+        "perCall": {
+          "mean": 5610.497169736846,
+          "p50": 5465.6166,
+          "p95": 8185.05720000001
+        },
+        "perCaseBasic": 5462,
+        "perCaseScale": 5511
+      },
+      "callsPerCase": 1,
+      "providerRequestsPerCase": 1,
+      "tokensPerCase": {
+        "input": 16623.074561403508,
+        "cachedInput": 7269.0526315789475,
+        "output": 143.4298245614035,
+        "reasoning": 90.61842105263158,
+        "requestBytes": 20002.973684210527
+      },
+      "costUsd": {
+        "perCase": 0.0010798076315789468,
+        "per1000Requests": 1.0798076315789469,
+        "allRuns": 0.2461961399999999
+      },
+      "firstAttempt": {
+        "accuracy": 0.9736842105263158,
+        "serviceFailureRate": 0,
+        "failedCallRate": 0,
+        "serviceFailures": 0,
+        "errors": []
+      },
+      "retriedCases": 0,
+      "stillServiceFailedAfterRetry": 0,
+      "missedCases": [
+        "holdout/basic/h4-report-last-week",
+        "holdout/scale/h4s-report-hiring"
+      ]
+    },
+    {
+      "engine": "holistic:gpt-6.1-sol:medium",
+      "runs": 3,
+      "models": [
+        "gpt-6.1-sol"
+      ],
+      "accuracy": {
+        "all": {
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "cases": 76,
+          "ci95": [
+            0.9518847317689024,
+            0.9999999999999999
+          ]
+        },
+        "main": {
+          "mean": 0,
+          "min": 0,
+          "max": 0,
+          "cases": 0,
+          "ci95": [
+            0,
+            0
+          ]
+        },
+        "holdout": {
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "cases": 76,
+          "ci95": [
+            0.9518847317689024,
+            0.9999999999999999
+          ]
+        },
+        "main/basic": {
+          "mean": 0,
+          "min": 0,
+          "max": 0,
+          "cases": 0,
+          "ci95": [
+            0,
+            0
+          ]
+        },
+        "main/scale": {
+          "mean": 0,
+          "min": 0,
+          "max": 0,
+          "cases": 0,
+          "ci95": [
+            0,
+            0
+          ]
+        },
+        "holdout/basic": {
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "cases": 30,
+          "ci95": [
+            0.8864829086095221,
+            1
+          ]
+        },
+        "holdout/scale": {
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "cases": 46,
+          "ci95": [
+            0.9229238226702192,
+            1
+          ]
+        },
+        "holdout-v1": {
+          "mean": 0,
+          "min": 0,
+          "max": 0,
+          "cases": 0,
+          "ci95": [
+            0,
+            0
+          ]
+        },
+        "holdout-v2": {
+          "mean": 0,
+          "min": 0,
+          "max": 0,
+          "cases": 0,
+          "ci95": [
+            0,
+            0
+          ]
+        },
+        "holdout-v3": {
+          "mean": 0,
+          "min": 0,
+          "max": 0,
+          "cases": 0,
+          "ci95": [
+            0,
+            0
+          ]
+        },
+        "holdout-v4": {
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "cases": 76,
+          "ci95": [
+            0.9518847317689024,
+            0.9999999999999999
+          ]
+        }
+      },
+      "consistency": {
+        "sameVerdictAllRuns": 1,
+        "sameDecisionAllRuns": 0.9736842105263158,
+        "flakyCases": []
+      },
+      "failures": {
+        "total": 0,
+        "wrongCommand": 0,
+        "askedOrDeclined": 0,
+        "serviceError": 0
+      },
+      "latencyMs": {
+        "perCase": {
+          "mean": 8580.798245614034,
+          "p50": 7828,
+          "p95": 14202,
+          "max": 24972
+        },
+        "perCall": {
+          "mean": 7552.608470656367,
+          "p50": 7253.901800000001,
+          "p95": 12989.765600000042
+        },
+        "perCaseBasic": 8250,
+        "perCaseScale": 7698
+      },
+      "callsPerCase": 1.1359649122807018,
+      "providerRequestsPerCase": 1.1359649122807018,
+      "tokensPerCase": {
+        "input": 16622.97807017544,
+        "cachedInput": 3912.4210526315787,
+        "output": 68.09210526315789,
+        "reasoning": 16.912280701754387,
+        "requestBytes": 22824.736842105263
+      },
+      "costUsd": {
+        "perCase": 0.026493277192982466,
+        "per1000Requests": 26.493277192982465,
+        "allRuns": 6.040467200000002
+      },
+      "firstAttempt": {
+        "accuracy": 1,
+        "serviceFailureRate": 0,
+        "failedCallRate": 0.11969111969111969,
+        "serviceFailures": 0,
+        "errors": [
+          "Codex CLI 호출에 실패했습니다. (exceeded retry limit, last status: 429 Too Many Requests)"
+        ]
+      },
+      "retriedCases": 0,
+      "stillServiceFailedAfterRetry": 0,
+      "missedCases": []
+    },
+    {
+      "engine": "jev",
+      "runs": 3,
+      "models": [
+        "jev-1.13.0"
+      ],
+      "accuracy": {
+        "all": {
+          "mean": 0.9517543859649122,
+          "min": 0.9473684210526315,
+          "max": 0.9605263157894737,
+          "cases": 76,
+          "ci95": [
+            0.8782317945631833,
+            0.981804410456088
+          ]
+        },
+        "main": {
+          "mean": 0,
+          "min": 0,
+          "max": 0,
+          "cases": 0,
+          "ci95": [
+            0,
+            0
+          ]
+        },
+        "holdout": {
+          "mean": 0.9517543859649122,
+          "min": 0.9473684210526315,
+          "max": 0.9605263157894737,
+          "cases": 76,
+          "ci95": [
+            0.8782317945631833,
+            0.981804410456088
+          ]
+        },
+        "main/basic": {
+          "mean": 0,
+          "min": 0,
+          "max": 0,
+          "cases": 0,
+          "ci95": [
+            0,
+            0
+          ]
+        },
+        "main/scale": {
+          "mean": 0,
+          "min": 0,
+          "max": 0,
+          "cases": 0,
+          "ci95": [
+            0,
+            0
+          ]
+        },
+        "holdout/basic": {
+          "mean": 0.9333333333333332,
+          "min": 0.9333333333333333,
+          "max": 0.9333333333333333,
+          "cases": 30,
+          "ci95": [
+            0.786761822789279,
+            0.9815233646723065
+          ]
+        },
+        "holdout/scale": {
+          "mean": 0.9637681159420289,
+          "min": 0.9565217391304348,
+          "max": 0.9782608695652174,
+          "cases": 46,
+          "ci95": [
+            0.8650212750135987,
+            0.9910240097819666
+          ]
+        },
+        "holdout-v1": {
+          "mean": 0,
+          "min": 0,
+          "max": 0,
+          "cases": 0,
+          "ci95": [
+            0,
+            0
+          ]
+        },
+        "holdout-v2": {
+          "mean": 0,
+          "min": 0,
+          "max": 0,
+          "cases": 0,
+          "ci95": [
+            0,
+            0
+          ]
+        },
+        "holdout-v3": {
+          "mean": 0,
+          "min": 0,
+          "max": 0,
+          "cases": 0,
+          "ci95": [
+            0,
+            0
+          ]
+        },
+        "holdout-v4": {
+          "mean": 0.9517543859649122,
+          "min": 0.9473684210526315,
+          "max": 0.9605263157894737,
+          "cases": 76,
+          "ci95": [
+            0.8782317945631833,
+            0.981804410456088
+          ]
+        }
+      },
+      "consistency": {
+        "sameVerdictAllRuns": 0.9868421052631579,
+        "sameDecisionAllRuns": 0.9868421052631579,
+        "flakyCases": [
+          "holdout/scale/h4s-ambiguous-todos"
+        ]
+      },
+      "failures": {
+        "total": 11,
+        "wrongCommand": 8,
+        "askedOrDeclined": 0,
+        "serviceError": 0
+      },
+      "latencyMs": {
+        "perCase": {
+          "mean": 531.6798245614035,
+          "p50": 473,
+          "p95": 985,
+          "max": 1577
+        },
+        "perCall": {
+          "mean": 271.76376809954775,
+          "p50": 244.91939999999886,
+          "p95": 396.1826000000001
+        },
+        "perCaseBasic": 408,
+        "perCaseScale": 598
+      },
+      "callsPerCase": 1.9385964912280702,
+      "providerRequestsPerCase": 2.543859649122807,
+      "tokensPerCase": {
+        "input": 20686.491228070176,
+        "cachedInput": 0,
+        "output": 2546.0175438596493,
+        "reasoning": 0,
+        "requestBytes": 61363.28947368421
+      },
+      "costUsd": {
+        "perCase": 0.0008688326315789472,
+        "per1000Requests": 0.8688326315789472,
+        "allRuns": 0.19809383999999997
+      },
+      "firstAttempt": {
+        "accuracy": 0.9517543859649122,
+        "serviceFailureRate": 0,
+        "failedCallRate": 0,
+        "serviceFailures": 0,
+        "errors": []
+      },
+      "retriedCases": 0,
+      "stillServiceFailedAfterRetry": 0,
+      "missedCases": [
+        "holdout/basic/h4-slack-mention",
+        "holdout/basic/h4-report-last-week",
+        "holdout/scale/h4s-report-hiring",
+        "holdout/scale/h4s-ambiguous-todos"
+      ]
+    }
+  ],
+  "versusJev": [
+    {
+      "engine": "codex:gpt-6-luna:high",
+      "cases": 76,
+      "bothPass": 66,
+      "onlyJev": [
+        "holdout/basic/h4-ambiguous-price-list",
+        "holdout/basic/h4-follow-rows",
+        "holdout/scale/h4s-ambiguous-customer-regions",
+        "holdout/scale/h4s-ambiguous-partners",
+        "holdout/scale/h4s-ambiguous-pageviews",
+        "holdout/scale/h4s-ambiguous-carts"
+      ],
+      "onlyEngine": [],
+      "bothFail": [
+        "holdout/basic/h4-slack-mention",
+        "holdout/basic/h4-report-last-week",
+        "holdout/scale/h4s-ambiguous-todos",
+        "holdout/scale/h4s-report-hiring"
+      ],
+      "mcnemarP": 0.03125,
+      "holdout": {
+        "cases": 76,
+        "bothPass": 66,
+        "onlyJev": [
+          "holdout/basic/h4-ambiguous-price-list",
+          "holdout/basic/h4-follow-rows",
+          "holdout/scale/h4s-ambiguous-customer-regions",
+          "holdout/scale/h4s-ambiguous-partners",
+          "holdout/scale/h4s-ambiguous-pageviews",
+          "holdout/scale/h4s-ambiguous-carts"
+        ],
+        "onlyEngine": [],
+        "bothFail": [
+          "holdout/basic/h4-slack-mention",
+          "holdout/basic/h4-report-last-week",
+          "holdout/scale/h4s-ambiguous-todos",
+          "holdout/scale/h4s-report-hiring"
+        ],
+        "mcnemarP": 0.03125
+      }
+    },
+    {
+      "engine": "codex:gpt-6.1-sol:medium",
+      "cases": 76,
+      "bothPass": 68,
+      "onlyJev": [
+        "holdout/basic/h4-excel-question",
+        "holdout/basic/h4-seoul-orders",
+        "holdout/basic/h4-ambiguous-price-list",
+        "holdout/basic/h4-follow-rows"
+      ],
+      "onlyEngine": [
+        "holdout/scale/h4s-ambiguous-todos"
+      ],
+      "bothFail": [
+        "holdout/basic/h4-slack-mention",
+        "holdout/basic/h4-report-last-week",
+        "holdout/scale/h4s-report-hiring"
+      ],
+      "mcnemarP": 0.375,
+      "holdout": {
+        "cases": 76,
+        "bothPass": 68,
+        "onlyJev": [
+          "holdout/basic/h4-excel-question",
+          "holdout/basic/h4-seoul-orders",
+          "holdout/basic/h4-ambiguous-price-list",
+          "holdout/basic/h4-follow-rows"
+        ],
+        "onlyEngine": [
+          "holdout/scale/h4s-ambiguous-todos"
+        ],
+        "bothFail": [
+          "holdout/basic/h4-slack-mention",
+          "holdout/basic/h4-report-last-week",
+          "holdout/scale/h4s-report-hiring"
+        ],
+        "mcnemarP": 0.375
+      }
+    },
+    {
+      "engine": "holistic:gpt-6-luna:high",
+      "cases": 76,
+      "bothPass": 72,
+      "onlyJev": [],
+      "onlyEngine": [
+        "holdout/basic/h4-slack-mention",
+        "holdout/scale/h4s-ambiguous-todos"
+      ],
+      "bothFail": [
+        "holdout/basic/h4-report-last-week",
+        "holdout/scale/h4s-report-hiring"
+      ],
+      "mcnemarP": 0.5,
+      "holdout": {
+        "cases": 76,
+        "bothPass": 72,
+        "onlyJev": [],
+        "onlyEngine": [
+          "holdout/basic/h4-slack-mention",
+          "holdout/scale/h4s-ambiguous-todos"
+        ],
+        "bothFail": [
+          "holdout/basic/h4-report-last-week",
+          "holdout/scale/h4s-report-hiring"
+        ],
+        "mcnemarP": 0.5
+      }
+    },
+    {
+      "engine": "holistic:gpt-6.1-sol:medium",
+      "cases": 76,
+      "bothPass": 72,
+      "onlyJev": [],
+      "onlyEngine": [
+        "holdout/basic/h4-slack-mention",
+        "holdout/basic/h4-report-last-week",
+        "holdout/scale/h4s-ambiguous-todos",
+        "holdout/scale/h4s-report-hiring"
+      ],
+      "bothFail": [],
+      "mcnemarP": 0.125,
+      "holdout": {
+        "cases": 76,
+        "bothPass": 72,
+        "onlyJev": [],
+        "onlyEngine": [
+          "holdout/basic/h4-slack-mention",
+          "holdout/basic/h4-report-last-week",
+          "holdout/scale/h4s-ambiguous-todos",
+          "holdout/scale/h4s-report-hiring"
+        ],
+        "bothFail": [],
+        "mcnemarP": 0.125
+      }
+    }
+  ],
+  "overhead": [
+    {
+      "engine": "codex:gpt-6-luna:high",
+      "durationMs": {
+        "mean": 4339.173699999999,
+        "p50": 3974.154499999997
+      },
+      "inputTokens": 10553.4,
+      "cachedInputTokens": 1996.8,
+      "outputTokens": 44.4,
+      "reasoningTokens": 23,
+      "costUsd": 0.000897828
+    },
+    {
+      "engine": "codex:gpt-6.1-sol:medium",
+      "durationMs": {
+        "mean": 4671.97046,
+        "p50": 4601.909
+      },
+      "inputTokens": 10554.2,
+      "cachedInputTokens": 0,
+      "outputTokens": 19,
+      "reasoningTokens": 0,
+      "costUsd": 0.0212984
+    },
+    {
+      "engine": "jev",
+      "durationMs": {
+        "mean": 247.51726,
+        "p50": 241.3802999999998
+      },
+      "inputTokens": 280,
+      "cachedInputTokens": 0,
+      "outputTokens": 22,
+      "reasoningTokens": 0,
+      "costUsd": 0.000011760000000000001
+    }
+  ]
+}

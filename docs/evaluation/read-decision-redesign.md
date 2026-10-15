@@ -17,6 +17,40 @@
   - 블라인드 v3에서는 원래 코드 20건, #327 0건, 재설계 9건입니다.
 - 커밋 전 측정은 지우지 않고 [`v3-redesign-unpinned/`](read-decision-redesign-runs/v3-redesign-unpinned/)에 남겼습니다. 두 측정 사이에 바뀐 코드는 테스트·문서와 타입 표기뿐이지만, 결과 파일만으로는 이를 증명할 수 없습니다.
 
+## 이후 탐색 (v3, 비블라인드)
+
+- ⑥ 질문을 "다른 곳의 조회도 이 요청에 답하는가"로 바꾼 갈래(place-fact, `372df8cf`)의 v3는 93.4%입니다([`v3-place-fact/`](read-decision-redesign-runs/v3-place-fact/)). 대조군 `9d5a3676`은 92.1%입니다([`v3-main-before-place-fact/`](read-decision-redesign-runs/v3-main-before-place-fact/)).
+- **`125be346`의 v3 95.2%는 쓰지 않습니다.** v3 결과를 보고 쓴 보고서 경로 한국어 예시가 함께 들어 있어 오염된 수치입니다. 결과 파일은 [`v3-place-fact-with-report-examples/`](read-decision-redesign-runs/v3-place-fact-with-report-examples/)에 기록으로만 남깁니다.
+- 판정은 블라인드 v4로 합니다([Jev vs Codex 문서의 v4 절](jev-vs-codex-decision.md)).
+
+## 블라인드 v4: ⑥ 질문 변경(place-fact)과 이전 갈래 (2026-10-14)
+
+- v4 76건은 모든 갈래의 코드가 커밋된 뒤 블라인드로 쓰고 검토한 세트입니다(`d6c2feb0`).
+- 갈래마다 그 커밋의 worktree에 v4 케이스와 하네스만 얹어 3회씩 쟀습니다.
+- 원본: [`jev-vs-codex-decision-runs/v4/`](jev-vs-codex-decision-runs/v4/). place-fact는 맨 위 `jev-run*.h4.json`, 나머지는 `jev-<갈래>/`에 있습니다.
+- LLM 갈래와 케이스별 표는 [Jev vs Codex 문서의 v4 결과](jev-vs-codex-decision.md#v4-결과)에 있습니다.
+
+| 갈래 | 3회 평균 [95% CI] | 케이스 정확도 (3회 중 2회) | 실행 과잉 (228건 중) | 되물음 | p50 / p95 |
+|---|---|---|---|---|---|
+| original `7f779b08` | 82.5% [72.4–89.4] | 82.9% | 28 | 12 | 0.41 / 0.80초 |
+| orders-fix `d1d4ed88` | 91.7% [83.3–96.0] | 92.1% | 6 | 13 | 0.52 / 0.87초 |
+| redesign `4f4dfede` | 91.2% [82.7–95.8] | 90.8% | 9 | 11 | 0.48 / 0.99초 |
+| control `9d5a3676` | 90.8% [82.2–95.5] | 90.8% | 9 | 12 | 0.46 / 1.01초 |
+| place-fact `372df8cf` | 95.2% [87.8–98.2] | 94.7% | 8 | 3 | 0.47 / 0.98초 |
+
+control과 place-fact의 차이는 ⑥ 질문 하나입니다. 케이스 단위로 비교하면 place-fact만 맞힌 것이 3건, control만 맞힌 것이 0건이고, McNemar p = 0.25입니다.
+
+| 케이스 | 요청 | control | place-fact |
+|---|---|---|---|
+| h4s-satisfaction | 티켓 처리 후 받은 만족도 점수랑 코멘트 보여줘 | 0/3, 출처를 되물음 | 3/3 |
+| h4s-overdue-sum | 결제기한 넘긴 인보이스 금액 다 합치면 얼마야? | 0/3, 출처를 되물음 | 3/3 |
+| h4s-agents-by-team | 상담원 팀별 인원수 알려줘 | 0/3, 출처를 되물음 | 3/3 |
+| h4s-ambiguous-todos | 투두 리스트 데이터 가져와 | 0/3, DummyJSON todos 실행 | 1/3, 2회 DummyJSON todos 실행 |
+
+- 다섯 갈래가 모두 틀린 케이스는 세 건입니다.
+  - h4-slack-mention: 검색어를 물음
+  - h4-report-last-week, h4s-report-hiring: 보고서 요청에 일반 조회를 실행함
+
 ## 무엇을 재나: 라우팅 정확도
 
 이 문서의 "정확도"는 **라우팅 정확도**입니다. 값까지 맞는지는 보지 않습니다.

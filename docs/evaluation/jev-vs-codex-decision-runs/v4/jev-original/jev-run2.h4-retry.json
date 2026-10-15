@@ -1,0 +1,86 @@
+{
+  "engine": "jev",
+  "at": "2026-10-14T12:52:00.330Z",
+  "outcomes": [
+    {
+      "set": "holdout",
+      "workspace": "basic",
+      "id": "h4-orders-codes",
+      "message": "주문번호랑 상품코드 매칭된 주문 내역 보여주세요",
+      "expected": {
+        "kind": [
+          "command"
+        ],
+        "capabilityId": "rdb.query.read",
+        "params": {
+          "table": "orders"
+        }
+      },
+      "passed": true,
+      "kind": "command",
+      "route": "capability_read",
+      "serviceError": false,
+      "decided": {
+        "id": "rdb.query.read",
+        "params": {
+          "table": "orders",
+          "join": [
+            {
+              "table": "customers",
+              "on": "customer_id",
+              "references": "id"
+            },
+            {
+              "table": "products",
+              "on": "product_code",
+              "references": "code"
+            }
+          ]
+        },
+        "tableTransform": "none"
+      },
+      "durationMs": 328,
+      "calls": [
+        {
+          "questions": 28,
+          "durationMs": 317.1073,
+          "requestBytes": 22361,
+          "providerRequests": 1,
+          "model": "jev-1.13.0",
+          "inputTokens": 6599,
+          "outputTokens": 798,
+          "answers": {
+            "route": "capability_read (1.00)",
+            "explicit_execution_now": "do_not_execute (0.98)",
+            "needs_natural_language_answer": 0.16,
+            "tool_0": 0.05,
+            "tool_1": 0.89,
+            "tool_2": 0.56,
+            "tool_3": 0.91,
+            "tool_4": 0.84,
+            "tool_5": 0.11,
+            "tool_6": 0.48,
+            "tool_7": 0.25,
+            "tool_8": 0.22,
+            "tool_9": 0.05,
+            "tool_10": 0.04,
+            "tool_11": 0.06,
+            "tool_12": 0.02,
+            "tool_13": 0.05,
+            "tool_14": 0.05,
+            "tool_15": 0.03,
+            "tool_16": 0.03,
+            "tool_17": 0.05,
+            "tool_18": 0.1,
+            "tool_19": 0.05,
+            "tool_20": 0.21,
+            "table_transform": "none (0.83)",
+            "table_projection": "requested_columns (0.76)",
+            "workflow_trigger": "none (0.92)",
+            "explicit_workflow_create": "do_not_create (0.76)"
+          }
+        }
+      ]
+    }
+  ]
+}

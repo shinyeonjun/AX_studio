@@ -3358,9 +3358,9 @@ describe('routeChatWithJev', () => {
     });
 
     it('asks where to look only when several places hold the records and nothing tells which', async () => {
-      const unnamed = await route([products, apiProducts], { record_read: { type: 'choice', choice: 'read_0', probabilities: { read_0: 0.9 }, confidence: 0.9 }, same_records_elsewhere: yes, points_to_place_0: no, points_to_place_1: no });
+      const unnamed = await route([products, apiProducts], { record_read: { type: 'choice', choice: 'read_0', probabilities: { read_0: 0.9 }, confidence: 0.9 }, answerable_elsewhere: yes, points_to_place_0: no, points_to_place_1: no });
       expect(unnamed.result).toMatchObject({ kind: 'clarify', presentation: { title: '어디에서 찾을까요?' } });
-      const named = await route([products, apiProducts], { record_read: { type: 'choice', choice: 'read_1', probabilities: { read_1: 0.9 }, confidence: 0.9 }, same_records_elsewhere: yes, points_to_place_0: yes, points_to_place_1: no });
+      const named = await route([products, apiProducts], { record_read: { type: 'choice', choice: 'read_1', probabilities: { read_1: 0.9 }, confidence: 0.9 }, answerable_elsewhere: yes, points_to_place_0: yes, points_to_place_1: no });
       expect(named.result).toMatchObject({ kind: 'command', command: { args: { id: 'http.request' } } });
     });
   });
