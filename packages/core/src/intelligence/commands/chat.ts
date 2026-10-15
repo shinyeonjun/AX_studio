@@ -10,6 +10,7 @@ import {
   type CommandChatSessionState,
 } from './chat/result/index.js';
 import { runCommandChatLoop } from './chat/loop/loop.js';
+import { runWithUsageContext } from '../usage/usage-recorder.js';
 import { runRequestUnderstandingChat } from './chat/loop/request-understanding.js';
 
 export type { AxCommandChatOptions } from './chat/loop/contracts.js';
@@ -37,7 +38,15 @@ function configuredModelReply(userMessage: string, harness: AxCommandChatOptions
  * Runs the Desktop chat loop. Jev selects from bounded host-generated options;
  * the text model only writes replies from the conversation and executed results.
  */
-export async function runAxCommandChat(options: AxCommandChatOptions): Promise<string> {
+/** Model calls made while answering are counted under this chat request. */
+export function runAxCommandChat(options: AxCommandChatOptions): Promise<string> {
+  return runWithUsageContext(
+    { ...(options.requestId ? { requestId: options.requestId } : {}), ...(options.workspaceSessionId ? { workspaceSessionId: options.workspaceSessionId } : {}) },
+    () => runAxCommandChatInContext(options),
+  );
+}
+
+async function runAxCommandChatInContext(options: AxCommandChatOptions): Promise<string> {
   // Admission precedes catalog preparation, decisions, pending execution and queueing.
   try {
     createAuthoritativeRequestAnchor(options.userMessage, {}, options.requestBudget);

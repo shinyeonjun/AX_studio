@@ -9,6 +9,7 @@ import { registerDiagnosticsHandlers } from '../diagnostics/ipc.js';
 import { registerUpdateHandlers } from '../updates/ipc.js';
 import { registerLoginItemHandlers } from '../startup/login-item.js';
 import { registerPrivacyHandlers } from '../privacy/ipc.js';
+import { registerUsageHandlers } from './usage-handlers.js';
 
 export function registerIpcHandlers() {
   registerStateHandlers();
@@ -22,4 +23,5 @@ export function registerIpcHandlers() {
   registerUpdateHandlers();
   registerLoginItemHandlers();
   registerPrivacyHandlers();
+  registerUsageHandlers();
 }

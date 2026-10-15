@@ -71,6 +71,11 @@ export interface ModelProvider {
   dispose?(): Promise<void>;
   readonly name: string;
   readonly model?: string;
+  /**
+   * Anthropic reports `inputTokens` without the cache reads and writes; OpenAI-style providers
+   * count cache reads inside it. True for the former, so usage totals add the cache back.
+   */
+  readonly usageInputExcludesCache?: boolean;
   /** True only when the provider adapter passes image bytes to the model API. */
   readonly supportsVision?: boolean;
   generateStructured<T>(input: StructuredGenerateInput<T>): Promise<T>;

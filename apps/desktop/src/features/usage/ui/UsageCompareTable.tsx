@@ -1,4 +1,4 @@
-import type { DecisionMode, DecisionUsageComparison, DecisionUsageSummary } from './contracts';
+import type { DecisionMode, DecisionUsageComparison, UsageSummary } from './contracts';
 
 interface UsageCompareTableProps {
   usage: DecisionUsageComparison;
@@ -9,7 +9,7 @@ const seconds = (ms: number) => `${(ms / 1000).toFixed(ms < 10_000 ? 2 : 1)}초`
 const count = (value: number) => Math.round(value).toLocaleString('ko-KR');
 const usd = (value: number) => `$${value.toFixed(value < 1 ? 3 : 2)}`;
 
-const ROWS: Array<{ label: string; value: (usage: DecisionUsageSummary) => string; lowerIsBetter: (usage: DecisionUsageSummary) => number }> = [
+const ROWS: Array<{ label: string; value: (usage: UsageSummary) => string; lowerIsBetter: (usage: UsageSummary) => number }> = [
   { label: '판단한 요청', value: (u) => `${count(u.requests)}건`, lowerIsBetter: () => 0 },
   { label: '판단 시간 (중간값)', value: (u) => seconds(u.p50Ms), lowerIsBetter: (u) => u.p50Ms },
   { label: '판단 시간 (느린 5%)', value: (u) => seconds(u.p95Ms), lowerIsBetter: (u) => u.p95Ms },

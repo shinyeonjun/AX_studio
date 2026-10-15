@@ -172,6 +172,7 @@ async function callAnthropic(
 
 export class AnthropicApiProvider implements ModelProvider {
   readonly name = 'anthropic-api';
+  readonly usageInputExcludesCache = true;
   readonly supportsVision = true;
 
   constructor(readonly model: string) {}

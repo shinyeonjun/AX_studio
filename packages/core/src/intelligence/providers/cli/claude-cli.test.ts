@@ -37,6 +37,21 @@ describe('Claude CLI isolation', () => {
     expect(args).not.toContain('--tools');
   });
 
+  it('reads the reply and its token counts from the JSON envelope; plain text still works', async () => {
+    vi.mocked(supportedCliFlags).mockResolvedValue(new Set(ALL_FLAGS));
+    const envelope = { type: 'result', is_error: false, result: '안녕', usage: { input_tokens: 2, cache_creation_input_tokens: 100, cache_read_input_tokens: 7, output_tokens: 5, output_tokens_details: { thinking_tokens: 1 } } };
+    vi.mocked(runCommand).mockResolvedValue({ stdout: JSON.stringify(envelope), stderr: '', exitCode: 0 });
+    const usage: unknown[] = [];
+    const provider = new ClaudeCliProvider('sonnet');
+    await expect(provider.generateText({ system: 's', user: 'u', onUsage: (u) => usage.push(u) })).resolves.toBe('안녕');
+    const args = vi.mocked(runCommand).mock.calls[0]![1];
+    expect(args[args.indexOf('--output-format') + 1]).toBe('json');
+    expect(usage).toEqual([{ inputTokens: 2, outputTokens: 5, cachedInputTokens: 7, cacheWriteInputTokens: 100, reasoningTokens: 1 }]);
+    expect(provider.usageInputExcludesCache).toBe(true);
+    vi.mocked(runCommand).mockResolvedValue({ stdout: JSON.stringify({ ...envelope, is_error: true }), stderr: '', exitCode: 0 });
+    await expect(provider.generateText({ system: 's', user: 'u' })).rejects.toThrow();
+  });
+
   it('never returns stdout from a failed run and bounds the stderr it reports', async () => {
     vi.mocked(supportedCliFlags).mockResolvedValue(new Set(ALL_FLAGS));
     vi.mocked(runCommand).mockResolvedValue({ stdout: 'partial answer', stderr: 'x'.repeat(10_000), exitCode: 1 });

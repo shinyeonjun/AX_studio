@@ -1,4 +1,4 @@
-import type { ModelProvider, StructuredGenerateInput, TextGenerateInput } from '../../provider.js';
+import { reportModelTokenUsage, type ModelProvider, type StructuredGenerateInput, type TextGenerateInput } from '../../provider.js';
 import { zodToJsonSchema } from '../../cli-json.js';
 import { runCommand, type CommandResult } from '../../cli-process.js';
 import { supportedCliFlags } from '../capabilities.js';
@@ -31,8 +31,42 @@ async function claudeIsolationArgs(command: string): Promise<string[]> {
   ];
 }
 
+interface ClaudeCliEnvelope {
+  result?: unknown;
+  is_error?: unknown;
+  usage?: Record<string, unknown>;
+}
+
+/** The JSON envelope `--output-format json` prints, or undefined for plain text. */
+function readEnvelope(stdout: string): ClaudeCliEnvelope | undefined {
+  const text = stdout.trim();
+  if (!text.startsWith('{')) return undefined;
+  try {
+    const parsed: unknown = JSON.parse(text);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as ClaudeCliEnvelope : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Token counts from the envelope, in Anthropic's terms (input without cache reads and writes). */
+function reportEnvelopeUsage(input: TextGenerateInput | StructuredGenerateInput<unknown>, envelope: ClaudeCliEnvelope | undefined): void {
+  const usage = envelope?.usage;
+  if (!usage) return;
+  const count = (value: unknown) => (typeof value === 'number' ? value : undefined);
+  const details = usage.output_tokens_details as Record<string, unknown> | undefined;
+  reportModelTokenUsage(input, {
+    inputTokens: count(usage.input_tokens),
+    outputTokens: count(usage.output_tokens),
+    cachedInputTokens: count(usage.cache_read_input_tokens),
+    cacheWriteInputTokens: count(usage.cache_creation_input_tokens),
+    reasoningTokens: count(details?.thinking_tokens),
+  });
+}
+
 export class ClaudeCliProvider implements ModelProvider {
   readonly name = 'claude-cli';
+  readonly usageInputExcludesCache = true;
 
   constructor(readonly model: string) {}
 
@@ -60,10 +94,14 @@ export class ClaudeCliProvider implements ModelProvider {
   }
 
   async generateText(input: TextGenerateInput): Promise<string> {
-    const result = await this.run(input, ['--output-format', 'text']);
+    // JSON carries the token counts; the reply is its `result`.
+    const result = await this.run(input, ['--output-format', 'json']);
     const failure = cliFailureMessage(result, FAILURE_MESSAGE);
     if (failure) throw new Error(failure);
-    const text = result.stdout.trim();
+    const envelope = readEnvelope(result.stdout);
+    reportEnvelopeUsage(input, envelope);
+    if (envelope?.is_error === true) throw new Error(FAILURE_MESSAGE);
+    const text = (envelope && typeof envelope.result === 'string' ? envelope.result : result.stdout).trim();
     if (!text) throw new Error(FAILURE_MESSAGE);
     return text;
   }
@@ -71,6 +109,7 @@ export class ClaudeCliProvider implements ModelProvider {
   async generateStructured<T>(input: StructuredGenerateInput<T>): Promise<T> {
     const schema = JSON.stringify(zodToJsonSchema(input.schema));
     const result = await this.run(input, ['--output-format', 'json', '--json-schema', schema]);
+    if (result.exitCode === 0) reportEnvelopeUsage(input, readEnvelope(result.stdout));
     return parseStructuredFromCliResult(result, input.schema, FAILURE_MESSAGE);
   }
 }

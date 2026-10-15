@@ -3,6 +3,7 @@ import type { AxConnectorApi } from './ax-api/connectors.js';
 import type { AxDiscoveryApi } from './ax-api/discovery.js';
 import type { AxRuntimeApi } from './ax-api/runtime.js';
 import type { AxWorkspaceApi } from './ax-api/workspace.js';
+import type { AxUsageApi } from './ax-api/usage.js';
 
 export type { AxCommandResult } from '@ax-studio/core';
 export type {
@@ -10,7 +11,7 @@ export type {
   GeneratedArtifactFolderSaveResult,
 } from './ax-api/contracts.js';
 
-export interface AxApi extends AxRuntimeApi, AxWorkspaceApi, AxConnectorApi, AxAiApi, AxDiscoveryApi {}
+export interface AxApi extends AxRuntimeApi, AxWorkspaceApi, AxConnectorApi, AxAiApi, AxDiscoveryApi, AxUsageApi {}
 
 declare global {
   interface Window {

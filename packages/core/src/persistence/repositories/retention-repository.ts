@@ -21,6 +21,8 @@ export interface HistoryRetentionPolicy {
    * them again; published discoveries keep theirs for repair.
    */
   abandonedDiscoveryMaxAgeDays: number;
+  /** Usage records (model calls counted for the Usage screen) older than this are removed. */
+  usageCallMaxAgeDays: number;
 }
 
 export const DEFAULT_HISTORY_RETENTION: HistoryRetentionPolicy = {
@@ -29,6 +31,7 @@ export const DEFAULT_HISTORY_RETENTION: HistoryRetentionPolicy = {
   completedReceiptMaxAgeDays: 180,
   workflowVersionsPerWorkflow: 50,
   abandonedDiscoveryMaxAgeDays: 30,
+  usageCallMaxAgeDays: 90,
 };
 
 export interface HistoryPruneResult {
@@ -38,6 +41,7 @@ export interface HistoryPruneResult {
   /** Retry-state settings left behind by receipts that are settled or gone. */
   receiptAttempts: number;
   discoverySessions: number;
+  usageCalls: number;
 }
 
 const RECEIPT_ATTEMPT_PREFIX = 'trigger.receiptAttempt:';
@@ -87,6 +91,7 @@ export function pruneHistory(
   const executionCutoff = new Date(now.getTime() - policy.executionMinAgeDays * DAY_MS).toISOString();
   const receiptCutoff = new Date(now.getTime() - policy.completedReceiptMaxAgeDays * DAY_MS).toISOString();
   const discoveryCutoff = new Date(now.getTime() - policy.abandonedDiscoveryMaxAgeDays * DAY_MS).toISOString();
+  const usageCutoff = new Date(now.getTime() - policy.usageCallMaxAgeDays * DAY_MS).toISOString();
 
   db.exec('BEGIN IMMEDIATE');
   let result: HistoryPruneResult;
@@ -142,8 +147,10 @@ export function pruneHistory(
     }
     const discoverySessions = deleteByIds(db, 'DELETE FROM work_discovery_sessions WHERE id IN', discoveryIds);
 
+    const usageCalls = db.prepare('DELETE FROM usage_calls WHERE created_at < ?').run(usageCutoff).changes;
+
     db.exec('COMMIT');
-    result = { executions, triggerReceipts, workflowVersions, receiptAttempts, discoverySessions };
+    result = { executions, triggerReceipts, workflowVersions, receiptAttempts, discoverySessions, usageCalls };
   } catch (error) {
     try { db.exec('ROLLBACK'); } catch { /* Preserve the retention error. */ }
     throw error;

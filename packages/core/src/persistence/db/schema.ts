@@ -66,6 +66,37 @@ export const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
       ].join('\n'));
     },
   },
+  {
+    version: 6,
+    name: 'usage-calls',
+    up(db) {
+      // One row per model call (Jev decisions, LLM generations) for the Usage screen. Token counts
+      // and time only; nothing of the prompt or the answer. Rows older than the retention go.
+      db.exec([
+        'CREATE TABLE IF NOT EXISTS usage_calls (',
+        '  id INTEGER PRIMARY KEY AUTOINCREMENT,',
+        '  created_at TEXT NOT NULL,',
+        '  request_id TEXT,',
+        '  workspace_session_id TEXT,',
+        '  engine TEXT NOT NULL,',
+        '  purpose TEXT NOT NULL,',
+        '  label TEXT,',
+        '  provider TEXT,',
+        '  model TEXT,',
+        '  duration_ms INTEGER NOT NULL,',
+        '  provider_requests INTEGER,',
+        '  input_tokens INTEGER,',
+        '  cached_input_tokens INTEGER,',
+        '  cache_write_input_tokens INTEGER,',
+        '  output_tokens INTEGER,',
+        '  reasoning_tokens INTEGER,',
+        '  request_bytes INTEGER,',
+        '  ok INTEGER NOT NULL',
+        ');',
+        'CREATE INDEX IF NOT EXISTS idx_usage_calls_created ON usage_calls(created_at);',
+      ].join('\n'));
+    },
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = SCHEMA_MIGRATIONS[SCHEMA_MIGRATIONS.length - 1]!.version;

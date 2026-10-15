@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { AgentHarness } from '../harness.js';
 import type { ModelProvider, StructuredGenerateInput, TextGenerateInput } from '../../providers/provider.js';
+import { runWithUsageContext, setUsageRecorder, type StoredUsageCall } from '../../usage/usage-recorder.js';
 
 describe('agent text harness', () => {
   it('runs a text-only finalizer through the same bounded harness policy', async () => {
@@ -34,6 +35,35 @@ describe('agent text harness', () => {
     expect(seen?.maxTurns).toBe(1);
     expect(seen?.maxOutputTokens).toBe(768);
     await harness.dispose();
+  });
+
+  it('counts each text run as an LLM generation for the Usage screen, failed runs too', async () => {
+    const recorded: StoredUsageCall[] = [];
+    setUsageRecorder((call) => recorded.push(call));
+    let fail = false;
+    const provider: ModelProvider = {
+      name: 'mock',
+      model: 'sonnet',
+      async generateStructured<T>(): Promise<T> {
+        throw new Error('structured_generation_not_used');
+      },
+      async generateText(input: TextGenerateInput): Promise<string> {
+        input.onUsage?.({ inputTokens: 40, cachedInputTokens: 10, outputTokens: 6 });
+        if (fail) throw new Error('provider down');
+        return '답변';
+      },
+    };
+    const harness = new AgentHarness(provider);
+    try {
+      await runWithUsageContext({ requestId: 'req-9' }, () => harness.runText({ role: 'command', systemPrompt: 's', user: 'u', logContext: 'reply_phase' }));
+      fail = true;
+      await expect(harness.runText({ role: 'command', systemPrompt: 's', user: 'u' })).rejects.toThrow();
+    } finally {
+      setUsageRecorder(undefined);
+      await harness.dispose();
+    }
+    expect(recorded[0]).toMatchObject({ engine: 'llm', purpose: 'generation', label: 'reply_phase', provider: 'mock', model: 'sonnet', requestId: 'req-9', inputTokens: 40, cachedInputTokens: 10, outputTokens: 6, ok: true });
+    expect(recorded[1]).toMatchObject({ label: 'command', ok: false, inputTokens: 40 });
   });
 
   it('uses the required investigation context when building a text investigation prompt', async () => {
