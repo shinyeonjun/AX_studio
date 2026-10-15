@@ -81,7 +81,7 @@ export async function runAiDecision(
   const includeSensitiveData = cloudAllowed || Boolean(investigationRunner && !cloudProvider);
   if (restrictedBoundInputPorts.length > 0 && cloudProvider) {
     throw Object.assign(
-      new Error('이 자료는 외부 AI로 보내지 않도록 설정되어 있어요. 내 PC에서 실행되는 AI(Ollama)를 쓰거나, 설정 > 데이터가 어디로 가나요에서 외부 전송을 허용해 주세요.'),
+      new Error('이 자료는 외부 AI로 보내지 않도록 설정되어 있어요. AI가 이 자료를 읽게 하려면 설정 > 데이터가 어디로 가나요에서 외부 전송을 허용해 주세요.'),
       { code: 'ai_input_unavailable' },
     );
   }
@@ -89,7 +89,7 @@ export async function runAiDecision(
   if (documentRequired && !includeSensitiveData) {
     throw Object.assign(
       new Error(
-        '이 자료는 외부 AI로 보내지 않도록 설정되어 있어요. 내 PC에서 실행되는 AI(Ollama)를 쓰거나, 설정 > 데이터가 어디로 가나요에서 외부 전송을 허용해 주세요.',
+        '이 자료는 외부 AI로 보내지 않도록 설정되어 있어요. AI가 이 자료를 읽게 하려면 설정 > 데이터가 어디로 가나요에서 외부 전송을 허용해 주세요.',
       ),
       {
         code: 'ai_input_unavailable',
@@ -158,7 +158,7 @@ export async function runAiDecision(
           .filter((source) => !cloudDataAllowedForReadSource(ir, source)))];
         if (cloudProvider && restrictedReadSources.length > 0) {
           throw Object.assign(
-            new Error('이 자료는 외부 AI로 보내지 않도록 설정되어 있어요. 내 PC에서 실행되는 AI(Ollama)를 쓰거나, 설정 > 데이터가 어디로 가나요에서 외부 전송을 허용해 주세요.'),
+            new Error('이 자료는 외부 AI로 보내지 않도록 설정되어 있어요. AI가 이 자료를 읽게 하려면 설정 > 데이터가 어디로 가나요에서 외부 전송을 허용해 주세요.'),
             { code: 'ai_input_unavailable', data: { stepId: step.id, sources: restrictedReadSources } },
           );
         }

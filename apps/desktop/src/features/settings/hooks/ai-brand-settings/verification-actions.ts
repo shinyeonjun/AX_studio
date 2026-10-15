@@ -4,17 +4,9 @@ import { ipcErrorMessage } from '../../../../ui/lib/ipc-error';
 
 export function createAiBrandVerificationActions({
   brand,
-  mode,
-  apiKeyDraft,
-  onRefresh,
   refreshDetection,
-  setApiKeyDraft,
-  setApiKeyConfigured,
-  setApiKeyMasked,
   setMessage,
-  setTesting,
   setTestingCli,
-  setVerifiedApi,
   setVerifiedCli,
 }: AiBrandVerificationActionsInput) {
   const testCli = async () => {
@@ -34,27 +26,5 @@ export function createAiBrandVerificationActions({
     }
   };
 
-  const testApiKey = async () => {
-    setTesting(true);
-    setMessage('');
-    try {
-      const draft = apiKeyDraft.trim();
-      const result = await window.ax.testAiApi(brand, draft || undefined, mode);
-      setVerifiedApi((prev) => ({ ...prev, [brand]: true }));
-      if (draft) {
-        setApiKeyDraft('');
-        setApiKeyConfigured(true);
-        setApiKeyMasked(result.masked);
-      }
-      setMessage(`API 연결됨: ${result.label}`);
-      await refreshDetection();
-      await onRefresh();
-    } catch (error) {
-      setMessage(ipcErrorMessage(error, 'API 연결 테스트에 실패했습니다.'), true);
-    } finally {
-      setTesting(false);
-    }
-  };
-
-  return { testCli, testApiKey };
+  return { testCli };
 }

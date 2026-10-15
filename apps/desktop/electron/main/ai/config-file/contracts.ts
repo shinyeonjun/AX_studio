@@ -1,7 +1,6 @@
-import type { AiBrand, AiConnectionMode } from '@ax-studio/core';
+import type { AiBrand } from '@ax-studio/core';
 
 interface AiBrandTomlConfig {
-  mode?: AiConnectionMode;
   model?: string;
 }
 
@@ -21,8 +20,9 @@ export interface JevDecisionTomlConfig {
 export interface AiTomlConfig {
   active?: {
     brand: AiBrand;
-    mode: AiConnectionMode;
     model: string;
+    /** `mode = "api"` from a build that still had API mode; read only to move the model to the CLI. */
+    legacyMode?: string;
   };
   providers: Partial<Record<AiBrand, AiBrandTomlConfig>>;
   decision?: {
@@ -32,10 +32,7 @@ export interface AiTomlConfig {
   secrets: Record<string, string>;
 }
 
-export const BRAND_ENV_KEYS: Record<AiBrand, string> = {
-  claude: 'ANTHROPIC_API_KEY',
-  gpt: 'OPENAI_API_KEY',
-  ollama: 'OLLAMA_API_KEY',
-};
+/** API keys saved by builds that still had API mode; removed from the OS store at start. */
+export const RETIRED_AI_API_ENV_KEYS = ['ANTHROPIC_API_KEY', 'OPENAI_API_KEY', 'OLLAMA_API_KEY'] as const;
 
 export const JEV_API_ENV_KEY = 'TYPESAFE_API_KEY';

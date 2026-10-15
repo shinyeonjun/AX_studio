@@ -37,9 +37,9 @@ test('Linux packaging uses a portable runtime, Linux directory and explicit exec
   assert.match(pythonRuntimes.linux.noticesUrl, /pgo%2Blto-full\.tar\.zst$/);
 });
 test('archived dependency notices retain both licenses using native path separators', () => {
-  assert.deepEqual(packagedDependencyNoticePaths('win32'), ['node_modules\\react\\LICENSE', 'node_modules\\@ai-sdk\\provider\\LICENSE']);
-  assert.deepEqual(packagedDependencyNoticePaths('linux'), ['node_modules/react/LICENSE', 'node_modules/@ai-sdk/provider/LICENSE']);
-  assert.deepEqual(packagedDependencyNoticePaths(), [join('node_modules', 'react', 'LICENSE'), join('node_modules', '@ai-sdk', 'provider', 'LICENSE')]);
+  assert.deepEqual(packagedDependencyNoticePaths('win32'), ['node_modules\\react\\LICENSE', 'node_modules\\@slack\\web-api\\LICENSE']);
+  assert.deepEqual(packagedDependencyNoticePaths('linux'), ['node_modules/react/LICENSE', 'node_modules/@slack/web-api/LICENSE']);
+  assert.deepEqual(packagedDependencyNoticePaths(), [join('node_modules', 'react', 'LICENSE'), join('node_modules', '@slack', 'web-api', 'LICENSE')]);
 });
 test('unsupported platforms, architectures and cross-packaging fail closed', () => {
   assert.throws(() => packagePlatform('darwin', 'x64'), /native Windows x64 and Linux/);

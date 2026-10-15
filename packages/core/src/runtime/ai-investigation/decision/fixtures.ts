@@ -21,7 +21,7 @@ export class CountingProvider implements ModelProvider {
 }
 
 export class PrivacyCaptureProvider implements ModelProvider {
-  readonly name = 'openai-api';
+  readonly name = 'codex-cli';
   captured?: StructuredGenerateInput<unknown>;
 
   async generateStructured<T>(input: StructuredGenerateInput<T>): Promise<T> {
@@ -35,7 +35,7 @@ export class PrivacyCaptureProvider implements ModelProvider {
 }
 
 export class InvestigationProvider implements ModelProvider {
-  readonly name = 'openai-api';
+  readonly name = 'codex-cli';
   calls = 0;
 
   async generateStructured<T>(input: StructuredGenerateInput<T>): Promise<T> {
@@ -49,7 +49,7 @@ export class InvestigationProvider implements ModelProvider {
 }
 
 export class IncompleteConclusionProvider implements ModelProvider {
-  readonly name = 'openai-api';
+  readonly name = 'codex-cli';
   calls = 0;
 
   async generateStructured<T>(input: StructuredGenerateInput<T>): Promise<T> {

@@ -7,18 +7,28 @@ describe('normalizeAiProviderConfig', () => {
     expect(normalizeAiProviderConfig({ provider: 'gpt-cli', model: 'gpt-4o-mini' })).toEqual({
       provider: 'codex-cli',
       brand: 'gpt',
-      mode: 'cli',
       model: 'gpt-4o-mini',
     });
   });
 
-  it('resolves Ollama API settings to the local OpenAI-compatible provider', () => {
-    expect(normalizeAiProviderConfig({ brand: 'ollama', mode: 'api' })).toEqual({
-      provider: 'ollama-api',
-      brand: 'ollama',
-      mode: 'api',
-      model: 'llama3.3',
-    });
+  it('moves settings saved in the removed API mode to the brand\'s CLI, with the CLI name for a Claude model', () => {
+    expect(normalizeAiProviderConfig({ brand: 'claude', mode: 'api', model: 'claude-opus-5' }))
+      .toEqual({ provider: 'claude-cli', brand: 'claude', model: 'opus' });
+    expect(normalizeAiProviderConfig({ provider: 'anthropic-api', model: 'claude-sonnet-5-5' }))
+      .toEqual({ provider: 'claude-cli', brand: 'claude', model: 'sonnet' });
+    expect(normalizeAiProviderConfig({ provider: 'openai-api', model: 'gpt-5.5' }))
+      .toEqual({ provider: 'codex-cli', brand: 'gpt', model: 'gpt-5.5' });
+  });
+
+  it('keeps a model picked for the CLI as it is', () => {
+    expect(normalizeAiProviderConfig({ brand: 'claude', mode: 'cli', model: 'claude-opus-4-8' }))
+      .toEqual({ provider: 'claude-cli', brand: 'claude', model: 'claude-opus-4-8' });
+  });
+
+  it('falls back to the default for the removed Ollama', () => {
+    expect(normalizeAiProviderConfig({ brand: 'ollama', mode: 'api', model: 'llama3.3' }))
+      .toEqual(normalizeAiProviderConfig(undefined));
+    expect(normalizeAiProviderConfig({ provider: 'ollama-api' })).toEqual(normalizeAiProviderConfig(undefined));
   });
 });
 

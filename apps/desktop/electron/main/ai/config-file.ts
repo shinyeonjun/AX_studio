@@ -7,9 +7,8 @@ export {
 } from './config-file/storage.js';
 export {
   getJevSecret,
-  getSecretForBrand,
   loadAiTomlIntoEnv,
   migrateAiSecretsToOsStore,
-  setBrandSecret,
+  purgeRetiredAiApiKeys,
   setJevSecret,
 } from './config-file/secrets.js';

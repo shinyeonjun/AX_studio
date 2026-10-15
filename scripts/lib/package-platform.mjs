@@ -48,7 +48,7 @@ export function packagePaths(directory, platform = process.platform, arch = proc
 export function packagedDependencyNoticePaths(platform = process.platform) {
   // @electron/asar traverses directories using the host's native path separator.
   const path = platform === 'win32' ? win32 : posix;
-  return [path.join('node_modules', 'react', 'LICENSE'), path.join('node_modules', '@ai-sdk', 'provider', 'LICENSE')];
+  return [path.join('node_modules', 'react', 'LICENSE'), path.join('node_modules', '@slack', 'web-api', 'LICENSE')];
 }
 
 export function isolatedPythonEnv(scratch, env = process.env, platform = process.platform) {

@@ -22,9 +22,6 @@ const CREDENTIAL_DISPLAY_NAMES: Record<string, string> = {
   http: 'HTTP API',
   rdb: '데이터베이스',
   webhook: 'Webhook',
-  anthropic: 'Claude',
-  openai: 'OpenAI',
-  ollama: 'Ollama',
   typesafe: '요청 판단 기능',
 };
 

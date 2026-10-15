@@ -1,7 +1,6 @@
 import type { AiBrand, CliProviderId } from '../ai-provider-id.js';
 import { CLAUDE_META } from '../providers/claude/meta.js';
 import { OPENAI_META } from '../providers/openai/meta.js';
-import { OLLAMA_META } from '../providers/ollama/meta.js';
 import type { CliModelOption } from '../model-options.js';
 
 export interface CliProviderMeta {
@@ -34,9 +33,6 @@ export interface AiBrandCatalogEntry {
   title: string;
   description: string;
   cliProviderId: CliProviderId;
-  envKey: string;
-  apiModels: CliModelOption[];
-  apiDefaultModel: string;
   enabled: boolean;
 }
 
@@ -46,30 +42,14 @@ export const AI_BRAND_CATALOG: Record<AiBrand, AiBrandCatalogEntry> = {
     title: 'Claude',
     description: 'Anthropic Claude · 인터뷰·판단',
     cliProviderId: 'claude-cli',
-    envKey: CLAUDE_META.envKey,
-    apiModels: CLAUDE_META.apiModels,
-    apiDefaultModel: CLAUDE_META.apiDefaultModel,
     enabled: true,
   },
   gpt: {
     id: 'gpt',
     title: 'GPT',
-    description: 'OpenAI GPT · Codex CLI 또는 API',
+    description: 'OpenAI GPT · Codex CLI',
     cliProviderId: 'codex-cli',
-    envKey: OPENAI_META.envKey,
-    apiModels: OPENAI_META.apiModels,
-    apiDefaultModel: OPENAI_META.apiDefaultModel,
     enabled: true,
-  },
-  ollama: {
-    id: 'ollama',
-    title: 'Ollama',
-    description: OLLAMA_META.description,
-    cliProviderId: 'codex-cli',
-    envKey: OLLAMA_META.envKey,
-    apiModels: OLLAMA_META.apiModels,
-    apiDefaultModel: OLLAMA_META.apiDefaultModel,
-    enabled: OLLAMA_META.enabled,
   },
 };
 

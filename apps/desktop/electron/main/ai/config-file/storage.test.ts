@@ -15,21 +15,22 @@ describe('ai.toml storage', () => {
 
   it('serializes concurrent read-modify-write saves so no field is lost', async () => {
     await Promise.all([
-      saveActiveAi('claude', 'cli', 'sonnet'),
+      saveActiveAi('claude', 'sonnet'),
       saveJevDecisionPreferences({ enabled: true, baseURL: 'https://jev.example' }),
-      saveAiBrandPreferences('gpt', { mode: 'api', model: 'gpt-5.4' }),
+      saveAiBrandPreferences('gpt', { model: 'gpt-5.4' }),
     ]);
     const config = await readAiToml();
-    expect(config.active).toEqual({ brand: 'claude', mode: 'cli', model: 'sonnet' });
+    expect(config.active).toEqual({ brand: 'claude', model: 'sonnet' });
     expect(config.decision?.jev).toEqual({ enabled: true, baseURL: 'https://jev.example' });
-    expect(config.providers.gpt).toEqual({ mode: 'api', model: 'gpt-5.4' });
+    expect(config.providers.gpt).toEqual({ model: 'gpt-5.4' });
   });
 
-  it('keeps stored mode and model when a partial update omits them', async () => {
-    await saveAiBrandPreferences('claude', { mode: 'api', model: 'claude-sonnet-4-6' });
-    await saveAiBrandPreferences('claude', { model: undefined, mode: undefined });
-    await saveAiBrandPreferences('claude', { model: 'claude-opus-5' });
-    expect((await readAiToml()).providers.claude).toEqual({ mode: 'api', model: 'claude-opus-5' });
+  it('keeps the stored model when a partial update omits it', async () => {
+    await saveAiBrandPreferences('claude', { model: 'claude-sonnet-4-6' });
+    await saveAiBrandPreferences('claude', { model: undefined });
+    expect((await readAiToml()).providers.claude).toEqual({ model: 'claude-sonnet-4-6' });
+    await saveAiBrandPreferences('claude', { model: 'opus' });
+    expect((await readAiToml()).providers.claude).toEqual({ model: 'opus' });
     expect(await readFile(join(state.dir, 'ai.toml'), 'utf8')).not.toContain('undefined');
   });
 });

@@ -1,4 +1,4 @@
-import type { AiBrand, AiConnectionMode } from '../../types/ai-provider';
+import type { AiBrand } from '../../types/ai-provider';
 import type { CliModelOption } from '../../types/ai-provider';
 import type { CliProviderId } from '@ax-studio/core/ai-catalog';
 import {
@@ -17,37 +17,22 @@ export interface AiProviderUiMeta {
   title: string;
   description: string;
   icon: string;
-  envKey: string;
   cliProviderId: CliProviderId;
-  cliModeLabel: string;
   cliLabel: string;
-  apiModels: CliModelOption[];
   cliFallbackModels: CliModelOption[];
-  apiDefaultModel: string;
   enabled: boolean;
 }
 
-const UI_OVERLAY: Record<
-  AiBrand,
-  Pick<AiProviderUiMeta, 'icon' | 'cliModeLabel' | 'cliLabel'> & { description?: string }
-> = {
+const UI_OVERLAY: Record<AiBrand, Pick<AiProviderUiMeta, 'icon' | 'cliLabel' | 'description'>> = {
   claude: {
     icon: claudeIcon,
-    cliModeLabel: 'CLI',
     cliLabel: 'Claude CLI',
-    description: 'Anthropic Claude · Claude CLI 또는 API',
+    description: 'Anthropic Claude · Claude CLI',
   },
   gpt: {
     icon: openaiIcon,
-    cliModeLabel: 'Codex',
     cliLabel: 'Codex CLI',
-    description: 'OpenAI GPT · Codex CLI 또는 API',
-  },
-  ollama: {
-    icon: openaiIcon,
-    cliModeLabel: 'CLI',
-    cliLabel: 'Ollama CLI',
-    description: '로컬 Ollama · 내 컴퓨터에서 실행하는 AI',
+    description: 'OpenAI GPT · Codex CLI',
   },
 };
 
@@ -59,15 +44,11 @@ function buildUiCatalog(): Record<AiBrand, AiProviderUiMeta> {
       acc[brand] = {
         id: brand,
         title: core.title,
-        description: ui.description ?? core.description,
+        description: ui.description,
         icon: ui.icon,
-        envKey: core.envKey,
         cliProviderId: core.cliProviderId,
-        cliModeLabel: ui.cliModeLabel,
         cliLabel: ui.cliLabel,
-        apiModels: core.apiModels,
         cliFallbackModels: getBrandCliFallbackModels(brand),
-        apiDefaultModel: core.apiDefaultModel,
         enabled: core.enabled,
       };
       return acc;
@@ -84,10 +65,6 @@ export function brandFromProvider(provider?: string, brand?: AiBrand): AiBrand |
   return coreBrandFromProvider(provider, brand);
 }
 
-export function modelsForBrand(
-  brand: AiBrand,
-  mode: AiConnectionMode,
-  cliModels: CliModelOption[] | undefined,
-): CliModelOption[] {
-  return coreModelsForBrand(brand, mode, cliModels);
+export function modelsForBrand(brand: AiBrand, cliModels: CliModelOption[] | undefined): CliModelOption[] {
+  return coreModelsForBrand(brand, cliModels);
 }

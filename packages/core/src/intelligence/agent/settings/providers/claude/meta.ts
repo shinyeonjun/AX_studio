@@ -16,27 +16,12 @@ export const CLAUDE_CLI_MODELS: CliModelOption[] = [
   claudeModel('claude-sonnet-4-6', 'Sonnet 4.6'),
 ];
 
-/** Exact Anthropic API ids; labels name the model each id resolves to. */
-const CLAUDE_API_MODELS: CliModelOption[] = [
-  claudeModel('claude-sonnet-4-6', 'Sonnet 4.6'),
-  claudeModel('claude-sonnet-5-5', 'Sonnet 5.5'),
-  claudeModel('claude-opus-5-5', 'Opus 5.5'),
-  claudeModel('claude-opus-5', 'Opus 5'),
-  claudeModel('claude-opus-4-6', 'Opus 4.6'),
-  claudeModel('claude-haiku-4-5', 'Haiku 4.5'),
-];
-
-const CLAUDE_API_DEFAULT_MODEL = 'claude-sonnet-4-6';
-
 export const CLAUDE_META = {
   label: 'Claude CLI',
   description: '설치된 Claude Code CLI',
   binaries: ['claude'] as const,
   defaultModel: 'sonnet',
   cliModels: CLAUDE_CLI_MODELS,
-  apiModels: CLAUDE_API_MODELS,
-  apiDefaultModel: CLAUDE_API_DEFAULT_MODEL,
-  envKey: 'ANTHROPIC_API_KEY',
 };
 
 const CLAUDE_CLI_MODEL_ALIASES: Record<string, string> = {
@@ -45,6 +30,8 @@ const CLAUDE_CLI_MODEL_ALIASES: Record<string, string> = {
   'claude-opus-5': 'opus',
   'claude-sonnet-5': 'sonnet',
   'claude-haiku-4-5': 'haiku',
+  'claude-opus-5-5': 'opus',
+  'claude-sonnet-5-5': 'sonnet',
 };
 
 export function resolveClaudeCliModelId(id: string): string {

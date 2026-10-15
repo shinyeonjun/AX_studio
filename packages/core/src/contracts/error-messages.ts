@@ -272,7 +272,7 @@ const AI_TIMEOUT = 'AI 응답이 너무 오래 걸려 멈췄습니다. 잠시 �
 const AI_AUTH = 'AI 연결 정보가 올바르지 않습니다. 설정 > AI에서 확인해 주세요.';
 const AI_BUSY = 'AI 서비스가 잠시 바쁩니다. 잠시 후 다시 시도해 주세요.';
 const AI_MISSING = 'AI 프로그램을 찾지 못했습니다. 설정 > AI에서 연결 상태를 확인해 주세요.';
-const AI_UNREACHABLE = 'AI에 연결하지 못했습니다. AI 프로그램(예: Ollama)이 켜져 있는지, 설정 > AI의 주소가 맞는지 확인해 주세요.';
+const AI_UNREACHABLE = 'AI에 연결하지 못했습니다. 인터넷 연결과 AI CLI 로그인 상태를 확인해 주세요.';
 const AI_MODEL_MISSING = '설정한 AI 모델을 찾지 못했습니다. 설정 > AI에서 모델 이름을 확인해 주세요.';
 
 const AI_TIMEOUT_CODES = new Set(['agent_timeout']);

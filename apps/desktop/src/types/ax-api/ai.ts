@@ -1,6 +1,5 @@
 import type { AiProviderState } from '../app-state.js';
 import type {
-  AiApiTestResult,
   AiCliTestResult,
   AiConfigSnapshot,
   DetectedAiCli,
@@ -29,14 +28,8 @@ export interface AxAiApi {
   setAiProvider: (config: AiProviderState) => Promise<unknown>;
   detectAiCli: () => Promise<DetectedAiCli[]>;
   getAiConfig: () => Promise<AiConfigSnapshot>;
-  saveAiBrandConfig: (
-    brand: string,
-    prefs: { mode?: string; model?: string; apiKey?: string },
-  ) => Promise<{ ok: boolean }>;
+  saveAiBrandConfig: (brand: string, prefs: { model?: string }) => Promise<{ ok: boolean }>;
   testAiCli: (brand: string) => Promise<AiCliTestResult>;
-  testAiApi: (brand: string, apiKey?: string, mode?: string) => Promise<AiApiTestResult>;
-  /** Whether the local Ollama server answers now; false when it is not running. */
-  probeOllama?: () => Promise<boolean>;
   getJevDecisionConfig: () => Promise<JevDecisionConfigSnapshot>;
   saveJevDecisionConfig: (prefs: JevDecisionConfigInput) => Promise<JevDecisionConfigSnapshot>;
   testJevDecisionApi: (prefs?: Omit<JevDecisionConfigInput, 'enabled'>) => Promise<{

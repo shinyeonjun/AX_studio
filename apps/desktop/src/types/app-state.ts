@@ -1,4 +1,4 @@
-import type { AiBrand, AiConnectionMode } from './ai-provider';
+import type { AiBrand } from './ai-provider';
 import type { ConnectionEntry } from './connection-entry';
 import type { ExecutionHistoryDiagnostic, LocalFolderEntry, SchedulerOccurrenceOutcome, TriggerDeadLetter } from '@ax-studio/core';
 import type { Recurrence } from '@ax-studio/core/schedule';
@@ -7,7 +7,6 @@ export interface AiProviderState {
   provider?: string;
   model?: string;
   brand?: AiBrand;
-  mode?: AiConnectionMode;
 }
 
 export interface WorkSummary {
@@ -70,7 +69,7 @@ export interface AppState {
   envFilePath?: string;
   aiConfigPath?: string;
   axDataRoot?: string;
-  aiBrandConfigs?: Partial<Record<AiBrand, { mode?: AiConnectionMode; model?: string }>>;
+  aiBrandConfigs?: Partial<Record<AiBrand, { model?: string }>>;
   jevDecisionEnabled?: boolean;
   jevDecisionConfigured?: boolean;
   jevDecisionModel?: string;

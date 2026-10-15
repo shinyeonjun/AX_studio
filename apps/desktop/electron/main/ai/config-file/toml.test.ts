@@ -49,9 +49,9 @@ describe('ai.toml Jev decision settings', () => {
 describe('ai.toml string handling', () => {
   it('keeps backslashes, quotes and control characters stable across repeated saves', () => {
     const model = 'C:\\models\\"local"\tv1\nnext';
-    let config = parseAiToml(serializeAiToml({ providers: { ollama: { mode: 'api', model } }, secrets: {} }));
+    let config = parseAiToml(serializeAiToml({ providers: { gpt: { model } }, secrets: {} }));
     for (let i = 0; i < 3; i += 1) config = parseAiToml(serializeAiToml(config));
-    expect(config.providers.ollama?.model).toBe(model);
+    expect(config.providers.gpt?.model).toBe(model);
   });
 
   it('ignores inline comments after values and section headers', () => {
@@ -61,10 +61,10 @@ describe('ai.toml string handling', () => {
       "mode = 'cli'",
       'model = "gpt-5.4#beta" # the # inside quotes is data',
       '[providers.claude]',
-      'mode = api # bare value',
+      'model = opus # bare value',
     ].join('\n'));
-    expect(parsed.active).toEqual({ brand: 'gpt', mode: 'cli', model: 'gpt-5.4#beta' });
-    expect(parsed.providers.claude).toEqual({ mode: 'api' });
+    expect(parsed.active).toEqual({ brand: 'gpt', model: 'gpt-5.4#beta', legacyMode: 'cli' });
+    expect(parsed.providers.claude).toEqual({ model: 'opus' });
   });
 
   it('drops removed Grok/Cursor settings instead of carrying them forward', () => {
@@ -81,5 +81,24 @@ describe('ai.toml string handling', () => {
     expect(parsed.active).toBeUndefined();
     expect(parsed.providers).toEqual({ claude: { model: 'sonnet' } });
     expect(serializeAiToml(parsed)).not.toContain('grok');
+  });
+  it('reads a file from a build with API mode: the old mode only travels with [active], Ollama is dropped, and saving forgets both', () => {
+    const parsed = parseAiToml([
+      '[active]',
+      'brand = "claude"',
+      'mode = "api"',
+      'model = "claude-opus-5"',
+      '[providers.claude]',
+      'mode = "api"',
+      'model = "claude-opus-5"',
+      '[providers.ollama]',
+      'mode = "api"',
+      'model = "llama3.3"',
+    ].join('\n'));
+    expect(parsed.active).toEqual({ brand: 'claude', model: 'claude-opus-5', legacyMode: 'api' });
+    expect(parsed.providers).toEqual({ claude: { model: 'claude-opus-5' } });
+    const saved = serializeAiToml(parsed);
+    expect(saved).not.toMatch(/^mode\s*=/mu);
+    expect(saved).not.toContain('ollama');
   });
 });

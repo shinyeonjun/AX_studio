@@ -76,7 +76,7 @@ export function SidebarAiBrandRow({
   const selectable = status === 'ready';
 
   const handleSelect = () => {
-    if (hub.modeSaving || isActive) return;
+    if (hub.switching || isActive) return;
     if (selectable) {
       void hub.selectBrand(brand);
       return;
@@ -90,7 +90,7 @@ export function SidebarAiBrandRow({
         type="button"
         className="sidebar-settings-link sidebar-ai-brand-select"
         onClick={handleSelect}
-        disabled={hub.modeSaving}
+        disabled={hub.switching}
         aria-pressed={isActive}
         aria-label={isActive ? meta.title + ' 사용 중' : selectable ? meta.title + ' 선택' : meta.title + ' 설정 열기'}
       >
