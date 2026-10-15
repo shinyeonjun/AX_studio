@@ -18,9 +18,16 @@ import { supportedCliFlags } from '../capabilities.js';
 const FAILURE_MESSAGE = 'Codex CLI 호출에 실패했습니다.';
 
 /** Features that give the agent tools beyond producing an answer; unknown keys are ignored. */
+/**
+ * Tools AX never uses; each one's description is otherwise sent with every call. The second row
+ * (codex-cli 0.159) took a one-word prompt from about 10,300 input tokens to about 9,400.
+ */
 const DISABLED_CODEX_FEATURES = [
   'shell_tool', 'apps', 'plugins', 'hooks', 'browser_use', 'browser_use_external',
   'computer_use', 'in_app_browser', 'image_generation', 'skill_mcp_dependency_install',
+  'multi_agent', 'goals', 'skill_search', 'sleep_tool', 'tool_suggest', 'unified_exec', 'view_image',
+  'code_mode_host', 'guardian_approval', 'mentions_v2', 'workspace_dependencies', 'worktrees',
+  'write_stdin_approval', 'realtime_conversation',
 ] as const;
 
 export interface CodexExecOptions {

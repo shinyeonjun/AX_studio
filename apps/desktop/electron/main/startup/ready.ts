@@ -104,6 +104,8 @@ export function registerDesktopReadyHandler(): void {
       const core = await createAxStudioCore({
         paths,
         decisionEngine,
+        // Jev off: the connected AI decides instead. E2E runs keep their scripted engines.
+        llmDecisionWhenNoEngine: !isE2E,
         reportPlanner,
         desktopPrintBridge: { printHtml: printHtmlToPdf },
         onExecutionStarted: () => notifyStateChanged(),

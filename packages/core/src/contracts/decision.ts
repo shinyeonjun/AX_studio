@@ -109,8 +109,11 @@ export interface DecisionEvaluationResult {
   /** UTF-8 bytes sent across provider request bodies, including repeated batch context. */
   requestBytes?: number;
   usage?: {
+    /** All input tokens, cache included. */
     inputTokens?: number;
     outputTokens?: number;
+    cachedInputTokens?: number;
+    cacheWriteInputTokens?: number;
   };
 }
 

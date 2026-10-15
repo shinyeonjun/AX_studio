@@ -1,7 +1,7 @@
 import { aiProviderFailureCode } from '../../../contracts/error-messages.js';
 import { appendAppLog } from '../../../persistence/paths/app-log.js';
 import type { ChatMessage } from '../../providers/chat.js';
-import type { AgentProgressEvent, ModelImageInput, ModelProvider, ModelTokenUsage } from '../../providers/provider.js';
+import { inputTokensWithCache, type AgentProgressEvent, type ModelImageInput, type ModelProvider, type ModelTokenUsage } from '../../providers/provider.js';
 import { composeAgentSystemPrompt } from '../prompt/index.js';
 import { getRoleDefinition } from '../types.js';
 import type { AgentContext, AgentResult, AgentRole } from '../types.js';
@@ -50,10 +50,7 @@ function recordGeneration(model: ModelProvider, request: InvocationRequest, dura
     ...(model.model ? { model: model.model } : {}),
     durationMs,
     providerRequests: 1,
-    // Stored as all input, cache included, whatever the provider's convention.
-    ...(usage?.inputTokens !== undefined ? {
-      inputTokens: usage.inputTokens + (model.usageInputExcludesCache ? (usage.cachedInputTokens ?? 0) + (usage.cacheWriteInputTokens ?? 0) : 0),
-    } : {}),
+    ...(usage && usage.inputTokens !== undefined ? { inputTokens: inputTokensWithCache(model, usage) } : {}),
     ...(usage?.cachedInputTokens !== undefined ? { cachedInputTokens: usage.cachedInputTokens } : {}),
     ...(usage?.cacheWriteInputTokens !== undefined ? { cacheWriteInputTokens: usage.cacheWriteInputTokens } : {}),
     ...(usage?.outputTokens !== undefined ? { outputTokens: usage.outputTokens } : {}),

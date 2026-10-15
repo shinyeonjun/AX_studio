@@ -8,7 +8,8 @@ import { recordUsageCall, type UsageEngine } from './usage-recorder.js';
 const RECORDED = Symbol('usage-recorded');
 
 /** The same engine, with every evaluation recorded as a decision call (time, requests, tokens). */
-export function withUsageRecording(engine: DecisionEngine, usageEngine: UsageEngine = 'jev'): DecisionEngine {
+export function withUsageRecording(engine: DecisionEngine & { readonly usageEngine?: UsageEngine }): DecisionEngine {
+  const usageEngine = engine.usageEngine ?? 'jev';
   if ((engine as { [RECORDED]?: true })[RECORDED]) return engine;
   const recorded: DecisionEngine & { [RECORDED]: true } = {
     [RECORDED]: true,
@@ -25,6 +26,8 @@ export function withUsageRecording(engine: DecisionEngine, usageEngine: UsageEng
           providerRequests: result.providerRequestCount ?? 1,
           ...(result.usage?.inputTokens !== undefined ? { inputTokens: result.usage.inputTokens } : {}),
           ...(result.usage?.outputTokens !== undefined ? { outputTokens: result.usage.outputTokens } : {}),
+          ...(result.usage?.cachedInputTokens !== undefined ? { cachedInputTokens: result.usage.cachedInputTokens } : {}),
+          ...(result.usage?.cacheWriteInputTokens !== undefined ? { cacheWriteInputTokens: result.usage.cacheWriteInputTokens } : {}),
           ...(result.requestBytes !== undefined ? { requestBytes: result.requestBytes } : {}),
           ok: true,
         });

@@ -11,6 +11,7 @@ import { createAgentHarness, createInvestigationRunner, type AgentHarness } from
 import { AxCommandService } from '../intelligence/commands/service.js';
 import type { DecisionEngine } from '../contracts/decision.js';
 import { withUsageRecording } from '../intelligence/usage/recording-decision-engine.js';
+import { LlmDecisionEngine } from '../intelligence/decision/llm-engine.js';
 import { setUsageRecorder } from '../intelligence/usage/usage-recorder.js';
 import type { ArtifactReference, ArtifactSink } from '../connectors/types.js';
 import { ArtifactStore } from '../persistence/artifact-store.js';
@@ -47,6 +48,11 @@ export interface AxStudioCoreOptions {
   cloudModel?: string;
   /** Optional fuzzy decision plane. Deterministic execution remains authoritative. */
   decisionEngine?: DecisionEngine;
+  /**
+   * While no decision engine (Jev) is set, the connected AI answers the decision questions in its
+   * place. Hosts opt in; without it, no engine means no routing (reply-only chat).
+   */
+  llmDecisionWhenNoEngine?: boolean;
   /** Optional report planner injected by deterministic host tests. */
   reportPlanner?: import('../documents/reporting/service.js').ReportGenerationDependencies['planner'];
   /** Electron injects Chromium printToPDF; omit in core-only tests. */
@@ -76,6 +82,8 @@ export interface AxStudioCore {
   commandService: AxCommandService;
   /** Current semantic decision provider used by chat and discovery paths. */
   readonly decisionEngine?: DecisionEngine;
+  /** Who answers decisions now: Jev, the connected AI in its place, or nobody (reply-only chat). */
+  readonly decisionEngineKind: 'jev' | 'llm' | 'none';
   /** Session-owned files and document-engine results. */
   workspaceSources: WorkspaceSourceService;
   refreshAgentHarness(config: AiProviderConfig): AgentHarness;
@@ -133,7 +141,12 @@ export async function createAxStudioCore(options: AxStudioCoreOptions): Promise<
 
   const connectors = buildConnectorsFromStore(store);
   let runtime: WorkflowRuntime | undefined;
-  const recorded = (engine?: DecisionEngine) => (engine ? withUsageRecording(engine) : undefined);
+  let decisionEngineKind: 'jev' | 'llm' | 'none' = 'none';
+  const recorded = (engine?: DecisionEngine) => {
+    const chosen = engine ?? (options.llmDecisionWhenNoEngine ? new LlmDecisionEngine(agentHarness) : undefined);
+    decisionEngineKind = !chosen ? 'none' : chosen instanceof LlmDecisionEngine ? 'llm' : 'jev';
+    return chosen ? withUsageRecording(chosen) : undefined;
+  };
   let activeDecisionEngine = recorded(options.decisionEngine);
   let reportPlanner: import('../documents/reporting/planner/planner.js').ReportPlanner | undefined;
   let reportGenerationPromise: Promise<import('../documents/reporting/service.js').ReportGenerationService> | undefined;
@@ -232,6 +245,9 @@ export async function createAxStudioCore(options: AxStudioCoreOptions): Promise<
     commandService,
     get decisionEngine() {
       return activeDecisionEngine;
+    },
+    get decisionEngineKind() {
+      return decisionEngineKind;
     },
     workspaceSources,
     refreshAgentHarness(config: AiProviderConfig) {
