@@ -1,0 +1,153 @@
+import { useEffect, useState } from 'react';
+import { ipcErrorMessage } from '../../../../../ui/lib/ipc-error';
+import { SettingRow, SettingSwitch } from '../../SettingRow';
+
+interface JevDecisionSwitchProps {
+  onRefresh: () => Promise<void>;
+  /** Tells the parent whether Jev decides now, e.g. to mark the active column. */
+  onEnabledChange?: (enabled: boolean) => void;
+}
+
+interface LoadedConfig {
+  model: string;
+  baseURL: string;
+}
+
+/**
+ * Jev on or off. On asks only for the API key; the model and the server stay at what is saved
+ * (or the defaults). Off leaves the decision to the connected AI.
+ */
+export function JevDecisionSwitch({ onRefresh, onEnabledChange }: JevDecisionSwitchProps) {
+  const [config, setConfig] = useState<LoadedConfig | null>(null);
+  const [enabled, setEnabled] = useState(false);
+  const [keyConfigured, setKeyConfigured] = useState(false);
+  const [keyMasked, setKeyMasked] = useState<string | undefined>();
+  const [askingKey, setAskingKey] = useState(false);
+  const [keyDraft, setKeyDraft] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
+  const [messageIsError, setMessageIsError] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void window.ax.getJevDecisionConfig()
+      .then((snapshot) => {
+        if (cancelled) return;
+        setConfig({ model: snapshot.model, baseURL: snapshot.baseURL || snapshot.defaultBaseURL });
+        setEnabled(snapshot.enabled);
+        setKeyConfigured(snapshot.apiKeyConfigured);
+        setKeyMasked(snapshot.apiKeyMasked);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        setMessage(ipcErrorMessage(error, '요청 판단 설정을 읽지 못했습니다.'));
+        setMessageIsError(true);
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => { onEnabledChange?.(enabled); }, [enabled, onEnabledChange]);
+
+  const report = (text: string, isError = false) => {
+    setMessage(text);
+    setMessageIsError(isError);
+  };
+
+  const save = async (nextEnabled: boolean) => {
+    if (!config) return;
+    const result = await window.ax.saveJevDecisionConfig({ enabled: nextEnabled, model: config.model, baseURL: config.baseURL });
+    setEnabled(result.enabled);
+    setKeyConfigured(result.apiKeyConfigured);
+    setKeyMasked(result.apiKeyMasked);
+    await onRefresh();
+  };
+
+  const toggle = async (next: boolean) => {
+    report('');
+    if (next && !keyConfigured) {
+      setAskingKey(true);
+      return;
+    }
+    setBusy(true);
+    try {
+      await save(next);
+      setAskingKey(false);
+      report(next ? 'Jev가 요청을 판단합니다.' : 'Jev를 껐어요. 연결된 AI가 요청을 판단합니다.');
+    } catch (error) {
+      report(ipcErrorMessage(error, '요청 판단 설정 저장에 실패했습니다.'), true);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const connect = async () => {
+    if (!config || !keyDraft.trim()) return;
+    setBusy(true);
+    report('');
+    try {
+      const tested = await window.ax.testJevDecisionApi({ model: config.model, baseURL: config.baseURL, apiKey: keyDraft.trim() });
+      if (tested.saved) {
+        setKeyConfigured(true);
+        setKeyMasked(tested.masked);
+      }
+      await save(true);
+      setKeyDraft('');
+      setAskingKey(false);
+      report('연결했어요. Jev가 요청을 판단합니다.');
+    } catch (error) {
+      report(ipcErrorMessage(error, 'API 키를 확인하지 못했어요. 키를 다시 확인해 주세요.'), true);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const switchOn = enabled || askingKey;
+  return (
+    <SettingRow
+      title="Jev 요청 판단"
+      description={switchOn
+        ? '요청을 보고 무엇을 할지 Jev가 빠르게 정합니다.'
+        : '꺼져 있으면 연결된 AI가 요청을 판단합니다.'}
+      control={(
+        <SettingSwitch
+          label="Jev 요청 판단"
+          checked={switchOn}
+          disabled={!config || busy}
+          onChange={(next) => {
+            if (!next && askingKey && !enabled) {
+              setAskingKey(false);
+              setKeyDraft('');
+              report('');
+              return;
+            }
+            void toggle(next);
+          }}
+        />
+      )}
+    >
+      {askingKey && (
+        <div className="jev-key-entry">
+          <input
+            type="password"
+            aria-label="Jev API 키"
+            placeholder="Jev API 키"
+            value={keyDraft}
+            autoFocus
+            onChange={(event) => setKeyDraft(event.target.value)}
+            onKeyDown={(event) => { if (event.key === 'Enter') void connect(); }}
+          />
+          <button type="button" className="btn btn-primary" disabled={busy || !keyDraft.trim()} onClick={() => void connect()}>
+            {busy ? '확인 중…' : '연결'}
+          </button>
+        </div>
+      )}
+      {!askingKey && keyConfigured && keyMasked && (
+        <div className="jev-key-current">
+          등록된 키 {keyMasked}
+          <button type="button" className="btn-link" disabled={busy} onClick={() => { setAskingKey(true); report(''); }}>키 바꾸기</button>
+        </div>
+      )}
+      {message && <p className={`connection-form-message ${messageIsError ? 'error' : ''}`}>{message}</p>}
+    </SettingRow>
+  );
+}

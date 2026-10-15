@@ -132,53 +132,59 @@
   color: white;
 }
 
-/* Request decision: who decides (Jev or LLM) and the usage comparison. */
-.decision-mode-switch {
-  min-width: 132px;
-  flex-shrink: 0;
-}
-
-.decision-mode-preview {
-  margin-left: 8px;
-  vertical-align: middle;
-}
-
-.decision-mode-detail {
+/* Request decision: Jev on/off with the key, deciding side by side, and the usage comparison. */
+.jev-key-entry {
+  display: flex;
+  gap: 8px;
   margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
+  max-width: 460px;
 }
 
-.decision-mode-detail-title {
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.decision-mode-detail p {
-  margin: 4px 0 0;
-  font-size: 12px;
-  line-height: 1.6;
-}
-
-.decision-mode-provider {
+.jev-key-entry input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
   color: var(--text);
+  font-size: 13px;
 }
 
-.decision-mode-shadow {
+.jev-key-current {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
+  gap: 10px;
+  margin-top: 8px;
+  color: var(--text-muted);
+  font-size: 12px;
 }
 
-.decision-jev-heading {
-  margin: 8px 0 10px;
-  font-size: 13px;
+.jev-key-current button,
+.decision-usage-link {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--purple-light);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
+.decision-usage-link {
+  margin-top: 10px;
+}
+
+.decision-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.decision-preview-badge {
+  display: inline-block;
+  margin-top: 8px;
+}
 .decision-usage-header {
   display: flex;
   align-items: flex-start;
