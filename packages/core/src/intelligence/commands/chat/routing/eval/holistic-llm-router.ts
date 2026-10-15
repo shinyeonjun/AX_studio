@@ -21,7 +21,7 @@ import { RATE_LIMITED, RATE_LIMIT_WAITS_MS } from './codex-decision-engine.js';
  * decision. No decomposed questions, no fixed rule after it: what it returns is turned into the
  * router's result shape and scored by the same `routingMiss`.
  */
-export const HOLISTIC_ROUTER_SYSTEM = [
+const HOLISTIC_ROUTER_SYSTEM = [
   'You are the request router of a work automation app. You receive JSON describing one user request and the workspace, and return one routing decision as JSON.',
   'Decision kinds:',
   '- "command": act now. With route "capability_read", name the one read in `read` (a key from `reads`). With any other route that runs something (listing connections, sources or workflows, a one-time send, creating a workflow, generating a report, remembering a preference), give that route.',
