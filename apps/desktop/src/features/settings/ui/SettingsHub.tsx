@@ -39,10 +39,9 @@ export function SettingsHub({ state, detecting, detection, onRefresh, onOpenScre
         title="요청 판단"
         description="요청을 보고 무엇을 할지 정하는 방식을 고릅니다."
       >
-        <JevDecisionSwitch onRefresh={onRefresh} />
-        <button type="button" className="decision-usage-link" onClick={() => onOpenScreen('ai-jev')}>
-          판단 사용량 비교 보기 →
-        </button>
+        <div className="connection-hub">
+          <JevDecisionSwitch variant="card" onRefresh={onRefresh} onOpen={() => onOpenScreen('ai-jev')} />
+        </div>
       </SettingsCategory>
 
       <SettingsConnectorSections state={state} onOpenScreen={onOpenScreen} />
