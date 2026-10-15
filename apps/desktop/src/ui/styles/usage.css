@@ -1,0 +1,208 @@
+/* Usage: request decision time, tokens and cost, Jev against the LLM. */
+:root {
+  --usage-jev: #8e70cf;
+  --usage-llm: #2a9d8f;
+}
+
+.usage-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.usage-donuts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 24px;
+}
+
+.usage-donut {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.usage-donut-title {
+  align-self: flex-start;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.usage-donut-chart {
+  position: relative;
+}
+
+.usage-donut-track {
+  stroke: var(--bg-elevated);
+}
+
+.usage-donut-segment {
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.usage-donut-segment--jev { stroke: var(--usage-jev); }
+.usage-donut-segment--llm { stroke: var(--usage-llm); }
+.usage-donut-segment.dimmed { opacity: 0.35; }
+
+.usage-donut-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  text-align: center;
+}
+
+.usage-donut-center strong {
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.usage-donut-center span {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.usage-donut-legend {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+}
+
+.usage-donut-legend li {
+  display: grid;
+  grid-template-columns: 10px 1fr auto 40px;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.usage-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.usage-swatch--jev { background: var(--usage-jev); }
+.usage-swatch--llm { background: var(--usage-llm); }
+
+.usage-legend-label { color: var(--text); font-weight: 600; }
+.usage-legend-value,
+.usage-legend-share {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+.decision-usage h4 {
+  margin: 0;
+}
+
+.decision-usage-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.decision-usage-header h4 {
+  margin: 0 0 4px;
+}
+
+.decision-usage-header p {
+  margin: 0;
+  font-size: 12px;
+}
+
+.decision-usage-periods {
+  display: inline-flex;
+  gap: 4px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-elevated);
+}
+
+.decision-usage-period {
+  padding: 4px 10px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.decision-usage-period.active {
+  background: var(--purple);
+  color: white;
+}
+
+.decision-usage-sample {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.decision-usage-table {
+  width: 100%;
+  margin-top: 12px;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.decision-usage-table th,
+.decision-usage-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.decision-usage-table th[scope='row'],
+.decision-usage-table thead th:first-child {
+  text-align: left;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.decision-usage-table thead th {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.decision-usage-table td.better {
+  color: var(--green);
+  font-weight: 700;
+}
+
+.decision-usage-active {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--purple-glow);
+  color: var(--purple-light);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.decision-usage-empty,
+.decision-usage-note {
+  margin: 12px 0 0;
+  font-size: 12px;
+  line-height: 1.6;
+}

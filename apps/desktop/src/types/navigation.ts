@@ -1,4 +1,4 @@
-export type SidebarTab = 'work' | 'approval' | 'activity' | 'settings';
+export type SidebarTab = 'work' | 'approval' | 'activity' | 'usage' | 'settings';
 
 export type SettingsScreen =
   | 'hub'

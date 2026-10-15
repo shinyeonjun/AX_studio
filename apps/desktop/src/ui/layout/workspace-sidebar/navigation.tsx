@@ -1,5 +1,5 @@
 import type { SidebarTab } from '../../../types/navigation';
-import { IconActivity, IconBriefcase, IconCheck, IconSettings } from '../../icons';
+import { IconActivity, IconBriefcase, IconCheck, IconPieChart, IconSettings } from '../../icons';
 
 interface SidebarNavigationProps {
   tab: SidebarTab;
@@ -41,6 +41,15 @@ export function SidebarNavigation({
       >
         <IconActivity />
         활동
+      </button>
+      <button
+        type="button"
+        aria-current={tab === 'usage' ? 'page' : undefined}
+        className={'workspace-sidebar-tab ' + (tab === 'usage' ? 'active' : '')}
+        onClick={() => onTabChange('usage')}
+      >
+        <IconPieChart />
+        사용량
       </button>
       <button
         type="button"

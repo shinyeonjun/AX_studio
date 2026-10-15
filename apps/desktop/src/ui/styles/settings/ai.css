@@ -131,3 +131,57 @@
 .ai-mode-switch-option.active {
   color: white;
 }
+
+/* Request decision card: the switch sits where other cards show their status. */
+.jev-decision-card .connection-card-title-row {
+  align-items: center;
+}
+
+/* Request decision: Jev on/off with the key, deciding side by side, and the usage comparison. */
+.jev-key-entry {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  max-width: 460px;
+}
+
+.jev-key-entry input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  color: var(--text);
+  font-size: 13px;
+}
+
+.jev-key-current {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.jev-key-current button {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--purple-light);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.decision-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.decision-preview-badge {
+  display: inline-block;
+  margin-top: 8px;
+}

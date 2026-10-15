@@ -12,6 +12,10 @@ const ApprovalsPage = lazy(() =>
   import('../features/activity/ui/approval/ApprovalsPage').then(({ ApprovalsPage }) => ({ default: ApprovalsPage })),
 );
 
+const UsagePage = lazy(() =>
+  import('../features/usage/ui/UsagePage').then(({ UsagePage }) => ({ default: UsagePage })),
+);
+
 type WorkspaceChatApi = ReturnType<typeof useWorkspaceChat>;
 
 interface AppMainContentProps {
@@ -49,6 +53,19 @@ export function AppMainContent({
         }
       >
         <ActivityPage state={state} onRefresh={refresh} />
+      </Suspense>
+    );
+  }
+  if (tab === 'usage') {
+    return (
+      <Suspense
+        fallback={
+          <div className="page-content">
+            <p className="muted">사용량을 불러오는 중…</p>
+          </div>
+        }
+      >
+        <UsagePage state={state} />
       </Suspense>
     );
   }
